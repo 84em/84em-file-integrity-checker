@@ -421,10 +421,10 @@
                 isValid = false;
             }
             
-            // Validate file size
-            const maxFileSize = parseInt($('#max_file_size').val());
-            if (maxFileSize <= 0 || maxFileSize > 104857600) {
-                this.showError('Max file size must be between 1 byte and 100MB');
+            // Validate file size in MB
+            const maxFileSizeMB = parseFloat($('#max_file_size_mb').val());
+            if (maxFileSizeMB <= 0 || maxFileSizeMB > 100) {
+                this.showError('Max file size must be between 1 MB and 100 MB');
                 isValid = false;
             }
             

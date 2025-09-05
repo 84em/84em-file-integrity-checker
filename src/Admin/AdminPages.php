@@ -306,9 +306,10 @@ class AdminPages {
             $settings['exclude_patterns'] = array_map( 'trim', $patterns );
         }
 
-        // Max file size
-        if ( isset( $_POST['max_file_size'] ) ) {
-            $settings['max_file_size'] = (int) $_POST['max_file_size'];
+        // Max file size - convert from MB to bytes
+        if ( isset( $_POST['max_file_size_mb'] ) ) {
+            $mb_value = (float) $_POST['max_file_size_mb'];
+            $settings['max_file_size'] = (int) ( $mb_value * 1048576 ); // Convert MB to bytes
         }
 
         // Notification settings

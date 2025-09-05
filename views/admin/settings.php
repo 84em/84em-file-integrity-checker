@@ -90,23 +90,18 @@ if ( ! defined( 'ABSPATH' ) ) {
                     </tr>
                     <tr>
                         <th scope="row">
-                            <label for="max_file_size">Maximum File Size</label>
+                            <label for="max_file_size_mb">Maximum File Size (MB)</label>
                         </th>
                         <td>
                             <input type="number" 
-                                   name="max_file_size" 
-                                   id="max_file_size" 
-                                   value="<?php echo esc_attr( $settings['max_file_size'] ); ?>" 
+                                   name="max_file_size_mb" 
+                                   id="max_file_size_mb" 
+                                   value="<?php echo esc_attr( round( $settings['max_file_size'] / 1048576, 1 ) ); ?>" 
                                    min="1" 
-                                   max="104857600" />
-                            <select onchange="updateFileSizeInput(this.value)">
-                                <option value="1">Bytes</option>
-                                <option value="1024">KB</option>
-                                <option value="1048576" <?php selected( $settings['max_file_size'], 1048576 ); ?>>MB</option>
-                            </select>
+                                   max="100"
+                                   step="0.5" /> MB
                             <p class="description">
-                                Maximum size of files to scan. Larger files will be skipped. 
-                                Current: <?php echo esc_html( size_format( $settings['max_file_size'] ) ); ?>
+                                Maximum size of files to scan in megabytes. Files larger than this will be skipped.
                             </p>
                         </td>
                     </tr>
