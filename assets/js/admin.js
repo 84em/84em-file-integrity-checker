@@ -24,6 +24,8 @@
         bindEvents: function() {
             $(document).on('click', '.start-scan-btn', this.handleStartScan.bind(this));
             $(document).on('click', '.cancel-scan-btn', this.handleCancelScan.bind(this));
+            $(document).on('click', '.cancel-scan', this.handleCancelSpecificScan.bind(this));
+            $(document).on('click', '.delete-scan', this.handleDeleteScan.bind(this));
             $(document).on('click', '.schedule-scan-btn', this.handleScheduleScan.bind(this));
             $(document).on('click', '.view-scan-details', this.handleViewScanDetails.bind(this));
             $(document).on('change', '.file-extension-checkbox', this.handleFileExtensionChange.bind(this));
@@ -298,6 +300,81 @@
             });
             
             $('#selected_extensions').val(selected.join(','));
+        },
+
+        // Handle cancel specific scan from results table
+        handleCancelSpecificScan: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.currentTarget);
+            const scanId = button.data('scan-id');
+            
+            FICModal.confirm(
+                'Are you sure you want to cancel this running scan?',
+                'Cancel Scan',
+                'Yes, Cancel',
+                'No, Keep Running'
+            ).then(confirmed => {
+                if (confirmed) {
+                    button.prop('disabled', true);
+                    
+                    $.post(fileIntegrityChecker.ajaxUrl, {
+                        action: 'file_integrity_cancel_scan',
+                        scan_id: scanId,
+                        _wpnonce: fileIntegrityChecker.nonce
+                    }).then((response) => {
+                        if (response.success) {
+                            this.showSuccess('Scan cancelled successfully');
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            this.showError('Failed to cancel scan: ' + (response.data || 'Unknown error'));
+                            button.prop('disabled', false);
+                        }
+                    }).catch((error) => {
+                        this.showError('Failed to cancel scan');
+                        button.prop('disabled', false);
+                    });
+                }
+            });
+        },
+        
+        // Handle delete scan
+        handleDeleteScan: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.currentTarget);
+            const scanId = button.data('scan-id');
+            
+            FICModal.confirm(
+                'Are you sure you want to delete this scan result? This action cannot be undone.',
+                'Delete Scan Result',
+                'Yes, Delete',
+                'Cancel'
+            ).then(confirmed => {
+                if (confirmed) {
+                    button.prop('disabled', true);
+                    
+                    $.post(fileIntegrityChecker.ajaxUrl, {
+                        action: 'file_integrity_delete_scan',
+                        scan_id: scanId,
+                        _wpnonce: fileIntegrityChecker.nonce
+                    }).then((response) => {
+                        if (response.success) {
+                            this.showSuccess('Scan result deleted successfully');
+                            // Remove the row from the table
+                            button.closest('tr').fadeOut(500, function() {
+                                $(this).remove();
+                            });
+                        } else {
+                            this.showError('Failed to delete scan: ' + (response.data || 'Unknown error'));
+                            button.prop('disabled', false);
+                        }
+                    }).catch((error) => {
+                        this.showError('Failed to delete scan');
+                        button.prop('disabled', false);
+                    });
+                }
+            });
         },
 
         // Handle cleanup old scans

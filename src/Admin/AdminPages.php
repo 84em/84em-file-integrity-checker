@@ -76,6 +76,8 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_start_scan', [ $this, 'ajaxStartScan' ] );
         add_action( 'wp_ajax_file_integrity_check_progress', [ $this, 'ajaxCheckProgress' ] );
         add_action( 'wp_ajax_file_integrity_cleanup_old_scans', [ $this, 'ajaxCleanupOldScans' ] );
+        add_action( 'wp_ajax_file_integrity_cancel_scan', [ $this, 'ajaxCancelScan' ] );
+        add_action( 'wp_ajax_file_integrity_delete_scan', [ $this, 'ajaxDeleteScan' ] );
     }
 
     /**
@@ -372,6 +374,83 @@ class AdminPages {
         }
     }
 
+    /**
+     * AJAX handler for canceling a scan
+     */
+    public function ajaxCancelScan(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $scan_id = isset( $_POST['scan_id'] ) ? intval( $_POST['scan_id'] ) : 0;
+        
+        if ( ! $scan_id ) {
+            wp_send_json_error( 'Invalid scan ID' );
+        }
+        
+        try {
+            // Update scan status to cancelled
+            $updated = $this->scanResultsRepository->update( $scan_id, [
+                'status' => 'cancelled',
+                'notes' => 'Scan cancelled by user at ' . current_time( 'mysql' )
+            ] );
+            
+            if ( $updated ) {
+                wp_send_json_success( [
+                    'message' => 'Scan cancelled successfully',
+                    'scan_id' => $scan_id
+                ] );
+            } else {
+                wp_send_json_error( 'Failed to cancel scan' );
+            }
+        } catch ( \Exception $e ) {
+            wp_send_json_error( 'Failed to cancel scan: ' . $e->getMessage() );
+        }
+    }
+    
+    /**
+     * AJAX handler for deleting a scan
+     */
+    public function ajaxDeleteScan(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $scan_id = isset( $_POST['scan_id'] ) ? intval( $_POST['scan_id'] ) : 0;
+        
+        if ( ! $scan_id ) {
+            wp_send_json_error( 'Invalid scan ID' );
+        }
+        
+        try {
+            // Delete scan and all associated file records
+            $deleted = $this->scanResultsRepository->delete( $scan_id );
+            
+            if ( $deleted ) {
+                wp_send_json_success( [
+                    'message' => 'Scan deleted successfully',
+                    'scan_id' => $scan_id
+                ] );
+            } else {
+                wp_send_json_error( 'Failed to delete scan' );
+            }
+        } catch ( \Exception $e ) {
+            wp_send_json_error( 'Failed to delete scan: ' . $e->getMessage() );
+        }
+    }
+    
     /**
      * Render schedules page
      */

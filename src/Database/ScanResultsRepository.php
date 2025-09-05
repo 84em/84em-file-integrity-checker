@@ -7,6 +7,8 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Database;
 
+use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
+
 /**
  * Repository for managing scan results data
  */
@@ -242,7 +244,11 @@ class ScanResultsRepository {
     public function delete( int $id ): bool {
         global $wpdb;
 
-        // File records will be automatically deleted due to foreign key constraint
+        // First delete associated file records
+        $file_record_repo = new FileRecordRepository();
+        $file_record_repo->deleteByScanId( $id );
+
+        // Then delete the scan result
         $result = $wpdb->delete(
             $wpdb->prefix . self::TABLE_NAME,
             [ 'id' => $id ],

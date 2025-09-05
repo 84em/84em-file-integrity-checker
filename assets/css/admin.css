@@ -104,6 +104,11 @@
     color: var(--wp-admin-theme-color-error, #d63638);
 }
 
+.status-cancelled {
+    background: color-mix(in srgb, #f56e28 15%, white);
+    color: #f56e28;
+}
+
 .status-new {
     background: color-mix(in srgb, var(--wp-admin-theme-color, #2271b1) 15%, white);
     color: var(--wp-admin-theme-color, #2271b1);
@@ -356,6 +361,44 @@ a .dashicons {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Action buttons */
+.column-actions {
+    white-space: nowrap;
+}
+
+.column-actions .button {
+    margin-right: 5px;
+}
+
+.column-actions .button:last-child {
+    margin-right: 0;
+}
+
+.button.button-link-delete {
+    color: #dc3232;
+}
+
+.button.button-link-delete:hover {
+    color: #a00;
+    border-color: #dc3232;
+}
+
+.button.cancel-scan {
+    color: #f56e28;
+}
+
+.button.cancel-scan:hover {
+    color: #d54e21;
+    border-color: #f56e28;
+}
+
+.column-actions .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
 
 /* Responsive design */

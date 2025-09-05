@@ -17,6 +17,7 @@ class DatabaseManager {
     private const TABLE_SCAN_RESULTS = 'eightyfourem_integrity_scan_results';
     private const TABLE_FILE_RECORDS = 'eightyfourem_integrity_file_records';
     private const TABLE_SCAN_SCHEDULES = 'eightyfourem_integrity_scan_schedules';
+    private const TABLE_FILE_CONTENT = 'eightyfourem_integrity_file_content';
 
     /**
      * Initialize database tables
@@ -103,14 +104,27 @@ class DatabaseManager {
             KEY next_run (next_run)
         ) $charset_collate;";
 
+        // Table for storing file content for diff generation
+        $file_content_sql = "CREATE TABLE {$wpdb->prefix}" . self::TABLE_FILE_CONTENT . " (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            checksum varchar(64) NOT NULL,
+            content longblob NOT NULL,
+            file_size int unsigned NOT NULL,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY checksum (checksum),
+            KEY created_at (created_at)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         
         dbDelta( $scan_results_sql );
         dbDelta( $file_records_sql );
         dbDelta( $scan_schedules_sql );
+        dbDelta( $file_content_sql );
 
         // Set database version
-        update_option( 'eightyfourem_file_integrity_db_version', '1.3.0' );
+        update_option( 'eightyfourem_file_integrity_db_version', '1.4.0' );
     }
 
     /**
@@ -119,7 +133,7 @@ class DatabaseManager {
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
         
-        if ( version_compare( $installed_version, '1.2.0', '<' ) ) {
+        if ( version_compare( $installed_version, '1.4.0', '<' ) ) {
             $this->createTables();
         }
     }
@@ -133,9 +147,11 @@ class DatabaseManager {
         $file_records_table = $wpdb->prefix . self::TABLE_FILE_RECORDS;
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
         $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
+        $file_content_table = $wpdb->prefix . self::TABLE_FILE_CONTENT;
 
         // Drop tables in reverse order due to foreign key constraints
         $wpdb->query( "DROP TABLE IF EXISTS $file_records_table" );
+        $wpdb->query( "DROP TABLE IF EXISTS $file_content_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_schedules_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_results_table" );
 

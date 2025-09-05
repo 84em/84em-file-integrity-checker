@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Scanner;
 
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
+use EightyFourEM\FileIntegrityChecker\Database\FileContentRepository;
 
 /**
  * Scans the filesystem for files to check integrity
@@ -28,6 +29,13 @@ class FileScanner {
     private SettingsService $settingsService;
 
     /**
+     * File content repository
+     *
+     * @var FileContentRepository
+     */
+    private FileContentRepository $fileContentRepository;
+
+    /**
      * Constructor
      *
      * @param ChecksumGenerator $checksumGenerator Checksum generator
@@ -36,6 +44,7 @@ class FileScanner {
     public function __construct( ChecksumGenerator $checksumGenerator, SettingsService $settingsService ) {
         $this->checksumGenerator = $checksumGenerator;
         $this->settingsService   = $settingsService;
+        $this->fileContentRepository = new FileContentRepository();
     }
 
     /**
@@ -130,21 +139,16 @@ class FileScanner {
                 } else {
                     // File is unchanged
                     $file_data['status'] = 'unchanged';
+                    
+                    // Store content if we don't have it yet
+                    $this->storeFileContentIfNeeded( $file_path, $file_data['checksum'] );
                 }
             } else {
                 // New file - store its content for future diffs
                 $file_data['status'] = 'new';
                 
-                // Store content for future comparisons (text files only)
-                $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
-                $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
-                
-                if ( in_array( $extension, $text_extensions, true ) && file_exists( $file_path ) ) {
-                    $content = file_get_contents( $file_path );
-                    if ( $content !== false && strlen( $content ) <= 1048576 ) {
-                        $this->storeFileContent( $file_path, $content );
-                    }
-                }
+                // Store content for future comparisons
+                $this->storeFileContentIfNeeded( $file_path, $file_data['checksum'] );
             }
 
             $updated_files[] = $file_data;
@@ -196,21 +200,23 @@ class FileScanner {
             return null;
         }
         
-        // Get the previous content from storage
-        $previous_content = $this->getPreviousContentFromStorage( $file_path, $previous_checksum );
+        // Get the previous content from database
+        $previous_content = $this->fileContentRepository->get( $previous_checksum );
         
         if ( $previous_content !== null ) {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
             
             // Store current content for next time
-            $this->storeFileContent( $file_path, $current_content );
+            $current_checksum = hash( 'sha256', $current_content );
+            $this->fileContentRepository->store( $current_checksum, $current_content );
             
             return $diff;
         }
         
         // If we can't get the previous content, store current content for next time
-        $this->storeFileContent( $file_path, $current_content );
+        $current_checksum = hash( 'sha256', $current_content );
+        $this->fileContentRepository->store( $current_checksum, $current_content );
         
         // Return a summary since we don't have previous content
         $diff_summary = [
@@ -229,121 +235,34 @@ class FileScanner {
     }
     
     /**
-     * Get previous file content from storage
+     * Store file content if needed for future diffs
      *
      * @param string $file_path Path to the file
-     * @param string $previous_checksum Previous checksum to match
-     * @return string|null Previous content or null if not available
-     */
-    private function getPreviousContentFromStorage( string $file_path, string $previous_checksum ): ?string {
-        // Use file-based storage in wp-content directory
-        $storage_dir = WP_CONTENT_DIR . '/file-integrity-storage';
-        
-        // Create storage directory if it doesn't exist
-        if ( ! is_dir( $storage_dir ) ) {
-            return null;
-        }
-        
-        // Use checksum as filename for easy retrieval
-        $storage_file = $storage_dir . '/' . $previous_checksum . '.gz';
-        
-        if ( file_exists( $storage_file ) ) {
-            // Read and decompress the content
-            $compressed = file_get_contents( $storage_file );
-            if ( $compressed !== false ) {
-                $content = gzdecode( $compressed );
-                if ( $content !== false ) {
-                    // Verify the checksum matches
-                    if ( hash( 'sha256', $content ) === $previous_checksum ) {
-                        return $content;
-                    }
-                }
-            }
-        }
-        
-        return null;
-    }
-    
-    /**
-     * Store file content for future diff generation
-     *
-     * @param string $file_path Path to the file
-     * @param string $content File content to store
-     * @return bool True on success, false on failure
-     */
-    private function storeFileContent( string $file_path, string $content ): bool {
-        // Only store content for text files under 1MB
-        if ( strlen( $content ) > 1048576 ) {
-            return false;
-        }
-        
-        // Use file-based storage in wp-content directory
-        $storage_dir = WP_CONTENT_DIR . '/file-integrity-storage';
-        
-        // Create storage directory if it doesn't exist
-        if ( ! is_dir( $storage_dir ) ) {
-            if ( ! wp_mkdir_p( $storage_dir ) ) {
-                return false;
-            }
-            
-            // Add .htaccess to prevent direct access
-            $htaccess = $storage_dir . '/.htaccess';
-            if ( ! file_exists( $htaccess ) ) {
-                file_put_contents( $htaccess, "Deny from all\n" );
-            }
-            
-            // Add index.php for extra security
-            $index = $storage_dir . '/index.php';
-            if ( ! file_exists( $index ) ) {
-                file_put_contents( $index, "<?php // Silence is golden\n" );
-            }
-        }
-        
-        // Use checksum as filename
-        $checksum = hash( 'sha256', $content );
-        $storage_file = $storage_dir . '/' . $checksum . '.gz';
-        
-        // Don't overwrite if it already exists
-        if ( file_exists( $storage_file ) ) {
-            return true;
-        }
-        
-        // Compress and store the content
-        $compressed = gzencode( $content, 9 );
-        if ( $compressed === false ) {
-            return false;
-        }
-        
-        $result = file_put_contents( $storage_file, $compressed );
-        
-        // Clean up old files (keep only last 100 changed files)
-        $this->cleanupOldStorageFiles( $storage_dir, 100 );
-        
-        return $result !== false;
-    }
-    
-    /**
-     * Clean up old storage files to prevent unlimited growth
-     *
-     * @param string $storage_dir Storage directory path
-     * @param int $keep_files Number of files to keep
+     * @param string $checksum File checksum
      * @return void
      */
-    private function cleanupOldStorageFiles( string $storage_dir, int $keep_files = 100 ): void {
-        $files = glob( $storage_dir . '/*.gz' );
-        if ( ! $files || count( $files ) <= $keep_files ) {
+    private function storeFileContentIfNeeded( string $file_path, string $checksum ): void {
+        // Only store text files under 1MB
+        $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
+        $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+        
+        if ( ! in_array( $extension, $text_extensions, true ) ) {
             return;
         }
         
-        // Sort by modification time (oldest first)
-        usort( $files, function( $a, $b ) {
-            return filemtime( $a ) - filemtime( $b );
-        } );
+        if ( ! file_exists( $file_path ) || filesize( $file_path ) > 1048576 ) {
+            return;
+        }
         
-        // Delete oldest files
-        $to_delete = count( $files ) - $keep_files;
-        for ( $i = 0; $i < $to_delete; $i++ ) {
-            @unlink( $files[$i] );
+        // Check if we already have this content stored
+        if ( $this->fileContentRepository->exists( $checksum ) ) {
+            return;
+        }
+        
+        // Read and store the content
+        $content = file_get_contents( $file_path );
+        if ( $content !== false ) {
+            $this->fileContentRepository->store( $checksum, $content );
         }
     }
     

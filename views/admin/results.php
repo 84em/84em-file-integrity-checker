@@ -105,10 +105,44 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                                class="button button-small view-scan-details" data-scan-id="<?php echo esc_attr( $scan->id ); ?>">
                                 View Details
                             </a>
+                            <button class="button button-small button-link-delete delete-scan" 
+                                    data-scan-id="<?php echo esc_attr( $scan->id ); ?>"
+                                    title="Delete this scan result">
+                                <span class="dashicons dashicons-trash"></span>
+                            </button>
                         <?php elseif ( $scan->status === 'failed' ): ?>
                             <span class="status-badge status-failed" title="<?php echo esc_attr( $scan->notes ); ?>">Failed</span>
-                        <?php else: ?>
+                            <button class="button button-small button-link-delete delete-scan" 
+                                    data-scan-id="<?php echo esc_attr( $scan->id ); ?>"
+                                    title="Delete this scan result">
+                                <span class="dashicons dashicons-trash"></span>
+                            </button>
+                        <?php elseif ( $scan->status === 'cancelled' ): ?>
+                            <span class="status-badge status-cancelled" title="<?php echo esc_attr( $scan->notes ); ?>">Cancelled</span>
+                            <button class="button button-small button-link-delete delete-scan" 
+                                    data-scan-id="<?php echo esc_attr( $scan->id ); ?>"
+                                    title="Delete this scan result">
+                                <span class="dashicons dashicons-trash"></span>
+                            </button>
+                        <?php elseif ( $scan->status === 'running' ): ?>
                             <span class="status-badge status-running">Running</span>
+                            <button class="button button-small button-link cancel-scan" 
+                                    data-scan-id="<?php echo esc_attr( $scan->id ); ?>"
+                                    title="Cancel this scan">
+                                <span class="dashicons dashicons-no"></span>
+                            </button>
+                            <button class="button button-small button-link-delete delete-scan" 
+                                    data-scan-id="<?php echo esc_attr( $scan->id ); ?>"
+                                    title="Delete this scan result">
+                                <span class="dashicons dashicons-trash"></span>
+                            </button>
+                        <?php else: ?>
+                            <span class="status-badge status-<?php echo esc_attr( $scan->status ); ?>"><?php echo esc_html( ucfirst( $scan->status ) ); ?></span>
+                            <button class="button button-small button-link-delete delete-scan" 
+                                    data-scan-id="<?php echo esc_attr( $scan->id ); ?>"
+                                    title="Delete this scan result">
+                                <span class="dashicons dashicons-trash"></span>
+                            </button>
                         <?php endif; ?>
                     </td>
                 </tr>
