@@ -315,6 +315,95 @@ class IntegrityCommand {
     }
 
     /**
+     * Manage scan schedules
+     *
+     * ## OPTIONS
+     *
+     * <action>
+     * : Action to perform
+     * ---
+     * options:
+     *   - list
+     *   - create
+     *   - delete
+     *   - enable
+     *   - disable
+     * ---
+     *
+     * [--id=<id>]
+     * : Schedule ID (required for delete/enable/disable actions)
+     *
+     * [--name=<name>]
+     * : Schedule name (required for create action)
+     *
+     * [--frequency=<frequency>]
+     * : Schedule frequency (required for create action)
+     * ---
+     * options:
+     *   - hourly
+     *   - daily
+     *   - weekly
+     *   - monthly
+     * ---
+     *
+     * [--time=<time>]
+     * : Time in HH:MM format (optional for create action)
+     *
+     * [--day-of-week=<day>]
+     * : Day of week (0-6, 0=Sunday) for weekly schedules
+     *
+     * [--day-of-month=<day>]
+     * : Day of month (1-31) for monthly schedules
+     *
+     * [--active]
+     * : Whether to activate the schedule immediately (for create action)
+     *
+     * [--format=<format>]
+     * : Output format for list action
+     * ---
+     * default: table
+     * options:
+     *   - table
+     *   - csv
+     *   - json
+     * ---
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity schedules list
+     *     wp 84em integrity schedules create --name="Daily Scan" --frequency=daily --time=02:00 --active
+     *     wp 84em integrity schedules delete --id=1
+     *     wp 84em integrity schedules enable --id=1
+     *     wp 84em integrity schedules disable --id=1
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function schedules( array $args, array $assoc_args ): void {
+        $action = $args[0] ?? 'list';
+
+        switch ( $action ) {
+            case 'list':
+                $this->listSchedules( $assoc_args );
+                break;
+            case 'create':
+                $this->createSchedule( $assoc_args );
+                break;
+            case 'delete':
+                $this->deleteSchedule( $assoc_args );
+                break;
+            case 'enable':
+                $this->enableScheduleCommand( $assoc_args );
+                break;
+            case 'disable':
+                $this->disableScheduleCommand( $assoc_args );
+                break;
+            default:
+                \WP_CLI::error( "Invalid action '$action'. Use 'list', 'create', 'delete', 'enable', or 'disable'." );
+        }
+    }
+
+    /**
      * Show details for a specific scan
      *
      * @param int    $scan_id Scan ID
@@ -546,6 +635,124 @@ class IntegrityCommand {
             \WP_CLI::success( "Updated $setting to: $value" );
         } else {
             \WP_CLI::error( "Failed to update $setting. Check that the value is valid." );
+        }
+    }
+
+    /**
+     * List all schedules
+     *
+     * @param array $assoc_args Associative arguments
+     */
+    private function listSchedules( array $assoc_args ): void {
+        $format = $assoc_args['format'] ?? 'table';
+        $schedules = $this->schedulerService->getSchedules();
+
+        if ( empty( $schedules ) ) {
+            \WP_CLI::line( 'No schedules found.' );
+            return;
+        }
+
+        $output_data = [];
+        foreach ( $schedules as $schedule ) {
+            $output_data[] = [
+                'ID' => $schedule->id,
+                'Name' => $schedule->name,
+                'Frequency' => ucfirst( $schedule->frequency ),
+                'Status' => $schedule->is_active ? 'Active' : 'Inactive',
+                'Last Run' => $schedule->last_run ?: 'Never',
+                'Next Run' => $schedule->next_run ?: 'N/A',
+            ];
+        }
+
+        \WP_CLI\Utils\format_items( $format, $output_data, [ 'ID', 'Name', 'Frequency', 'Status', 'Last Run', 'Next Run' ] );
+    }
+
+    /**
+     * Create a new schedule
+     *
+     * @param array $assoc_args Associative arguments
+     */
+    private function createSchedule( array $assoc_args ): void {
+        if ( empty( $assoc_args['name'] ) || empty( $assoc_args['frequency'] ) ) {
+            \WP_CLI::error( 'Schedule name and frequency are required.' );
+            return;
+        }
+
+        $config = [
+            'name' => $assoc_args['name'],
+            'frequency' => $assoc_args['frequency'],
+            'time' => $assoc_args['time'] ?? null,
+            'day_of_week' => isset( $assoc_args['day-of-week'] ) ? (int) $assoc_args['day-of-week'] : null,
+            'day_of_month' => isset( $assoc_args['day-of-month'] ) ? (int) $assoc_args['day-of-month'] : null,
+            'is_active' => isset( $assoc_args['active'] ) ? 1 : 0,
+        ];
+
+        $schedule_id = $this->schedulerService->createSchedule( $config );
+
+        if ( $schedule_id ) {
+            \WP_CLI::success( "Schedule created successfully with ID: $schedule_id" );
+        } else {
+            \WP_CLI::error( 'Failed to create schedule. Please check your parameters.' );
+        }
+    }
+
+    /**
+     * Delete a schedule
+     *
+     * @param array $assoc_args Associative arguments
+     */
+    private function deleteSchedule( array $assoc_args ): void {
+        if ( empty( $assoc_args['id'] ) ) {
+            \WP_CLI::error( 'Schedule ID is required.' );
+            return;
+        }
+
+        $schedule_id = (int) $assoc_args['id'];
+        
+        if ( $this->schedulerService->deleteSchedule( $schedule_id ) ) {
+            \WP_CLI::success( "Schedule $schedule_id deleted successfully." );
+        } else {
+            \WP_CLI::error( "Failed to delete schedule $schedule_id." );
+        }
+    }
+
+    /**
+     * Enable a schedule
+     *
+     * @param array $assoc_args Associative arguments
+     */
+    private function enableScheduleCommand( array $assoc_args ): void {
+        if ( empty( $assoc_args['id'] ) ) {
+            \WP_CLI::error( 'Schedule ID is required.' );
+            return;
+        }
+
+        $schedule_id = (int) $assoc_args['id'];
+        
+        if ( $this->schedulerService->enableSchedule( $schedule_id ) ) {
+            \WP_CLI::success( "Schedule $schedule_id enabled successfully." );
+        } else {
+            \WP_CLI::error( "Failed to enable schedule $schedule_id." );
+        }
+    }
+
+    /**
+     * Disable a schedule
+     *
+     * @param array $assoc_args Associative arguments
+     */
+    private function disableScheduleCommand( array $assoc_args ): void {
+        if ( empty( $assoc_args['id'] ) ) {
+            \WP_CLI::error( 'Schedule ID is required.' );
+            return;
+        }
+
+        $schedule_id = (int) $assoc_args['id'];
+        
+        if ( $this->schedulerService->disableSchedule( $schedule_id ) ) {
+            \WP_CLI::success( "Schedule $schedule_id disabled successfully." );
+        } else {
+            \WP_CLI::error( "Failed to disable schedule $schedule_id." );
         }
     }
 }

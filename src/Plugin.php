@@ -13,6 +13,7 @@ use EightyFourEM\FileIntegrityChecker\Core\Deactivator;
 use EightyFourEM\FileIntegrityChecker\Database\DatabaseManager;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
+use EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository;
 use EightyFourEM\FileIntegrityChecker\Scanner\FileScanner;
 use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
@@ -136,6 +137,12 @@ class Plugin {
             return new FileRecordRepository();
         } );
 
+        $this->container->register( ScanSchedulesRepository::class, function ( $container ) {
+            return new ScanSchedulesRepository(
+                $container->get( DatabaseManager::class )
+            );
+        } );
+
         // Scanner services
         $this->container->register( ChecksumGenerator::class, function () {
             return new ChecksumGenerator();
@@ -155,7 +162,8 @@ class Plugin {
 
         $this->container->register( SchedulerService::class, function ( $container ) {
             return new SchedulerService(
-                $container->get( IntegrityService::class )
+                $container->get( IntegrityService::class ),
+                $container->get( ScanSchedulesRepository::class )
             );
         } );
 

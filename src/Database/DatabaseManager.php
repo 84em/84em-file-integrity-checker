@@ -16,6 +16,7 @@ class DatabaseManager {
      */
     private const TABLE_SCAN_RESULTS = 'eightyfourem_integrity_scan_results';
     private const TABLE_FILE_RECORDS = 'eightyfourem_integrity_file_records';
+    private const TABLE_SCAN_SCHEDULES = 'eightyfourem_integrity_scan_schedules';
 
     /**
      * Initialize database tables
@@ -79,13 +80,38 @@ class DatabaseManager {
                 ON DELETE CASCADE
         ) $charset_collate;";
 
+        // Scan schedules table
+        $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
+        $scan_schedules_sql = "CREATE TABLE $scan_schedules_table (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            name varchar(100) NOT NULL,
+            frequency varchar(20) NOT NULL,
+            time time DEFAULT NULL,
+            day_of_week tinyint(1) DEFAULT NULL,
+            day_of_month tinyint(2) DEFAULT NULL,
+            hour tinyint(2) DEFAULT NULL,
+            minute tinyint(2) DEFAULT NULL,
+            timezone varchar(50) NOT NULL DEFAULT 'UTC',
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            last_run datetime DEFAULT NULL,
+            next_run datetime DEFAULT NULL,
+            action_scheduler_id bigint(20) DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY frequency (frequency),
+            KEY is_active (is_active),
+            KEY next_run (next_run)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         
         dbDelta( $scan_results_sql );
         dbDelta( $file_records_sql );
+        dbDelta( $scan_schedules_sql );
 
         // Set database version
-        update_option( 'eightyfourem_file_integrity_db_version', '1.0.0' );
+        update_option( 'eightyfourem_file_integrity_db_version', '1.1.0' );
     }
 
     /**
@@ -94,7 +120,7 @@ class DatabaseManager {
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
         
-        if ( version_compare( $installed_version, '1.0.0', '<' ) ) {
+        if ( version_compare( $installed_version, '1.1.0', '<' ) ) {
             $this->createTables();
         }
     }
@@ -107,9 +133,11 @@ class DatabaseManager {
 
         $file_records_table = $wpdb->prefix . self::TABLE_FILE_RECORDS;
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
+        $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
 
         // Drop tables in reverse order due to foreign key constraints
         $wpdb->query( "DROP TABLE IF EXISTS $file_records_table" );
+        $wpdb->query( "DROP TABLE IF EXISTS $scan_schedules_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_results_table" );
 
         // Remove options
@@ -134,5 +162,15 @@ class DatabaseManager {
     public function getFileRecordsTableName(): string {
         global $wpdb;
         return $wpdb->prefix . self::TABLE_FILE_RECORDS;
+    }
+
+    /**
+     * Get scan schedules table name
+     *
+     * @return string
+     */
+    public function getScanSchedulesTableName(): string {
+        global $wpdb;
+        return $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
     }
 }

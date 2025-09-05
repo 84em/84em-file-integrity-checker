@@ -98,6 +98,15 @@ class AdminPages {
 
         add_submenu_page(
             'file-integrity-checker',
+            'Schedules',
+            'Schedules',
+            'manage_options',
+            'file-integrity-checker-schedules',
+            [ $this, 'renderSchedulesPage' ]
+        );
+
+        add_submenu_page(
+            'file-integrity-checker',
             'Settings',
             'Settings',
             'manage_options',
@@ -308,5 +317,13 @@ class AdminPages {
             'admin.php?page=file-integrity-checker&message=cleanup_complete&deleted=' . $cleanup_stats['deleted_scans'] 
         ) );
         exit;
+    }
+
+    /**
+     * Render schedules page
+     */
+    public function renderSchedulesPage(): void {
+        $scheduler_service = $this->schedulerService;
+        include plugin_dir_path( dirname( __DIR__ ) ) . 'views/admin/schedules.php';
     }
 }

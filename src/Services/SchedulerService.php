@@ -7,6 +7,8 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Services;
 
+use EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository;
+
 /**
  * Manages scheduled scans using Action Scheduler
  */
@@ -29,12 +31,21 @@ class SchedulerService {
     private IntegrityService $integrityService;
 
     /**
+     * Scan schedules repository
+     *
+     * @var ScanSchedulesRepository
+     */
+    private ScanSchedulesRepository $schedulesRepository;
+
+    /**
      * Constructor
      *
-     * @param IntegrityService $integrityService Integrity service
+     * @param IntegrityService        $integrityService    Integrity service
+     * @param ScanSchedulesRepository $schedulesRepository Schedules repository
      */
-    public function __construct( IntegrityService $integrityService ) {
+    public function __construct( IntegrityService $integrityService, ScanSchedulesRepository $schedulesRepository ) {
         $this->integrityService = $integrityService;
+        $this->schedulesRepository = $schedulesRepository;
     }
 
     /**
@@ -43,43 +54,254 @@ class SchedulerService {
     public function init(): void {
         // Hook into Action Scheduler
         add_action( self::SCAN_ACTION_HOOK, [ $this, 'executeScan' ] );
+        
+        // Check for due schedules every hour
+        add_action( 'init', [ $this, 'registerScheduleChecker' ] );
     }
 
     /**
-     * Schedule a recurring scan
+     * Register schedule checker with Action Scheduler
+     */
+    public function registerScheduleChecker(): void {
+        if ( ! $this->isAvailable() ) {
+            return;
+        }
+
+        // Schedule hourly check for due schedules
+        if ( ! as_next_scheduled_action( 'eightyfourem_check_scan_schedules' ) ) {
+            as_schedule_recurring_action(
+                time() + 60,
+                HOUR_IN_SECONDS,
+                'eightyfourem_check_scan_schedules',
+                [],
+                self::ACTION_GROUP
+            );
+        }
+
+        add_action( 'eightyfourem_check_scan_schedules', [ $this, 'checkAndScheduleDueScans' ] );
+    }
+
+    /**
+     * Check for due schedules and schedule scans
+     */
+    public function checkAndScheduleDueScans(): void {
+        $due_schedules = $this->schedulesRepository->getDueSchedules();
+
+        foreach ( $due_schedules as $schedule ) {
+            $this->scheduleFromConfig( $schedule );
+            $this->schedulesRepository->updateLastRun( $schedule->id );
+        }
+    }
+
+    /**
+     * Create a new scan schedule
      *
-     * @param string $interval Scan interval (hourly, daily, weekly, monthly)
+     * @param array $config Schedule configuration
+     * @return int|false Schedule ID on success, false on failure
+     */
+    public function createSchedule( array $config ) {
+        // Validate configuration
+        $valid_frequencies = [ 'hourly', 'daily', 'weekly', 'monthly' ];
+        if ( ! in_array( $config['frequency'], $valid_frequencies, true ) ) {
+            return false;
+        }
+
+        // Create schedule in database
+        $schedule_id = $this->schedulesRepository->create( $config );
+
+        if ( $schedule_id && ! empty( $config['is_active'] ) ) {
+            // Get the created schedule
+            $schedule = $this->schedulesRepository->get( $schedule_id );
+            if ( $schedule ) {
+                // Schedule the first scan
+                $this->scheduleFromConfig( $schedule );
+            }
+        }
+
+        return $schedule_id;
+    }
+
+    /**
+     * Update an existing scan schedule
+     *
+     * @param int   $id     Schedule ID
+     * @param array $config New configuration
      * @return bool True on success, false on failure
      */
-    public function scheduleRecurringScan( string $interval ): bool {
-        if ( ! function_exists( 'as_schedule_recurring_action' ) ) {
+    public function updateSchedule( int $id, array $config ): bool {
+        // Get existing schedule
+        $existing = $this->schedulesRepository->get( $id );
+        if ( ! $existing ) {
             return false;
         }
 
-        // Cancel existing recurring scans first
-        $this->cancelRecurringScans();
+        // Cancel existing Action Scheduler action if it exists
+        if ( $existing->action_scheduler_id ) {
+            $this->cancelScheduledAction( $existing->action_scheduler_id );
+        }
 
-        $timestamp = $this->getNextScheduleTime( $interval );
-        $recurrence = $this->getRecurrenceInterval( $interval );
+        // Update schedule in database
+        $result = $this->schedulesRepository->update( $id, $config );
 
-        if ( ! $timestamp || ! $recurrence ) {
+        if ( $result ) {
+            // Reschedule if active
+            $updated = $this->schedulesRepository->get( $id );
+            if ( $updated && $updated->is_active ) {
+                $this->scheduleFromConfig( $updated );
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Delete a scan schedule
+     *
+     * @param int $id Schedule ID
+     * @return bool True on success, false on failure
+     */
+    public function deleteSchedule( int $id ): bool {
+        // Get schedule to cancel Action Scheduler action
+        $schedule = $this->schedulesRepository->get( $id );
+        if ( $schedule && $schedule->action_scheduler_id ) {
+            $this->cancelScheduledAction( $schedule->action_scheduler_id );
+        }
+
+        return $this->schedulesRepository->delete( $id );
+    }
+
+    /**
+     * Enable a scan schedule
+     *
+     * @param int $id Schedule ID
+     * @return bool True on success, false on failure
+     */
+    public function enableSchedule( int $id ): bool {
+        $result = $this->schedulesRepository->activate( $id );
+
+        if ( $result ) {
+            $schedule = $this->schedulesRepository->get( $id );
+            if ( $schedule ) {
+                $this->scheduleFromConfig( $schedule );
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Disable a scan schedule
+     *
+     * @param int $id Schedule ID
+     * @return bool True on success, false on failure
+     */
+    public function disableSchedule( int $id ): bool {
+        $schedule = $this->schedulesRepository->get( $id );
+        
+        if ( $schedule && $schedule->action_scheduler_id ) {
+            $this->cancelScheduledAction( $schedule->action_scheduler_id );
+        }
+
+        return $this->schedulesRepository->deactivate( $id );
+    }
+
+    /**
+     * Schedule a scan from schedule configuration
+     *
+     * @param object $schedule Schedule object from database
+     * @return bool True on success, false on failure
+     */
+    private function scheduleFromConfig( object $schedule ): bool {
+        if ( ! $this->isAvailable() ) {
             return false;
         }
 
-        $action_id = as_schedule_recurring_action(
-            $timestamp,
-            $recurrence,
+        // Convert next_run to timestamp
+        $next_run = strtotime( $schedule->next_run );
+        if ( ! $next_run ) {
+            return false;
+        }
+
+        // Schedule with Action Scheduler
+        $action_id = as_schedule_single_action(
+            $next_run,
             self::SCAN_ACTION_HOOK,
-            [ 'type' => 'scheduled', 'interval' => $interval ],
+            [
+                'type' => 'scheduled',
+                'schedule_id' => $schedule->id,
+                'schedule_name' => $schedule->name,
+                'frequency' => $schedule->frequency,
+            ],
             self::ACTION_GROUP
         );
 
         if ( $action_id ) {
-            update_option( 'eightyfourem_file_integrity_scheduled_action_id', $action_id );
+            // Update schedule with Action Scheduler ID
+            $this->schedulesRepository->update(
+                $schedule->id,
+                [ 'action_scheduler_id' => $action_id ]
+            );
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Cancel a scheduled action
+     *
+     * @param int $action_id Action Scheduler action ID
+     * @return bool True on success, false on failure
+     */
+    private function cancelScheduledAction( int $action_id ): bool {
+        if ( ! function_exists( 'as_unschedule_action' ) ) {
+            return false;
+        }
+
+        try {
+            $action = ActionScheduler::store()->fetch_action( $action_id );
+            if ( $action ) {
+                as_unschedule_action( $action->get_hook(), $action->get_args(), self::ACTION_GROUP );
+                return true;
+            }
+        } catch ( \Exception $e ) {
+            error_log( 'Failed to cancel scheduled action: ' . $e->getMessage() );
+        }
+
+        return false;
+    }
+
+    /**
+     * Get all scan schedules
+     *
+     * @param array $args Query arguments
+     * @return array Array of schedule objects
+     */
+    public function getSchedules( array $args = [] ): array {
+        return $this->schedulesRepository->getAll( $args );
+    }
+
+    /**
+     * Get a single scan schedule
+     *
+     * @param int $id Schedule ID
+     * @return object|null Schedule object or null if not found
+     */
+    public function getSchedule( int $id ) {
+        return $this->schedulesRepository->get( $id );
+    }
+
+    /**
+     * Get schedule statistics
+     *
+     * @return array Statistics array
+     */
+    public function getScheduleStats(): array {
+        return [
+            'total' => $this->schedulesRepository->getCount(),
+            'active' => $this->schedulesRepository->getCount( true ),
+            'inactive' => $this->schedulesRepository->getCount( false ),
+        ];
     }
 
     /**
@@ -103,52 +325,6 @@ class SchedulerService {
         );
 
         return $action_id !== false;
-    }
-
-    /**
-     * Cancel all scheduled scans
-     *
-     * @return int Number of cancelled actions
-     */
-    public function cancelAllScans(): int {
-        if ( ! function_exists( 'as_unschedule_all_actions' ) ) {
-            return 0;
-        }
-
-        $cancelled = as_unschedule_all_actions( self::SCAN_ACTION_HOOK, [], self::ACTION_GROUP );
-        
-        // Remove stored action ID
-        delete_option( 'eightyfourem_file_integrity_scheduled_action_id' );
-
-        return $cancelled;
-    }
-
-    /**
-     * Cancel recurring scans only
-     *
-     * @return int Number of cancelled actions
-     */
-    public function cancelRecurringScans(): int {
-        if ( ! function_exists( 'as_get_scheduled_actions' ) || ! function_exists( 'as_unschedule_action' ) ) {
-            return 0;
-        }
-
-        $scheduled_actions = as_get_scheduled_actions( [
-            'hook' => self::SCAN_ACTION_HOOK,
-            'group' => self::ACTION_GROUP,
-            'status' => \ActionScheduler_Store::STATUS_PENDING,
-            'per_page' => 100,
-        ] );
-
-        $cancelled = 0;
-        foreach ( $scheduled_actions as $action_id => $action ) {
-            if ( $action->get_schedule() instanceof \ActionScheduler_IntervalSchedule ) {
-                as_unschedule_action( self::SCAN_ACTION_HOOK, $action->get_args(), self::ACTION_GROUP );
-                $cancelled++;
-            }
-        }
-
-        return $cancelled;
     }
 
     /**
@@ -213,6 +389,7 @@ class SchedulerService {
      */
     public function executeScan( array $args = [] ): void {
         $scan_type = $args['type'] ?? 'manual';
+        $schedule_id = $args['schedule_id'] ?? null;
         
         try {
             // Run the integrity scan
@@ -225,6 +402,15 @@ class SchedulerService {
                 // Send notification if there are changes
                 if ( $scan_result['changed_files'] > 0 || $scan_result['new_files'] > 0 || $scan_result['deleted_files'] > 0 ) {
                     $this->integrityService->sendChangeNotification( $scan_result['scan_id'] );
+                }
+
+                // If this was a scheduled scan, update last run and schedule next
+                if ( $schedule_id ) {
+                    $this->schedulesRepository->updateLastRun( $schedule_id );
+                    $schedule = $this->schedulesRepository->get( $schedule_id );
+                    if ( $schedule && $schedule->is_active ) {
+                        $this->scheduleFromConfig( $schedule );
+                    }
                 }
             } else {
                 error_log( "File integrity scan failed" );
@@ -241,47 +427,5 @@ class SchedulerService {
      */
     public function isAvailable(): bool {
         return class_exists( 'ActionScheduler' ) && function_exists( 'as_schedule_single_action' );
-    }
-
-    /**
-     * Get next schedule time based on interval
-     *
-     * @param string $interval Interval name
-     * @return int|false Next schedule timestamp or false on failure
-     */
-    private function getNextScheduleTime( string $interval ): int|false {
-        switch ( $interval ) {
-            case 'hourly':
-                return strtotime( '+1 hour' );
-            case 'daily':
-                return strtotime( 'tomorrow 2:00 AM' );
-            case 'weekly':
-                return strtotime( 'next monday 2:00 AM' );
-            case 'monthly':
-                return strtotime( 'first day of next month 2:00 AM' );
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * Get recurrence interval in seconds
-     *
-     * @param string $interval Interval name
-     * @return int|false Recurrence interval in seconds or false on failure
-     */
-    private function getRecurrenceInterval( string $interval ): int|false {
-        switch ( $interval ) {
-            case 'hourly':
-                return HOUR_IN_SECONDS;
-            case 'daily':
-                return DAY_IN_SECONDS;
-            case 'weekly':
-                return WEEK_IN_SECONDS;
-            case 'monthly':
-                return MONTH_IN_SECONDS;
-            default:
-                return false;
-        }
     }
 }
