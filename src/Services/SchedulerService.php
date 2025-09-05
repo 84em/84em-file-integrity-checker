@@ -314,7 +314,7 @@ class SchedulerService {
      * @param int $timestamp Unix timestamp when to run the scan
      * @return bool True on success, false on failure
      */
-    public function scheduleOnetimeScan( int $timestamp = null ): bool {
+    public function scheduleOnetimeScan( ?int $timestamp = null ): bool {
         if ( ! function_exists( 'as_schedule_single_action' ) ) {
             return false;
         }

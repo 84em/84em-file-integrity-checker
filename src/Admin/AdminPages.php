@@ -134,7 +134,7 @@ class AdminPages {
      * Handle admin actions
      */
     public function handleActions(): void {
-        if ( ! isset( $_POST['action'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'file_integrity_action' ) ) {
+        if ( ! isset( $_POST['action'] ) || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'file_integrity_action' ) ) {
             return;
         }
 

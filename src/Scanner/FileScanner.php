@@ -45,7 +45,7 @@ class FileScanner {
      * @param callable|null $progress_callback Progress callback function
      * @return array Array of file information
      */
-    public function scanDirectory( string $directory = ABSPATH, callable $progress_callback = null ): array {
+    public function scanDirectory( string $directory = ABSPATH, ?callable $progress_callback = null ): array {
         $directory = rtrim( $directory, '/' ) . '/';
         $files = [];
         $processed_count = 0;

@@ -70,7 +70,7 @@ class IntegrityService {
      * @param callable|null $progress_callback Progress callback function
      * @return array|false Scan result array or false on failure
      */
-    public function runScan( string $scan_type = 'manual', callable $progress_callback = null, ?int $schedule_id = null ): array|false {
+    public function runScan( string $scan_type = 'manual', ?callable $progress_callback = null, ?int $schedule_id = null ): array|false {
         $start_time = time();
         $start_memory = memory_get_usage();
 

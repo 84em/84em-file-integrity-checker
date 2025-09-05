@@ -105,7 +105,7 @@ class FileRecordRepository {
      * @param int $limit          Optional limit
      * @return array Array of file record objects
      */
-    public function getByScanId( int $scan_result_id, int $limit = null ): array {
+    public function getByScanId( int $scan_result_id, ?int $limit = null ): array {
         global $wpdb;
 
         $sql = $wpdb->prepare(

@@ -76,11 +76,7 @@ class DatabaseManager {
             KEY file_path (file_path(191)),
             KEY checksum (checksum),
             KEY status (status),
-            KEY last_modified (last_modified),
-            CONSTRAINT fk_file_records_scan_result 
-                FOREIGN KEY (scan_result_id) 
-                REFERENCES $scan_results_table (id) 
-                ON DELETE CASCADE
+            KEY last_modified (last_modified)
         ) $charset_collate;";
 
         // Scan schedules table
