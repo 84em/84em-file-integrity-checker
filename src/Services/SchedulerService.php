@@ -259,10 +259,14 @@ class SchedulerService {
         }
 
         try {
-            $action = ActionScheduler::store()->fetch_action( $action_id );
-            if ( $action ) {
-                as_unschedule_action( $action->get_hook(), $action->get_args(), self::ACTION_GROUP );
-                return true;
+            // Use the global ActionScheduler class with proper namespace
+            if ( class_exists( '\ActionScheduler' ) ) {
+                $store = \ActionScheduler::store();
+                $action = $store->fetch_action( $action_id );
+                if ( $action ) {
+                    as_unschedule_action( $action->get_hook(), $action->get_args(), self::ACTION_GROUP );
+                    return true;
+                }
             }
         } catch ( \Exception $e ) {
             error_log( 'Failed to cancel scheduled action: ' . $e->getMessage() );
