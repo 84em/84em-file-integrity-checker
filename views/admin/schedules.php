@@ -77,6 +77,29 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
             // Refresh schedules list
             $schedules = $scheduler_service->getSchedules();
             break;
+            
+        case 'update_schedule':
+            $schedule_id = absint( $_POST['schedule_id'] ?? 0 );
+            if ( $schedule_id ) {
+                $config = [
+                    'name' => sanitize_text_field( $_POST['schedule_name'] ?? '' ),
+                    'frequency' => sanitize_text_field( $_POST['frequency'] ?? 'daily' ),
+                    'time' => sanitize_text_field( $_POST['time'] ?? '02:00' ),
+                    'day_of_week' => isset( $_POST['day_of_week'] ) ? absint( $_POST['day_of_week'] ) : null,
+                    'day_of_month' => isset( $_POST['day_of_month'] ) ? absint( $_POST['day_of_month'] ) : null,
+                    'is_active' => ! empty( $_POST['is_active'] ) ? 1 : 0,
+                ];
+                
+                if ( $scheduler_service->updateSchedule( $schedule_id, $config ) ) {
+                    echo '<div class="notice notice-success"><p>Schedule updated successfully!</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Failed to update schedule.</p></div>';
+                }
+            }
+            
+            // Refresh schedules list
+            $schedules = $scheduler_service->getSchedules();
+            break;
     }
 }
 ?>
@@ -206,6 +229,103 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
         </form>
     </div>
 
+    <!-- Edit Schedule Form (Initially Hidden) -->
+    <div class="file-integrity-card" id="edit-schedule-form" style="display: none;">
+        <h3>Edit Schedule</h3>
+        <form method="post" class="schedule-form">
+            <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
+            <input type="hidden" name="action" value="update_schedule">
+            <input type="hidden" id="edit_schedule_id" name="schedule_id" value="">
+            
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="edit_schedule_name">Schedule Name</label>
+                    </th>
+                    <td>
+                        <input type="text" id="edit_schedule_name" name="schedule_name" class="regular-text" required>
+                        <p class="description">A descriptive name for this schedule</p>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <th scope="row">
+                        <label for="edit_frequency">Frequency</label>
+                    </th>
+                    <td>
+                        <select id="edit_frequency" name="frequency" required>
+                            <option value="hourly">Hourly</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                        <p class="description">How often the scan should run</p>
+                    </td>
+                </tr>
+                
+                <tr class="edit-schedule-time-row">
+                    <th scope="row">
+                        <label for="edit_time">Time</label>
+                    </th>
+                    <td>
+                        <input type="time" id="edit_time" name="time">
+                        <p class="description">Time of day to run the scan (Timezone: <?php echo esc_html( wp_timezone_string() ); ?>)</p>
+                    </td>
+                </tr>
+                
+                <tr class="edit-schedule-day-of-week-row" style="display: none;">
+                    <th scope="row">
+                        <label for="edit_day_of_week">Day of Week</label>
+                    </th>
+                    <td>
+                        <select id="edit_day_of_week" name="day_of_week">
+                            <option value="0">Sunday</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                        </select>
+                        <p class="description">Day of the week to run the scan</p>
+                    </td>
+                </tr>
+                
+                <tr class="edit-schedule-day-of-month-row" style="display: none;">
+                    <th scope="row">
+                        <label for="edit_day_of_month">Day of Month</label>
+                    </th>
+                    <td>
+                        <input type="number" id="edit_day_of_month" name="day_of_month" min="1" max="31">
+                        <p class="description">Day of the month to run the scan (1-31)</p>
+                    </td>
+                </tr>
+                
+                <tr>
+                    <th scope="row">
+                        <label for="edit_is_active">Active</label>
+                    </th>
+                    <td>
+                        <label>
+                            <input type="checkbox" id="edit_is_active" name="is_active" value="1">
+                            Enable this schedule
+                        </label>
+                    </td>
+                </tr>
+            </table>
+            
+            <p class="submit">
+                <button type="submit" class="button button-primary">
+                    <span class="dashicons dashicons-saved"></span>
+                    Update Schedule
+                </button>
+                <button type="button" class="button cancel-edit-btn">
+                    Cancel
+                </button>
+            </p>
+        </form>
+    </div>
+
     <!-- Existing Schedules -->
     <div class="file-integrity-card">
         <h3>Existing Schedules</h3>
@@ -327,6 +447,17 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                 ?>
                             </td>
                             <td>
+                                <button type="button" class="button button-small edit-schedule-btn" 
+                                        data-schedule-id="<?php echo esc_attr( $schedule->id ); ?>"
+                                        data-schedule-name="<?php echo esc_attr( $schedule->name ); ?>"
+                                        data-frequency="<?php echo esc_attr( $schedule->frequency ); ?>"
+                                        data-time="<?php echo esc_attr( $schedule->time ); ?>"
+                                        data-day-of-week="<?php echo esc_attr( $schedule->day_of_week ?? '' ); ?>"
+                                        data-day-of-month="<?php echo esc_attr( $schedule->day_of_month ?? '' ); ?>"
+                                        data-is-active="<?php echo esc_attr( $schedule->is_active ); ?>">
+                                    <span class="dashicons dashicons-edit"></span> Edit
+                                </button>
+                                
                                 <form method="post" style="display: inline;">
                                     <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
                                     <input type="hidden" name="action" value="toggle_schedule">
@@ -360,31 +491,86 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
 
 <script>
 jQuery(document).ready(function($) {
-    // Show/hide fields based on frequency selection
-    $('#frequency').on('change', function() {
-        var frequency = $(this).val();
+    // Show/hide fields based on frequency selection - for both create and edit forms
+    function setupFrequencyHandlers(formSelector) {
+        $(formSelector + ' select[name="frequency"]').on('change', function() {
+            var frequency = $(this).val();
+            var form = $(this).closest('.file-integrity-card');
+            
+            // Hide all conditional rows first
+            form.find('.schedule-day-of-week-row, .schedule-day-of-month-row').hide();
+            
+            // Show relevant fields
+            switch(frequency) {
+                case 'hourly':
+                    // Only show time (for minute selection)
+                    form.find('.schedule-time-row').show();
+                    break;
+                case 'daily':
+                    form.find('.schedule-time-row').show();
+                    break;
+                case 'weekly':
+                    form.find('.schedule-time-row').show();
+                    form.find('.schedule-day-of-week-row').show();
+                    break;
+                case 'monthly':
+                    form.find('.schedule-time-row').show();
+                    form.find('.schedule-day-of-month-row').show();
+                    break;
+            }
+        }).trigger('change');
+    }
+    
+    // Setup frequency handlers for create form
+    setupFrequencyHandlers('#create-schedule-form');
+    setupFrequencyHandlers('#edit-schedule-form');
+    
+    // Handle edit button clicks
+    $('.edit-schedule-btn').on('click', function() {
+        var btn = $(this);
         
-        // Hide all conditional rows first
-        $('.schedule-day-of-week-row, .schedule-day-of-month-row').hide();
+        // Get schedule data from data attributes
+        var scheduleId = btn.data('schedule-id');
+        var scheduleName = btn.data('schedule-name');
+        var frequency = btn.data('frequency');
+        var time = btn.data('time');
+        var dayOfWeek = btn.data('day-of-week');
+        var dayOfMonth = btn.data('day-of-month');
+        var isActive = btn.data('is-active');
         
-        // Show relevant fields
-        switch(frequency) {
-            case 'hourly':
-                // Only show time (for minute selection)
-                $('.schedule-time-row').show();
-                break;
-            case 'daily':
-                $('.schedule-time-row').show();
-                break;
-            case 'weekly':
-                $('.schedule-time-row').show();
-                $('.schedule-day-of-week-row').show();
-                break;
-            case 'monthly':
-                $('.schedule-time-row').show();
-                $('.schedule-day-of-month-row').show();
-                break;
-        }
-    }).trigger('change');
+        // Populate the edit form
+        $('#edit-schedule-id').val(scheduleId);
+        $('#edit-schedule-name').val(scheduleName);
+        $('#edit-frequency').val(frequency);
+        $('#edit-time').val(time);
+        $('#edit-day-of-week').val(dayOfWeek);
+        $('#edit-day-of-month').val(dayOfMonth);
+        $('#edit-is-active').prop('checked', isActive == 1);
+        
+        // Trigger frequency change to show/hide appropriate fields
+        $('#edit-frequency').trigger('change');
+        
+        // Show edit form and hide create form
+        $('#edit-schedule-form').show();
+        $('#create-schedule-form').hide();
+        
+        // Scroll to the edit form
+        $('html, body').animate({
+            scrollTop: $('#edit-schedule-form').offset().top - 50
+        }, 500);
+    });
+    
+    // Handle cancel edit button
+    $('#cancel-edit-btn').on('click', function() {
+        // Hide edit form and show create form
+        $('#edit-schedule-form').hide();
+        $('#create-schedule-form').show();
+        
+        // Clear edit form
+        $('#edit-schedule-form form')[0].reset();
+    });
+    
+    // Initially hide edit form
+    $('#edit-schedule-form').hide();
 });
 </script>
