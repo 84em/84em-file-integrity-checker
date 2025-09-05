@@ -458,20 +458,6 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                     <span class="dashicons dashicons-edit"></span> Edit
                                 </button>
                                 
-                                <form method="post" style="display: inline;">
-                                    <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
-                                    <input type="hidden" name="action" value="toggle_schedule">
-                                    <input type="hidden" name="schedule_id" value="<?php echo esc_attr( $schedule->id ); ?>">
-                                    <input type="hidden" name="enable" value="<?php echo $schedule->is_active ? '0' : '1'; ?>">
-                                    <button type="submit" class="button button-small">
-                                        <?php if ( $schedule->is_active ) : ?>
-                                            <span class="dashicons dashicons-pause"></span> Disable
-                                        <?php else : ?>
-                                            <span class="dashicons dashicons-controls-play"></span> Enable
-                                        <?php endif; ?>
-                                    </button>
-                                </form>
-                                
                                 <form method="post" style="display: inline;" onsubmit="event.preventDefault(); FICModal.confirm('Are you sure you want to delete this schedule?', 'Delete Schedule', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.submit(); }); return false;">
                                     <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
                                     <input type="hidden" name="action" value="delete_schedule">
@@ -498,24 +484,29 @@ jQuery(document).ready(function($) {
             var form = $(this).closest('.file-integrity-card');
             
             // Hide all conditional rows first
-            form.find('.schedule-day-of-week-row, .schedule-day-of-month-row').hide();
+            form.find('.schedule-day-of-week-row, .schedule-day-of-month-row, .edit-schedule-day-of-week-row, .edit-schedule-day-of-month-row').hide();
             
-            // Show relevant fields
+            // Show relevant fields - determine class prefix based on form
+            var isEditForm = formSelector.indexOf('edit') > -1;
+            var timeRowClass = isEditForm ? '.edit-schedule-time-row' : '.schedule-time-row';
+            var weekRowClass = isEditForm ? '.edit-schedule-day-of-week-row' : '.schedule-day-of-week-row';
+            var monthRowClass = isEditForm ? '.edit-schedule-day-of-month-row' : '.schedule-day-of-month-row';
+            
             switch(frequency) {
                 case 'hourly':
                     // Only show time (for minute selection)
-                    form.find('.schedule-time-row').show();
+                    form.find(timeRowClass).show();
                     break;
                 case 'daily':
-                    form.find('.schedule-time-row').show();
+                    form.find(timeRowClass).show();
                     break;
                 case 'weekly':
-                    form.find('.schedule-time-row').show();
-                    form.find('.schedule-day-of-week-row').show();
+                    form.find(timeRowClass).show();
+                    form.find(weekRowClass).show();
                     break;
                 case 'monthly':
-                    form.find('.schedule-time-row').show();
-                    form.find('.schedule-day-of-month-row').show();
+                    form.find(timeRowClass).show();
+                    form.find(monthRowClass).show();
                     break;
             }
         }).trigger('change');
@@ -538,17 +529,17 @@ jQuery(document).ready(function($) {
         var dayOfMonth = btn.data('day-of-month');
         var isActive = btn.data('is-active');
         
-        // Populate the edit form
-        $('#edit-schedule-id').val(scheduleId);
-        $('#edit-schedule-name').val(scheduleName);
-        $('#edit-frequency').val(frequency);
-        $('#edit-time').val(time);
-        $('#edit-day-of-week').val(dayOfWeek);
-        $('#edit-day-of-month').val(dayOfMonth);
-        $('#edit-is-active').prop('checked', isActive == 1);
+        // Populate the edit form (use underscores to match the form field IDs)
+        $('#edit_schedule_id').val(scheduleId);
+        $('#edit_schedule_name').val(scheduleName);
+        $('#edit_frequency').val(frequency);
+        $('#edit_time').val(time);
+        $('#edit_day_of_week').val(dayOfWeek);
+        $('#edit_day_of_month').val(dayOfMonth);
+        $('#edit_is_active').prop('checked', isActive == 1);
         
         // Trigger frequency change to show/hide appropriate fields
-        $('#edit-frequency').trigger('change');
+        $('#edit_frequency').trigger('change');
         
         // Show edit form and hide create form
         $('#edit-schedule-form').show();
