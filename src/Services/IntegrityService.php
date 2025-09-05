@@ -152,6 +152,11 @@ class IntegrityService {
                 call_user_func( $progress_callback, "Scan completed successfully!", '' );
             }
 
+            // Send notification email if changes were detected
+            if ( ( $stats['changed_files'] > 0 || $stats['new_files'] > 0 || $stats['deleted_files'] > 0 ) ) {
+                $this->sendChangeNotification( $scan_id );
+            }
+
             return [
                 'scan_id' => $scan_id,
                 'status' => 'completed',
