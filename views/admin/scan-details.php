@@ -214,7 +214,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                     <button type="button" 
                                             class="button button-small view-diff-btn" 
                                             data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
-                                            data-diff="<?php echo esc_attr( $file->diff_content ); ?>"
+                                            data-diff="<?php echo htmlspecialchars( json_encode( $file->diff_content ), ENT_QUOTES, 'UTF-8' ); ?>"
                                             style="margin-top: 5px;">
                                         <span class="dashicons dashicons-visibility"></span> View Changes
                                     </button>
@@ -438,12 +438,22 @@ jQuery(document).ready(function($) {
         var filePath = $(this).data('file-path');
         var diffData = $(this).data('diff');
         
-        // Parse diff data if it's JSON
+        // The data is JSON encoded, so parse it first to get the actual diff content
         try {
-            var diff = typeof diffData === 'string' ? JSON.parse(diffData) : diffData;
-            showDiffModal(filePath, diff);
+            // First parse to get the actual diff string
+            var actualDiff = typeof diffData === 'string' ? JSON.parse(diffData) : diffData;
+            
+            // Then check if the diff itself is JSON (for summary format)
+            try {
+                var parsedDiff = typeof actualDiff === 'string' ? JSON.parse(actualDiff) : actualDiff;
+                showDiffModal(filePath, parsedDiff);
+            } catch (e) {
+                // Not JSON, it's a plain diff string
+                showDiffModal(filePath, actualDiff);
+            }
         } catch (e) {
-            // If not JSON, show as plain text
+            // Fallback if parsing fails
+            console.error('Failed to parse diff data:', e);
             showDiffModal(filePath, diffData);
         }
     });
