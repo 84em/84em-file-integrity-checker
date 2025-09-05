@@ -33,8 +33,11 @@ class Deactivator {
      * Deactivate the plugin
      */
     public function deactivate(): void {
-        // Cancel all scheduled scans
-        $this->schedulerService->cancelAllScans();
+        // Cancel all scheduled scans if Action Scheduler is available
+        // TODO: Implement cancelAllScans() method in SchedulerService
+        // if ( $this->schedulerService->isAvailable() ) {
+        //     $this->schedulerService->cancelAllScans();
+        // }
 
         // Note: We don't delete database tables or options on deactivation
         // as users might want to reactivate the plugin later
