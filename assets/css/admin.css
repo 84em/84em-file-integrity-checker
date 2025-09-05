@@ -1,0 +1,424 @@
+/**
+ * Admin styles for 84EM File Integrity Checker
+ */
+
+/* Dashboard cards */
+.file-integrity-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.file-integrity-card {
+    background: var(--wp-admin-theme-color-background, #fff);
+    border: 1px solid var(--wp-admin-theme-color-darker-20, #c3c4c7);
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.file-integrity-card h3 {
+    margin: 0 0 15px 0;
+    color: inherit;
+    font-size: 16px;
+}
+
+.file-integrity-card .card-content {
+    margin-bottom: 15px;
+}
+
+.file-integrity-card .card-actions {
+    border-top: 1px solid var(--wp-admin-theme-color-darker-10, #dcdcde);
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+/* Statistics display */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    border-radius: 4px;
+}
+
+.stat-number {
+    display: block;
+    font-size: 28px;
+    font-weight: bold;
+    line-height: 1;
+    color: inherit;
+}
+
+.stat-number.success {
+    color: var(--wp-admin-theme-color-success, #00a32a);
+}
+
+.stat-number.warning {
+    color: var(--wp-admin-theme-color-warning, #dba617);
+}
+
+.stat-number.error {
+    color: var(--wp-admin-theme-color-error, #d63638);
+}
+
+.stat-label {
+    display: block;
+    font-size: 12px;
+    color: var(--wp-admin-theme-color-darker-40, #646970);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 5px;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+
+.status-completed {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-success, #00a32a) 15%, white);
+    color: var(--wp-admin-theme-color-success, #00a32a);
+}
+
+.status-running {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-warning, #dba617) 15%, white);
+    color: var(--wp-admin-theme-color-warning, #dba617);
+}
+
+.status-failed {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-error, #d63638) 15%, white);
+    color: var(--wp-admin-theme-color-error, #d63638);
+}
+
+.status-new {
+    background: color-mix(in srgb, var(--wp-admin-theme-color, #2271b1) 15%, white);
+    color: var(--wp-admin-theme-color, #2271b1);
+}
+
+.status-changed {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-warning, #dba617) 20%, white);
+    color: var(--wp-admin-theme-color-warning, #dba617);
+}
+
+.status-deleted {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-error, #d63638) 20%, white);
+    color: var(--wp-admin-theme-color-error, #d63638);
+}
+
+.status-unchanged {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-success, #00a32a) 10%, white);
+    color: var(--wp-admin-theme-color-success, #00a32a);
+}
+
+/* Progress bar */
+.file-integrity-progress {
+    width: 100%;
+    height: 20px;
+    background-color: var(--wp-admin-theme-color-darker-10, #f0f0f0);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.file-integrity-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--wp-admin-theme-color, #2271b1), var(--wp-admin-theme-color-darker-10, #72aee6));
+    border-radius: 10px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.file-integrity-progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Scan results table */
+.scan-results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.scan-results-table th,
+.scan-results-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--wp-admin-theme-color-darker-10, #dcdcde);
+}
+
+.scan-results-table th {
+    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    font-weight: 600;
+    color: inherit;
+}
+
+.scan-results-table tbody tr:hover {
+    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+}
+
+.scan-results-table .column-date {
+    width: 150px;
+}
+
+.scan-results-table .column-status {
+    width: 100px;
+}
+
+.scan-results-table .column-files {
+    width: 80px;
+    text-align: right;
+}
+
+.scan-results-table .column-changes {
+    width: 80px;
+    text-align: right;
+}
+
+.scan-results-table .column-duration {
+    width: 80px;
+    text-align: right;
+}
+
+.scan-results-table .column-actions {
+    width: 100px;
+    text-align: center;
+}
+
+/* File details */
+.file-details {
+    background: var(--wp-admin-theme-color-darker-10, #f9f9f9);
+    border: 1px solid var(--wp-admin-theme-color-darker-20, #ddd);
+    border-radius: 4px;
+    padding: 15px;
+    margin: 10px 0;
+    font-family: Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 12px;
+}
+
+.file-path {
+    color: var(--wp-admin-theme-color, #0073aa);
+    word-break: break-all;
+}
+
+.file-checksum {
+    color: var(--wp-admin-theme-color-darker-40, #666);
+    font-family: Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 11px;
+}
+
+/* Settings form */
+.file-integrity-settings .form-table th {
+    width: 200px;
+}
+
+.file-integrity-settings .form-table td {
+    vertical-align: top;
+}
+
+.file-integrity-settings textarea {
+    width: 100%;
+    max-width: 600px;
+    height: 120px;
+}
+
+.file-integrity-settings input[type="text"],
+.file-integrity-settings input[type="email"],
+.file-integrity-settings select {
+    width: 300px;
+}
+
+.file-integrity-settings input[type="number"] {
+    width: 100px;
+}
+
+.file-extensions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.file-extension-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    border-radius: 3px;
+}
+
+.file-extension-item input[type="checkbox"] {
+    margin: 0;
+}
+
+/* Alerts and notices */
+.file-integrity-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 15px 0;
+}
+
+.file-integrity-alert.alert-info {
+    background: color-mix(in srgb, var(--wp-admin-theme-color, #2271b1) 10%, white);
+    border-left: 4px solid var(--wp-admin-theme-color, #2271b1);
+    color: inherit;
+}
+
+.file-integrity-alert.alert-warning {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-warning, #dba617) 10%, white);
+    border-left: 4px solid var(--wp-admin-theme-color-warning, #dba617);
+    color: inherit;
+}
+
+.file-integrity-alert.alert-error {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-error, #d63638) 10%, white);
+    border-left: 4px solid var(--wp-admin-theme-color-error, #d63638);
+    color: inherit;
+}
+
+.file-integrity-alert.alert-success {
+    background: color-mix(in srgb, var(--wp-admin-theme-color-success, #00a32a) 10%, white);
+    border-left: 4px solid var(--wp-admin-theme-color-success, #00a32a);
+    color: inherit;
+}
+
+.file-integrity-alert .dashicons {
+    flex-shrink: 0;
+}
+
+/* Scan controls */
+.scan-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    background: var(--wp-admin-theme-color-background, #fff);
+    border: 1px solid var(--wp-admin-theme-color-darker-20, #c3c4c7);
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.scan-controls .button-primary {
+    font-size: 14px;
+    height: auto;
+    padding: 8px 16px;
+}
+
+.scan-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--wp-admin-theme-color-darker-40, #646970);
+}
+
+.scan-status .dashicons {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive design */
+@media (max-width: 782px) {
+    .file-integrity-dashboard {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .scan-controls {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .scan-results-table {
+        font-size: 12px;
+    }
+    
+    .scan-results-table th,
+    .scan-results-table td {
+        padding: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .scan-results-table .column-date,
+    .scan-results-table .column-duration {
+        display: none;
+    }
+}
+
+/* Loading states */
+.file-integrity-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: var(--wp-admin-theme-color-darker-40, #646970);
+}
+
+.file-integrity-loading .dashicons {
+    margin-right: 8px;
+    animation: spin 1s linear infinite;
+}
+
+/* Pagination */
+.file-integrity-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 20px 0;
+    padding: 15px 0;
+    border-top: 1px solid var(--wp-admin-theme-color-darker-10, #dcdcde);
+}
+
+.pagination-info {
+    color: var(--wp-admin-theme-color-darker-40, #646970);
+    font-size: 13px;
+}
+
+.pagination-links {
+    display: flex;
+    gap: 5px;
+}
+
+.pagination-links .button {
+    min-width: auto;
+    height: 32px;
+    padding: 0 10px;
+}
+
+/* Dark mode support - WordPress admin handles this automatically with CSS variables */
+/* The CSS variables will adapt to the user's admin color scheme */
+/* No explicit dark mode overrides needed when using WP admin CSS variables */

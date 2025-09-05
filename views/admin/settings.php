@@ -1,0 +1,325 @@
+<?php
+/**
+ * Settings page view template
+ *
+ * @var array $settings Plugin settings
+ * @var bool $scheduler_available Whether Action Scheduler is available
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+?>
+
+<div class="wrap file-integrity-settings">
+    <h1>File Integrity Checker Settings</h1>
+
+    <?php
+    // Show messages
+    if ( isset( $_GET['message'] ) ) {
+        switch ( $_GET['message'] ) {
+            case 'settings_updated':
+                echo '<div class="notice notice-success is-dismissible"><p>Settings updated successfully!</p></div>';
+                break;
+        }
+    }
+
+    if ( isset( $_GET['error'] ) ) {
+        switch ( $_GET['error'] ) {
+            case 'settings_update_failed':
+                echo '<div class="notice notice-error is-dismissible"><p>Some settings could not be updated. Please check your input values.</p></div>';
+                break;
+        }
+    }
+    ?>
+
+    <form method="post" action="">
+        <?php wp_nonce_field( 'file_integrity_action' ); ?>
+        <input type="hidden" name="action" value="update_settings" />
+
+        <!-- Scan Configuration -->
+        <div class="file-integrity-card" style="margin-bottom: 30px;">
+            <h3>Scan Configuration</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="scan_types">File Types to Scan</label>
+                        </th>
+                        <td>
+                            <div class="file-extensions-list">
+                                <?php 
+                                $common_types = [ '.php', '.js', '.css', '.html', '.htm', '.txt', '.json', '.xml', '.ini', '.htaccess' ];
+                                $selected_types = $settings['scan_types'];
+                                
+                                foreach ( $common_types as $type ):
+                                    $checked = in_array( $type, $selected_types, true ) ? 'checked' : '';
+                                ?>
+                                <div class="file-extension-item">
+                                    <input type="checkbox" 
+                                           name="scan_types[]" 
+                                           value="<?php echo esc_attr( $type ); ?>" 
+                                           id="type_<?php echo esc_attr( str_replace( '.', '', $type ) ); ?>"
+                                           class="file-extension-checkbox"
+                                           <?php echo $checked; ?> />
+                                    <label for="type_<?php echo esc_attr( str_replace( '.', '', $type ) ); ?>">
+                                        <?php echo esc_html( $type ); ?>
+                                    </label>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <p class="description">
+                                Select which file types to include in scans. Default types are recommended for security monitoring.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="exclude_patterns">Exclude Patterns</label>
+                        </th>
+                        <td>
+                            <textarea name="exclude_patterns" 
+                                      id="exclude_patterns" 
+                                      rows="8" 
+                                      placeholder="One pattern per line"><?php echo esc_textarea( implode( "\n", $settings['exclude_patterns'] ) ); ?></textarea>
+                            <p class="description">
+                                Glob patterns for files/directories to exclude from scans. One pattern per line.<br>
+                                Examples: <code>*/cache/*</code>, <code>*/logs/*</code>, <code>*/node_modules/*</code>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="max_file_size">Maximum File Size</label>
+                        </th>
+                        <td>
+                            <input type="number" 
+                                   name="max_file_size" 
+                                   id="max_file_size" 
+                                   value="<?php echo esc_attr( $settings['max_file_size'] ); ?>" 
+                                   min="1" 
+                                   max="104857600" />
+                            <select onchange="updateFileSizeInput(this.value)">
+                                <option value="1">Bytes</option>
+                                <option value="1024">KB</option>
+                                <option value="1048576" <?php selected( $settings['max_file_size'], 1048576 ); ?>>MB</option>
+                            </select>
+                            <p class="description">
+                                Maximum size of files to scan. Larger files will be skipped. 
+                                Current: <?php echo esc_html( size_format( $settings['max_file_size'] ) ); ?>
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Scheduling Configuration -->
+        <?php if ( $scheduler_available ): ?>
+        <div class="file-integrity-card" style="margin-bottom: 30px;">
+            <h3>Scheduling Configuration</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="scan_interval">Default Scan Interval</label>
+                        </th>
+                        <td>
+                            <select name="scan_interval" id="scan_interval">
+                                <option value="hourly" <?php selected( $settings['scan_interval'], 'hourly' ); ?>>Hourly</option>
+                                <option value="daily" <?php selected( $settings['scan_interval'], 'daily' ); ?>>Daily</option>
+                                <option value="weekly" <?php selected( $settings['scan_interval'], 'weekly' ); ?>>Weekly</option>
+                                <option value="monthly" <?php selected( $settings['scan_interval'], 'monthly' ); ?>>Monthly</option>
+                            </select>
+                            <p class="description">Default interval for scheduled scans. You can override this when scheduling.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="auto_schedule">Auto-Schedule on Activation</label>
+                        </th>
+                        <td>
+                            <input type="checkbox" 
+                                   name="auto_schedule" 
+                                   id="auto_schedule" 
+                                   value="1" 
+                                   <?php checked( $settings['auto_schedule'] ); ?> />
+                            <label for="auto_schedule">Automatically schedule scans when the plugin is activated</label>
+                            <p class="description">When enabled, scans will be automatically scheduled using the default interval.</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <?php else: ?>
+        <div class="file-integrity-card" style="margin-bottom: 30px;">
+            <h3>Scheduling Configuration</h3>
+            <div class="card-content">
+                <div class="file-integrity-alert alert-warning">
+                    <span class="dashicons dashicons-warning"></span>
+                    <span>Action Scheduler is required for scheduled scans. Please install WooCommerce or another plugin that provides Action Scheduler to enable scheduling features.</span>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Notification Settings -->
+        <div class="file-integrity-card" style="margin-bottom: 30px;">
+            <h3>Notification Settings</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="notification_enabled">Email Notifications</label>
+                        </th>
+                        <td>
+                            <input type="checkbox" 
+                                   name="notification_enabled" 
+                                   id="notification_enabled" 
+                                   value="1" 
+                                   <?php checked( $settings['notification_enabled'] ); ?> />
+                            <label for="notification_enabled">Send email notifications when file changes are detected</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="notification_email">Notification Email</label>
+                        </th>
+                        <td>
+                            <input type="email" 
+                                   name="notification_email" 
+                                   id="notification_email" 
+                                   value="<?php echo esc_attr( $settings['notification_email'] ); ?>" 
+                                   <?php echo $settings['notification_enabled'] ? '' : 'disabled'; ?> />
+                            <p class="description">Email address to receive change notifications. Leave empty to use the admin email.</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="file-integrity-card" style="margin-bottom: 30px;">
+            <h3>Data Management</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="retention_period">Data Retention Period</label>
+                        </th>
+                        <td>
+                            <input type="number" 
+                                   name="retention_period" 
+                                   id="retention_period" 
+                                   value="<?php echo esc_attr( $settings['retention_period'] ); ?>" 
+                                   min="1" 
+                                   max="365" />
+                            days
+                            <p class="description">
+                                How long to keep old scan results. Older results will be automatically deleted.
+                                Recommended: 90 days.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <p class="submit">
+            <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings" />
+            <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker' ); ?>" class="button">
+                Cancel
+            </a>
+        </p>
+    </form>
+
+    <!-- Additional Actions -->
+    <div class="file-integrity-card">
+        <h3>Advanced Actions</h3>
+        <div class="card-content">
+            <p>These actions affect all plugin data and cannot be undone.</p>
+            
+            <div style="margin: 20px 0;">
+                <form method="post" style="display: inline;">
+                    <?php wp_nonce_field( 'file_integrity_action' ); ?>
+                    <input type="hidden" name="action" value="cleanup_old_scans" />
+                    <button type="submit" class="button cleanup-old-scans" 
+                            onclick="return confirm('This will delete scan results older than ' + <?php echo $settings['retention_period']; ?> + ' days. Continue?')">
+                        <span class="dashicons dashicons-trash"></span>
+                        Cleanup Old Scans Now
+                    </button>
+                </form>
+                <p class="description">Manually remove old scan results based on the retention period above.</p>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <button type="button" class="button" onclick="resetToDefaults()">
+                    <span class="dashicons dashicons-undo"></span>
+                    Reset to Defaults
+                </button>
+                <p class="description">Reset all settings to their default values.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateFileSizeInput(multiplier) {
+    const input = document.getElementById('max_file_size');
+    const currentValue = parseInt(input.value);
+    const currentMultiplier = getCurrentMultiplier(currentValue);
+    const actualBytes = currentValue * currentMultiplier;
+    const newValue = Math.round(actualBytes / parseInt(multiplier));
+    input.value = newValue;
+}
+
+function getCurrentMultiplier(value) {
+    if (value >= 1048576) return 1048576; // MB
+    if (value >= 1024) return 1024; // KB
+    return 1; // Bytes
+}
+
+function resetToDefaults() {
+    if (confirm('This will reset all settings to their default values. Continue?')) {
+        // Reset form fields to defaults
+        document.querySelector('select[name="scan_interval"]').value = 'daily';
+        document.querySelector('input[name="max_file_size"]').value = '10485760';
+        document.querySelector('input[name="notification_enabled"]').checked = true;
+        document.querySelector('input[name="auto_schedule"]').checked = true;
+        document.querySelector('input[name="retention_period"]').value = '90';
+        document.querySelector('input[name="notification_email"]').value = '';
+        
+        // Reset file type checkboxes
+        const defaultTypes = ['.js', '.css', '.html', '.php'];
+        document.querySelectorAll('.file-extension-checkbox').forEach(checkbox => {
+            checkbox.checked = defaultTypes.includes(checkbox.value);
+        });
+        
+        // Reset exclude patterns
+        const defaultPatterns = [
+            '*/cache/*',
+            '*/logs/*', 
+            '*/uploads/*',
+            '*/wp-content/cache/*',
+            '*/wp-content/backup*'
+        ].join('\n');
+        document.querySelector('textarea[name="exclude_patterns"]').value = defaultPatterns;
+        
+        alert('Settings reset to defaults. Click "Save Settings" to apply changes.');
+    }
+}
+
+// Toggle notification email field based on checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const enabledCheckbox = document.getElementById('notification_enabled');
+    const emailField = document.getElementById('notification_email');
+    
+    function toggleEmailField() {
+        emailField.disabled = !enabledCheckbox.checked;
+    }
+    
+    enabledCheckbox.addEventListener('change', toggleEmailField);
+    toggleEmailField(); // Set initial state
+});
+</script>

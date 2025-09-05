@@ -1,0 +1,41 @@
+# Composer
+vendor/
+composer.lock
+
+# Build files
+*.min.js
+*.min.css
+*.map
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-*
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# WordPress
+*.log
+wp-config.php
+
+# Testing
+coverage/
+.phpunit.result.cache
+
+# Environment
+.env
+.env.*
+
+# Cache
+cache/
+tmp/
+
+# Node modules (if added later)
+node_modules/
+package-lock.json
+yarn.lock
