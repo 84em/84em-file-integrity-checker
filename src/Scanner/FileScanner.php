@@ -185,12 +185,19 @@ class FileScanner {
             return null;
         }
         
-        // Try to get previous content from most recent backup or previous scan
-        // For now, we'll store a simple summary of changes
-        // In a production environment, you might want to store full file snapshots
-        // or integrate with a version control system
+        // Try to get the previous version using git if available
+        $previous_content = $this->getPreviousFileContent( $file_path );
         
+        if ( $previous_content !== null ) {
+            // Generate a unified diff
+            $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
+            return $diff;
+        }
+        
+        // If we can't get the previous content, store current content for next time
+        // and return a summary
         $diff_summary = [
+            'type' => 'summary',
             'timestamp' => current_time( 'mysql' ),
             'checksum_changed' => [
                 'from' => $previous_checksum,
@@ -198,17 +205,137 @@ class FileScanner {
             ],
             'file_size' => filesize( $file_path ),
             'lines_count' => substr_count( $current_content, "\n" ) + 1,
-        ];
-        
-        // Store first/last few lines for context
-        $lines = explode( "\n", $current_content );
-        $diff_summary['preview'] = [
-            'first_lines' => array_slice( $lines, 0, 5 ),
-            'last_lines' => array_slice( $lines, -5 ),
-            'total_lines' => count( $lines )
+            'message' => 'Previous version not available. Full diff will be available on next change.'
         ];
         
         return json_encode( $diff_summary );
+    }
+    
+    /**
+     * Try to get previous file content using git or other methods
+     *
+     * @param string $file_path Path to the file
+     * @return string|null Previous content or null if not available
+     */
+    private function getPreviousFileContent( string $file_path ): ?string {
+        // Check if git is available and file is in a git repository
+        $git_root = $this->findGitRoot( dirname( $file_path ) );
+        if ( $git_root !== null ) {
+            // Try to get the last committed version of the file
+            $relative_path = str_replace( $git_root . '/', '', $file_path );
+            $command = sprintf(
+                'cd %s && git show HEAD:%s 2>/dev/null',
+                escapeshellarg( $git_root ),
+                escapeshellarg( $relative_path )
+            );
+            
+            $output = shell_exec( $command );
+            if ( $output !== null && $output !== '' ) {
+                return $output;
+            }
+        }
+        
+        // Try to get from database if we stored it in a previous scan
+        // (would need to implement file content storage in future version)
+        
+        return null;
+    }
+    
+    /**
+     * Find git repository root
+     *
+     * @param string $path Starting path
+     * @return string|null Git root path or null if not in a git repo
+     */
+    private function findGitRoot( string $path ): ?string {
+        $current = $path;
+        while ( $current !== '/' && $current !== '' ) {
+            if ( is_dir( $current . '/.git' ) ) {
+                return $current;
+            }
+            $current = dirname( $current );
+        }
+        return null;
+    }
+    
+    /**
+     * Generate a unified diff between two strings
+     *
+     * @param string $old_content Old content
+     * @param string $new_content New content
+     * @param string $file_path File path for context
+     * @return string Unified diff
+     */
+    private function generateUnifiedDiff( string $old_content, string $new_content, string $file_path ): string {
+        $old_lines = explode( "\n", $old_content );
+        $new_lines = explode( "\n", $new_content );
+        
+        // Use PHP's built-in diff algorithm or external diff command
+        $temp_old = tempnam( sys_get_temp_dir(), 'diff_old_' );
+        $temp_new = tempnam( sys_get_temp_dir(), 'diff_new_' );
+        
+        file_put_contents( $temp_old, $old_content );
+        file_put_contents( $temp_new, $new_content );
+        
+        // Use system diff command if available
+        $diff_command = sprintf(
+            'diff -u %s %s 2>/dev/null',
+            escapeshellarg( $temp_old ),
+            escapeshellarg( $temp_new )
+        );
+        
+        $diff = shell_exec( $diff_command );
+        
+        // Clean up temp files
+        @unlink( $temp_old );
+        @unlink( $temp_new );
+        
+        if ( $diff === null ) {
+            // Fallback to simple line-by-line comparison
+            return $this->simpleLineDiff( $old_lines, $new_lines );
+        }
+        
+        // Replace temp file names with actual file path in diff output
+        $diff = preg_replace( '/^---.*$/m', '--- ' . $file_path . ' (previous)', $diff );
+        $diff = preg_replace( '/^\+\+\+.*$/m', '+++ ' . $file_path . ' (current)', $diff );
+        
+        return $diff;
+    }
+    
+    /**
+     * Generate a simple line-by-line diff
+     *
+     * @param array $old_lines Old content lines
+     * @param array $new_lines New content lines
+     * @return string Simple diff
+     */
+    private function simpleLineDiff( array $old_lines, array $new_lines ): string {
+        $diff = [];
+        $max_lines = max( count( $old_lines ), count( $new_lines ) );
+        
+        for ( $i = 0; $i < $max_lines; $i++ ) {
+            $old_line = $old_lines[$i] ?? null;
+            $new_line = $new_lines[$i] ?? null;
+            
+            if ( $old_line === $new_line ) {
+                // Unchanged line (show for context)
+                if ( $i < 3 || $i > $max_lines - 3 ) {
+                    $diff[] = ' ' . $old_line;
+                }
+            } elseif ( $old_line === null ) {
+                // Added line
+                $diff[] = '+ ' . $new_line;
+            } elseif ( $new_line === null ) {
+                // Removed line
+                $diff[] = '- ' . $old_line;
+            } else {
+                // Changed line
+                $diff[] = '- ' . $old_line;
+                $diff[] = '+ ' . $new_line;
+            }
+        }
+        
+        return implode( "\n", $diff );
     }
 
     /**

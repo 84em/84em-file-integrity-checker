@@ -377,13 +377,48 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
 }
 
 .diff-preview {
-    font-family: monospace;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     background: #f8f8f8;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    white-space: pre-wrap;
-    word-break: break-all;
+    white-space: pre;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Diff syntax highlighting */
+.diff-header {
+    color: #666;
+    font-weight: bold;
+}
+
+.diff-hunk {
+    color: #00a0a0;
+    background: #f0f0f0;
+    display: inline-block;
+    width: 100%;
+    padding: 2px 5px;
+    margin: 5px 0;
+}
+
+.diff-added {
+    color: #008000;
+    background: #e6ffed;
+    display: inline-block;
+    width: 100%;
+}
+
+.diff-removed {
+    color: #d00;
+    background: #ffebe9;
+    display: inline-block;
+    width: 100%;
+}
+
+.diff-context {
+    color: #666;
 }
 
 .diff-section {
@@ -419,44 +454,75 @@ jQuery(document).ready(function($) {
         
         var content = '';
         
-        if (typeof diffData === 'object' && diffData !== null) {
-            // Structured diff data
-            content += '<div class="diff-info">';
-            content += '<strong>Timestamp:</strong> ' + (diffData.timestamp || 'Unknown') + '<br>';
-            content += '<strong>File Size:</strong> ' + formatBytes(diffData.file_size || 0) + '<br>';
-            content += '<strong>Lines:</strong> ' + (diffData.lines_count || 'Unknown') + '<br>';
-            
-            if (diffData.checksum_changed) {
-                content += '<strong>Checksum Changed:</strong><br>';
-                content += '<span style="color: #d00;">- From: ' + (diffData.checksum_changed.from || 'N/A').substring(0, 32) + '...</span><br>';
-                content += '<span style="color: #0a0;">+ To: ' + (diffData.checksum_changed.to || 'N/A').substring(0, 32) + '...</span>';
-            }
+        // Check if it's a unified diff (contains diff markers)
+        if (typeof diffData === 'string' && (diffData.includes('---') || diffData.includes('+++') || diffData.includes('@@'))) {
+            // Unified diff format
+            content = '<div class="diff-content">';
+            content += '<pre class="diff-preview">' + formatDiff(diffData) + '</pre>';
             content += '</div>';
-            
-            if (diffData.preview) {
-                content += '<div class="diff-section">';
-                content += '<h4>File Preview (First 5 lines):</h4>';
-                content += '<div class="diff-preview">';
-                if (diffData.preview.first_lines) {
-                    content += escapeHtml(diffData.preview.first_lines.join('\n'));
-                }
-                content += '</div>';
-                
-                if (diffData.preview.last_lines && diffData.preview.total_lines > 10) {
-                    content += '<h4>Last 5 lines:</h4>';
-                    content += '<div class="diff-preview">';
-                    content += escapeHtml(diffData.preview.last_lines.join('\n'));
+        } else if (typeof diffData === 'object' && diffData !== null) {
+            // Structured diff data (fallback for when we can't get the previous version)
+            if (diffData.type === 'summary') {
+                content += '<div class="diff-info">';
+                if (diffData.message) {
+                    content += '<div class="notice notice-warning" style="padding: 10px; margin-bottom: 15px;">';
+                    content += '<strong>' + escapeHtml(diffData.message) + '</strong>';
                     content += '</div>';
+                }
+                content += '<strong>Timestamp:</strong> ' + (diffData.timestamp || 'Unknown') + '<br>';
+                content += '<strong>File Size:</strong> ' + formatBytes(diffData.file_size || 0) + '<br>';
+                content += '<strong>Lines:</strong> ' + (diffData.lines_count || 'Unknown') + '<br>';
+                
+                if (diffData.checksum_changed) {
+                    content += '<strong>Checksum Changed:</strong><br>';
+                    content += '<span style="color: #d00;">- From: ' + (diffData.checksum_changed.from || 'N/A').substring(0, 32) + '...</span><br>';
+                    content += '<span style="color: #0a0;">+ To: ' + (diffData.checksum_changed.to || 'N/A').substring(0, 32) + '...</span>';
                 }
                 content += '</div>';
             }
         } else {
-            // Plain text diff
-            content = '<div class="diff-preview">' + escapeHtml(String(diffData)) + '</div>';
+            // Plain text (simple diff)
+            content = '<div class="diff-content">';
+            content += '<pre class="diff-preview">' + formatDiff(String(diffData)) + '</pre>';
+            content += '</div>';
         }
         
         $('#diff-content').html(content);
         $('#diff-modal').fadeIn(200);
+    }
+    
+    // Format diff output with syntax highlighting
+    function formatDiff(diff) {
+        if (!diff) return '';
+        
+        var lines = diff.split('\n');
+        var formatted = [];
+        
+        lines.forEach(function(line) {
+            var escapedLine = escapeHtml(line);
+            
+            if (line.startsWith('+++') || line.startsWith('---')) {
+                // File headers
+                formatted.push('<span class="diff-header">' + escapedLine + '</span>');
+            } else if (line.startsWith('@@')) {
+                // Hunk headers
+                formatted.push('<span class="diff-hunk">' + escapedLine + '</span>');
+            } else if (line.startsWith('+')) {
+                // Added lines
+                formatted.push('<span class="diff-added">' + escapedLine + '</span>');
+            } else if (line.startsWith('-')) {
+                // Removed lines
+                formatted.push('<span class="diff-removed">' + escapedLine + '</span>');
+            } else if (line.startsWith(' ')) {
+                // Context lines
+                formatted.push('<span class="diff-context">' + escapedLine + '</span>');
+            } else {
+                // Other lines
+                formatted.push(escapedLine);
+            }
+        });
+        
+        return formatted.join('\n');
     }
     
     // Close modal handlers
