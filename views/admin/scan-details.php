@@ -20,7 +20,8 @@ $changed_files = $fileRecordRepository->getChangedFiles( $scan_summary['scan_id'
 // Pagination for file records
 $files_page = (int) ( $_GET['files_page'] ?? 1 );
 $files_per_page = 50;
-$status_filter = sanitize_text_field( $_GET['status_filter'] ?? '' );
+// Default to 'changed' if no filter is specified
+$status_filter = isset( $_GET['status_filter'] ) ? sanitize_text_field( $_GET['status_filter'] ) : 'changed';
 
 $file_results = $fileRecordRepository->getPaginated( 
     $scan_summary['scan_id'], 
@@ -170,7 +171,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 <input type="hidden" name="page" value="file-integrity-checker-results" />
                 <input type="hidden" name="scan_id" value="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>" />
                 <select name="status_filter" onchange="this.form.submit()">
-                    <option value="">All Files</option>
+                    <option value="all" <?php selected( $status_filter, 'all' ); ?>>All Files</option>
                     <option value="changed" <?php selected( $status_filter, 'changed' ); ?>>Changed Files</option>
                     <option value="new" <?php selected( $status_filter, 'new' ); ?>>New Files</option>
                     <option value="deleted" <?php selected( $status_filter, 'deleted' ); ?>>Deleted Files</option>

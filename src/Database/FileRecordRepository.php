@@ -182,7 +182,7 @@ class FileRecordRepository {
         $where_clause = "scan_result_id = %d";
         $params = [ $scan_result_id ];
 
-        if ( ! empty( $status ) ) {
+        if ( ! empty( $status ) && $status !== 'all' ) {
             $where_clause .= " AND status = %s";
             $params[] = $status;
         }
