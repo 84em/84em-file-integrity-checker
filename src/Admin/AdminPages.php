@@ -133,12 +133,13 @@ class AdminPages {
             case 'run_scan':
                 $this->handleRunScan();
                 break;
-            case 'schedule_scan':
-                $this->handleScheduleScan();
-                break;
-            case 'cancel_scheduled_scans':
-                $this->handleCancelScheduledScans();
-                break;
+            // Deprecated: Use the new Schedules page instead
+            // case 'schedule_scan':
+            //     $this->handleScheduleScan();
+            //     break;
+            // case 'cancel_scheduled_scans':
+            //     $this->handleCancelScheduledScans();
+            //     break;
             case 'update_settings':
                 $this->handleUpdateSettings();
                 break;
@@ -188,6 +189,7 @@ class AdminPages {
         $stats = $this->integrityService->getDashboardStats();
         $next_scan = $this->schedulerService->getNextScheduledScan();
         $scheduler_available = $this->schedulerService->isAvailable();
+        $scheduler_service = $this->schedulerService;
 
         include EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH . 'views/admin/dashboard.php';
     }

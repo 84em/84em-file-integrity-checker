@@ -163,38 +163,30 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div class="file-integrity-card">
             <h3>Scheduled Scans</h3>
             <div class="card-content">
-                <?php if ( $next_scan ): ?>
-                    <p><strong>Status:</strong> <span class="status-badge status-completed">Active</span></p>
-                    <p><strong>Next scan:</strong> <?php echo esc_html( $next_scan->datetime ); ?></p>
-                    <p><strong>Frequency:</strong> <?php echo esc_html( ucfirst( get_option( 'eightyfourem_file_integrity_scan_interval', 'daily' ) ) ); ?></p>
+                <?php 
+                // Get schedule statistics
+                $schedule_stats = $scheduler_service->getScheduleStats();
+                ?>
+                <?php if ( $schedule_stats['active'] > 0 ): ?>
+                    <p><strong>Active Schedules:</strong> <span class="status-badge status-completed"><?php echo esc_html( $schedule_stats['active'] ); ?></span></p>
+                    <?php if ( $next_scan ): ?>
+                        <p><strong>Next scan:</strong> <?php echo esc_html( $next_scan->datetime ); ?></p>
+                        <p><strong>Time until:</strong> <?php echo esc_html( $next_scan->time_until ); ?></p>
+                    <?php endif; ?>
                 <?php else: ?>
-                    <p><strong>Status:</strong> <span class="status-badge status-failed">Not Scheduled</span></p>
+                    <p><strong>Status:</strong> <span class="status-badge status-failed">No Active Schedules</span></p>
                     <p>Set up automatic scanning to monitor your files regularly.</p>
+                <?php endif; ?>
+                
+                <?php if ( $schedule_stats['total'] > 0 ): ?>
+                    <p><strong>Total schedules:</strong> <?php echo esc_html( $schedule_stats['total'] ); ?></p>
                 <?php endif; ?>
             </div>
             
             <div class="card-actions">
-                <?php if ( $next_scan ): ?>
-                    <form method="post" style="display: inline;">
-                        <?php wp_nonce_field( 'file_integrity_action' ); ?>
-                        <input type="hidden" name="action" value="cancel_scheduled_scans" />
-                        <button type="submit" class="button" onclick="return confirm('Cancel all scheduled scans?')">
-                            Cancel Scheduling
-                        </button>
-                    </form>
-                <?php else: ?>
-                    <form method="post" style="display: inline;">
-                        <?php wp_nonce_field( 'file_integrity_action' ); ?>
-                        <input type="hidden" name="action" value="schedule_scan" />
-                        <input type="hidden" name="scan_interval" value="daily" />
-                        <button type="submit" class="button button-secondary">
-                            Schedule Daily Scans
-                        </button>
-                    </form>
-                <?php endif; ?>
-                
-                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-settings' ); ?>" class="button">
-                    Settings
+                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-schedules' ); ?>" class="button button-primary">
+                    <span class="dashicons dashicons-calendar-alt"></span>
+                    Manage Schedules
                 </a>
             </div>
         </div>
