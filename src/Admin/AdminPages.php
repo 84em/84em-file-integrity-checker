@@ -406,7 +406,7 @@ class AdminPages {
         
         try {
             // Get scan progress
-            $scan = $this->scanResultsRepository->get( $scan_id );
+            $scan = $this->scanResultsRepository->getById( $scan_id );
             
             if ( ! $scan ) {
                 wp_send_json_error( 'Scan not found' );
