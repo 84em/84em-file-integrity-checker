@@ -185,8 +185,8 @@ class FileScanner {
             return null;
         }
         
-        // Try to get the previous version using git if available
-        $previous_content = $this->getPreviousFileContent( $file_path );
+        // Try to get the previous version from various sources
+        $previous_content = $this->getPreviousFileContent( $file_path, $previous_checksum );
         
         if ( $previous_content !== null ) {
             // Generate a unified diff
@@ -215,14 +215,16 @@ class FileScanner {
      * Try to get previous file content using git or other methods
      *
      * @param string $file_path Path to the file
+     * @param string $previous_checksum Previous checksum to match
      * @return string|null Previous content or null if not available
      */
-    private function getPreviousFileContent( string $file_path ): ?string {
+    private function getPreviousFileContent( string $file_path, string $previous_checksum ): ?string {
         // Check if git is available and file is in a git repository
         $git_root = $this->findGitRoot( dirname( $file_path ) );
         if ( $git_root !== null ) {
-            // Try to get the last committed version of the file
             $relative_path = str_replace( $git_root . '/', '', $file_path );
+            
+            // First, try to get the last committed version
             $command = sprintf(
                 'cd %s && git show HEAD:%s 2>/dev/null',
                 escapeshellarg( $git_root ),
@@ -231,12 +233,52 @@ class FileScanner {
             
             $output = shell_exec( $command );
             if ( $output !== null && $output !== '' ) {
-                return $output;
+                // Check if this version matches our expected checksum
+                $test_checksum = hash( 'sha256', $output );
+                if ( $test_checksum === $previous_checksum ) {
+                    return $output;
+                }
+            }
+            
+            // If HEAD doesn't match, search git history for matching checksum
+            // Get last 50 commits that modified this file
+            $log_command = sprintf(
+                'cd %s && git log --format="%%H" -50 -- %s 2>/dev/null',
+                escapeshellarg( $git_root ),
+                escapeshellarg( $relative_path )
+            );
+            
+            $commits = shell_exec( $log_command );
+            if ( $commits !== null && $commits !== '' ) {
+                $commit_hashes = explode( "\n", trim( $commits ) );
+                
+                foreach ( $commit_hashes as $commit ) {
+                    if ( empty( $commit ) ) {
+                        continue;
+                    }
+                    
+                    // Get file content at this commit
+                    $show_command = sprintf(
+                        'cd %s && git show %s:%s 2>/dev/null',
+                        escapeshellarg( $git_root ),
+                        escapeshellarg( $commit ),
+                        escapeshellarg( $relative_path )
+                    );
+                    
+                    $content = shell_exec( $show_command );
+                    if ( $content !== null && $content !== '' ) {
+                        // Check if this version matches our checksum
+                        $test_checksum = hash( 'sha256', $content );
+                        if ( $test_checksum === $previous_checksum ) {
+                            return $content;
+                        }
+                    }
+                }
             }
         }
         
-        // Try to get from database if we stored it in a previous scan
-        // (would need to implement file content storage in future version)
+        // Try to reconstruct from stored file content if we implement that in future
+        // For now, we could store file snapshots for critical files
         
         return null;
     }
