@@ -152,25 +152,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     </th>
                     <td>
                         <input type="time" id="time" name="time" value="02:00">
-                        <?php 
-                        $display_tz = wp_timezone_string();
-                        // Handle WordPress timezone quirks
-                        if ( $display_tz === 'UTC' || strpos( $display_tz, '+' ) === 0 || strpos( $display_tz, '-' ) === 0 ) {
-                            $offset = get_option( 'gmt_offset' );
-                            if ( $offset ) {
-                                $temp_tz = timezone_name_from_abbr( '', $offset * 3600, date( 'I' ) );
-                                if ( $temp_tz ) {
-                                    $display_tz = $temp_tz;
-                                } else {
-                                    $display_tz = 'UTC' . ( $offset >= 0 ? '+' : '' ) . $offset;
-                                }
-                            }
-                        }
-                        ?>
-                        <p class="description">Time of day to run the scan (Timezone: <?php echo esc_html( $display_tz ); ?>)</p>
-                        <?php if ( wp_timezone_string() === 'UTC' || strpos( wp_timezone_string(), '+' ) === 0 || strpos( wp_timezone_string(), '-' ) === 0 ) : ?>
-                            <p class="description" style="color: #d63638;"><strong>Note:</strong> Your WordPress site is using a UTC offset instead of a named timezone. For best results, set a proper timezone in Settings → General.</p>
-                        <?php endif; ?>
+                        <p class="description">Time of day to run the scan (Timezone: <?php echo esc_html( wp_timezone_string() ); ?>)</p>
                     </td>
                 </tr>
                 
@@ -297,27 +279,15 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <td>
                                 <?php
                                 if ( $schedule->next_run && $schedule->is_active ) {
-                                    // Get the site timezone, handling WordPress quirks
-                                    $site_timezone = wp_timezone_string();
+                                    // WordPress stores in UTC, convert to site timezone for display
+                                    $next_utc = new DateTime( $schedule->next_run, new DateTimeZone( 'UTC' ) );
+                                    $next_local = clone $next_utc;
+                                    $next_local->setTimezone( wp_timezone() );
                                     
-                                    // If WordPress returns UTC or an offset, use the system timezone
-                                    if ( $site_timezone === 'UTC' || strpos( $site_timezone, '+' ) === 0 || strpos( $site_timezone, '-' ) === 0 ) {
-                                        $offset = get_option( 'gmt_offset' );
-                                        if ( $offset ) {
-                                            $site_timezone = timezone_name_from_abbr( '', $offset * 3600, date( 'I' ) );
-                                            if ( ! $site_timezone ) {
-                                                $site_timezone = date_default_timezone_get();
-                                            }
-                                        }
-                                    }
+                                    $now = current_datetime();
                                     
-                                    // Get timezone-aware DateTime objects
-                                    $tz = new DateTimeZone( $site_timezone );
-                                    $now = new DateTime( 'now', $tz );
-                                    $next = new DateTime( $schedule->next_run, $tz );
-                                    
-                                    if ( $next > $now ) {
-                                        $diff = $now->diff( $next );
+                                    if ( $next_local > $now ) {
+                                        $diff = $now->diff( $next_local );
                                         $hours = $diff->h + ($diff->days * 24);
                                         
                                         if ( $diff->days > 0 ) {
@@ -342,7 +312,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                         }
                                         
                                         // Also show the exact time
-                                        echo '<br><small>' . esc_html( $next->format( 'M j, g:i A' ) ) . '</small>';
+                                        echo '<br><small>' . esc_html( $next_local->format( 'M j, g:i A' ) ) . '</small>';
                                     } else {
                                         echo '<em>Due now</em>';
                                     }
