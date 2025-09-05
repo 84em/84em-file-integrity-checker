@@ -755,4 +755,30 @@ class IntegrityCommand {
             \WP_CLI::error( "Failed to disable schedule $schedule_id." );
         }
     }
+
+    /**
+     * Recalculate next run times for all schedules
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity recalculate-schedules
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function recalculate_schedules( array $args, array $assoc_args ): void {
+        $schedules_repo = new \EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository(
+            new \EightyFourEM\FileIntegrityChecker\Database\DatabaseManager()
+        );
+        
+        \WP_CLI::line( 'Recalculating next run times for all active schedules...' );
+        
+        $updated = $schedules_repo->recalculateAllNextRuns();
+        
+        if ( $updated > 0 ) {
+            \WP_CLI::success( "Updated $updated schedule(s)." );
+        } else {
+            \WP_CLI::line( 'No schedules needed updating.' );
+        }
+    }
 }

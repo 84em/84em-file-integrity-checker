@@ -88,8 +88,8 @@ class SchedulerService {
         $due_schedules = $this->schedulesRepository->getDueSchedules();
 
         foreach ( $due_schedules as $schedule ) {
+            // Schedule the scan - don't update last_run yet, that happens after execution
             $this->scheduleFromConfig( $schedule );
-            $this->schedulesRepository->updateLastRun( $schedule->id );
         }
     }
 

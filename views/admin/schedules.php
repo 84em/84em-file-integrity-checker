@@ -270,7 +270,12 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <td>
                                 <?php
                                 if ( $schedule->last_run ) {
-                                    echo esc_html( human_time_diff( strtotime( $schedule->last_run ), current_time( 'timestamp' ) ) . ' ago' );
+                                    // Convert UTC to local for display
+                                    $last_run_utc = new DateTime( $schedule->last_run, new DateTimeZone( 'UTC' ) );
+                                    $last_run_local = clone $last_run_utc;
+                                    $last_run_local->setTimezone( wp_timezone() );
+                                    
+                                    echo esc_html( human_time_diff( $last_run_local->getTimestamp(), current_time( 'timestamp' ) ) . ' ago' );
                                 } else {
                                     echo '<em>Never</em>';
                                 }

@@ -240,7 +240,7 @@ class ScanSchedulesRepository {
         $result = $wpdb->update(
             $table,
             [
-                'last_run' => current_time( 'mysql' ),
+                'last_run' => current_time( 'mysql', true ), // Use GMT/UTC time
                 'next_run' => $next_run,
             ],
             [ 'id' => $id ],
@@ -378,5 +378,41 @@ class ScanSchedulesRepository {
                 $is_active
             )
         );
+    }
+
+    /**
+     * Recalculate next run time for a schedule
+     *
+     * @param int $id Schedule ID
+     * @return bool True on success, false on failure
+     */
+    public function recalculateNextRun( int $id ): bool {
+        $schedule = $this->get( $id );
+        
+        if ( ! $schedule ) {
+            return false;
+        }
+
+        $next_run = $this->calculateNextRun( (array) $schedule );
+        
+        return $this->update( $id, [ 'next_run' => $next_run ] );
+    }
+
+    /**
+     * Recalculate next run times for all active schedules
+     *
+     * @return int Number of schedules updated
+     */
+    public function recalculateAllNextRuns(): int {
+        $schedules = $this->getAll( [ 'is_active' => 1 ] );
+        $updated = 0;
+
+        foreach ( $schedules as $schedule ) {
+            if ( $this->recalculateNextRun( $schedule->id ) ) {
+                $updated++;
+            }
+        }
+
+        return $updated;
     }
 }
