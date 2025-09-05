@@ -350,9 +350,9 @@ class AdminPages {
      * AJAX handler for cleanup old scans
      */
     public function ajaxCleanupOldScans(): void {
-        // Verify nonce
-        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'file_integrity_action' ) ) {
-            wp_send_json_error( 'Invalid nonce' );
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
         }
 
         // Check permissions
