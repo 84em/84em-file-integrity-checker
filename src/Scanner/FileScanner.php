@@ -194,8 +194,17 @@ class FileScanner {
             return $diff;
         }
         
-        // If we can't get the previous content, store current content for next time
-        // and return a summary
+        // If we can't get the previous content from git, try to get it from database storage
+        // This would require storing file content in the database (future enhancement)
+        $previous_content_from_db = $this->getPreviousContentFromDatabase( $file_path, $previous_checksum );
+        
+        if ( $previous_content_from_db !== null ) {
+            // Generate a unified diff
+            $diff = $this->generateUnifiedDiff( $previous_content_from_db, $current_content, $file_path );
+            return $diff;
+        }
+        
+        // If we still can't get the previous content, return a summary
         $diff_summary = [
             'type' => 'summary',
             'timestamp' => current_time( 'mysql' ),
@@ -279,6 +288,38 @@ class FileScanner {
         
         // Try to reconstruct from stored file content if we implement that in future
         // For now, we could store file snapshots for critical files
+        
+        return null;
+    }
+    
+    /**
+     * Try to get previous file content from database storage
+     *
+     * @param string $file_path Path to the file
+     * @param string $previous_checksum Previous checksum to match
+     * @return string|null Previous content or null if not available
+     */
+    private function getPreviousContentFromDatabase( string $file_path, string $previous_checksum ): ?string {
+        // For now, we don't store file content in the database
+        // This is a placeholder for future enhancement
+        // 
+        // In a future version, we could:
+        // 1. Store file content for critical files or files under a certain size
+        // 2. Use a separate table for file content storage
+        // 3. Compress the content to save space
+        // 4. Only store content for files that have changed
+        
+        // For now, check if we have a recent backup file with matching checksum
+        $backup_dir = WP_CONTENT_DIR . '/file-integrity-backups';
+        if ( is_dir( $backup_dir ) ) {
+            $backup_file = $backup_dir . '/' . $previous_checksum . '.txt';
+            if ( file_exists( $backup_file ) ) {
+                $content = file_get_contents( $backup_file );
+                if ( $content !== false && hash( 'sha256', $content ) === $previous_checksum ) {
+                    return $content;
+                }
+            }
+        }
         
         return null;
     }
