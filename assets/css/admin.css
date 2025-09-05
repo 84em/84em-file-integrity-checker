@@ -271,6 +271,21 @@
     margin: 0;
 }
 
+/* Dashicon alignment fix */
+.dashicons,
+.dashicons-before:before {
+    vertical-align: middle;
+    display: inline-block;
+}
+
+button .dashicons,
+.button .dashicons,
+a .dashicons {
+    vertical-align: middle;
+    margin-top: -2px;
+    margin-right: 4px;
+}
+
 /* Alerts and notices */
 .file-integrity-alert {
     display: flex;
