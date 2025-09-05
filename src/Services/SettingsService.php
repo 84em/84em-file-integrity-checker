@@ -177,6 +177,56 @@ class SettingsService {
     }
 
     /**
+     * Check if Slack notifications are enabled
+     *
+     * @return bool True if Slack notifications are enabled
+     */
+    public function isSlackEnabled(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'slack_enabled', false );
+    }
+
+    /**
+     * Set Slack notification status
+     *
+     * @param bool $enabled Whether Slack notifications are enabled
+     * @return bool True on success
+     */
+    public function setSlackEnabled( bool $enabled ): bool {
+        update_option( self::OPTION_PREFIX . 'slack_enabled', $enabled );
+        return true;
+    }
+
+    /**
+     * Get Slack webhook URL
+     *
+     * @return string Slack webhook URL
+     */
+    public function getSlackWebhookUrl(): string {
+        return get_option( self::OPTION_PREFIX . 'slack_webhook_url', '' );
+    }
+
+    /**
+     * Set Slack webhook URL
+     *
+     * @param string $url Slack webhook URL
+     * @return bool True on success, false on failure
+     */
+    public function setSlackWebhookUrl( string $url ): bool {
+        // Basic validation for Slack webhook URL
+        if ( ! empty( $url ) && ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+            return false;
+        }
+        
+        // Slack webhooks should start with https://hooks.slack.com/
+        if ( ! empty( $url ) && strpos( $url, 'https://hooks.slack.com/' ) !== 0 ) {
+            return false;
+        }
+        
+        update_option( self::OPTION_PREFIX . 'slack_webhook_url', sanitize_url( $url ) );
+        return true;
+    }
+
+    /**
      * Check if auto-scheduling is enabled
      *
      * @return bool True if auto-scheduling is enabled, false otherwise
@@ -233,6 +283,8 @@ class SettingsService {
             'max_file_size' => $this->getMaxFileSize(),
             'notification_enabled' => $this->isNotificationEnabled(),
             'notification_email' => $this->getNotificationEmail(),
+            'slack_enabled' => $this->isSlackEnabled(),
+            'slack_webhook_url' => $this->getSlackWebhookUrl(),
             'auto_schedule' => $this->isAutoScheduleEnabled(),
             'retention_period' => $this->getRetentionPeriod(),
         ];
@@ -266,6 +318,12 @@ class SettingsService {
                     break;
                 case 'notification_email':
                     $results[ $key ] = $this->setNotificationEmail( $value );
+                    break;
+                case 'slack_enabled':
+                    $results[ $key ] = $this->setSlackEnabled( $value );
+                    break;
+                case 'slack_webhook_url':
+                    $results[ $key ] = $this->setSlackWebhookUrl( $value );
                     break;
                 case 'auto_schedule':
                     $results[ $key ] = $this->setAutoScheduleEnabled( $value );

@@ -78,6 +78,7 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_cleanup_old_scans', [ $this, 'ajaxCleanupOldScans' ] );
         add_action( 'wp_ajax_file_integrity_cancel_scan', [ $this, 'ajaxCancelScan' ] );
         add_action( 'wp_ajax_file_integrity_delete_scan', [ $this, 'ajaxDeleteScan' ] );
+        add_action( 'wp_ajax_file_integrity_test_slack', [ $this, 'ajaxTestSlack' ] );
     }
 
     /**
@@ -318,6 +319,13 @@ class AdminPages {
         if ( isset( $_POST['notification_email'] ) && ! empty( $_POST['notification_email'] ) ) {
             $settings['notification_email'] = sanitize_email( $_POST['notification_email'] );
         }
+        
+        // Slack settings
+        $settings['slack_enabled'] = isset( $_POST['slack_enabled'] );
+        
+        if ( isset( $_POST['slack_webhook_url'] ) ) {
+            $settings['slack_webhook_url'] = sanitize_url( $_POST['slack_webhook_url'] );
+        }
 
         // Retention period
         if ( isset( $_POST['retention_period'] ) ) {
@@ -467,6 +475,69 @@ class AdminPages {
         } catch ( \Exception $e ) {
             wp_send_json_error( 'Failed to delete scan: ' . $e->getMessage() );
         }
+    }
+    
+    /**
+     * AJAX handler for testing Slack webhook
+     */
+    public function ajaxTestSlack(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $webhook_url = isset( $_POST['webhook_url'] ) ? sanitize_url( $_POST['webhook_url'] ) : '';
+        
+        if ( empty( $webhook_url ) || strpos( $webhook_url, 'https://hooks.slack.com/' ) !== 0 ) {
+            wp_send_json_error( 'Invalid Slack webhook URL' );
+        }
+        
+        // Send test message
+        $message = [
+            'text' => '🔍 File Integrity Checker Test',
+            'blocks' => [
+                [
+                    'type' => 'section',
+                    'text' => [
+                        'type' => 'mrkdwn',
+                        'text' => "*Test Notification*\n\nThis is a test message from the 84EM File Integrity Checker plugin on " . get_bloginfo( 'name' ) . "."
+                    ]
+                ],
+                [
+                    'type' => 'context',
+                    'elements' => [
+                        [
+                            'type' => 'mrkdwn',
+                            'text' => 'Site: ' . site_url() . ' | Time: ' . current_time( 'mysql' )
+                        ]
+                    ]
+                ]
+            ]
+        ];
+        
+        $response = wp_remote_post( $webhook_url, [
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => json_encode( $message ),
+            'timeout' => 15,
+        ] );
+        
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( 'Failed to send message: ' . $response->get_error_message() );
+        }
+        
+        $response_code = wp_remote_retrieve_response_code( $response );
+        if ( $response_code !== 200 ) {
+            wp_send_json_error( 'Slack returned error code: ' . $response_code );
+        }
+        
+        wp_send_json_success( 'Test message sent successfully' );
     }
     
     /**

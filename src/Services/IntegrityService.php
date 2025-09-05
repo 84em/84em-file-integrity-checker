@@ -243,16 +243,12 @@ class IntegrityService {
     }
 
     /**
-     * Send change notification email
+     * Send change notification (email and/or Slack)
      *
      * @param int $scan_id Scan result ID
-     * @return bool True if email sent successfully, false otherwise
+     * @return bool True if any notification sent successfully, false otherwise
      */
     public function sendChangeNotification( int $scan_id ): bool {
-        if ( ! $this->settingsService->isNotificationEnabled() ) {
-            return false;
-        }
-
         $scan_summary = $this->getScanSummary( $scan_id );
         if ( ! $scan_summary ) {
             return false;
@@ -260,20 +256,160 @@ class IntegrityService {
 
         $changed_files = $this->fileRecordRepository->getChangedFiles( $scan_id );
         
-        $email_to = $this->settingsService->getNotificationEmail();
-        $subject = sprintf( 
-            '[%s] File Integrity Scan - Changes Detected', 
-            get_bloginfo( 'name' ) 
-        );
+        $email_sent = false;
+        $slack_sent = false;
+        
+        // Send email notification if enabled
+        if ( $this->settingsService->isNotificationEnabled() ) {
+            $email_to = $this->settingsService->getNotificationEmail();
+            $subject = sprintf( 
+                '[%s] File Integrity Scan - Changes Detected', 
+                get_bloginfo( 'name' ) 
+            );
 
-        $message = $this->buildNotificationMessage( $scan_summary, $changed_files );
+            $message = $this->buildNotificationMessage( $scan_summary, $changed_files );
 
-        $headers = [
-            'Content-Type: text/html; charset=UTF-8',
-            'From: File Integrity Checker <' . get_option( 'admin_email' ) . '>',
+            $headers = [
+                'Content-Type: text/html; charset=UTF-8',
+                'From: File Integrity Checker <' . get_option( 'admin_email' ) . '>',
+            ];
+
+            $email_sent = wp_mail( $email_to, $subject, $message, $headers );
+        }
+        
+        // Send Slack notification if enabled
+        if ( $this->settingsService->isSlackEnabled() ) {
+            $slack_sent = $this->sendSlackNotification( $scan_summary, $changed_files );
+        }
+
+        return $email_sent || $slack_sent;
+    }
+    
+    /**
+     * Send Slack notification
+     *
+     * @param array $scan_summary Scan summary data
+     * @param array $changed_files Array of changed files
+     * @return bool True if sent successfully, false otherwise
+     */
+    private function sendSlackNotification( array $scan_summary, array $changed_files ): bool {
+        $webhook_url = $this->settingsService->getSlackWebhookUrl();
+        
+        if ( empty( $webhook_url ) ) {
+            return false;
+        }
+        
+        // Build Slack message with blocks
+        $blocks = [
+            [
+                'type' => 'header',
+                'text' => [
+                    'type' => 'plain_text',
+                    'text' => '🚨 File Integrity Alert',
+                    'emoji' => true
+                ]
+            ],
+            [
+                'type' => 'section',
+                'text' => [
+                    'type' => 'mrkdwn',
+                    'text' => sprintf(
+                        "*Changes detected on %s*\n\n" .
+                        "• *Changed Files:* %d\n" .
+                        "• *New Files:* %d\n" .
+                        "• *Deleted Files:* %d\n" .
+                        "• *Total Files Scanned:* %d",
+                        get_bloginfo( 'name' ),
+                        $scan_summary['changed_files'],
+                        $scan_summary['new_files'],
+                        $scan_summary['deleted_files'],
+                        $scan_summary['total_files']
+                    )
+                ]
+            ]
         ];
-
-        return wp_mail( $email_to, $subject, $message, $headers );
+        
+        // Add top changed files if any
+        if ( ! empty( $changed_files ) ) {
+            $file_list = array_slice( $changed_files, 0, 5 );
+            $file_text = "";
+            
+            foreach ( $file_list as $file ) {
+                $status_icon = match( $file->status ) {
+                    'changed' => '📝',
+                    'new' => '➕',
+                    'deleted' => '❌',
+                    default => '•'
+                };
+                $file_text .= sprintf( "%s `%s`\n", $status_icon, basename( $file->file_path ) );
+            }
+            
+            if ( count( $changed_files ) > 5 ) {
+                $file_text .= sprintf( "_...and %d more files_", count( $changed_files ) - 5 );
+            }
+            
+            $blocks[] = [
+                'type' => 'section',
+                'text' => [
+                    'type' => 'mrkdwn',
+                    'text' => "*Affected Files:*\n" . $file_text
+                ]
+            ];
+        }
+        
+        // Add action button
+        $blocks[] = [
+            'type' => 'actions',
+            'elements' => [
+                [
+                    'type' => 'button',
+                    'text' => [
+                        'type' => 'plain_text',
+                        'text' => 'View Scan Details',
+                        'emoji' => true
+                    ],
+                    'url' => admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_summary['scan_id'] ),
+                    'style' => 'primary'
+                ]
+            ]
+        ];
+        
+        // Add context
+        $blocks[] = [
+            'type' => 'context',
+            'elements' => [
+                [
+                    'type' => 'mrkdwn',
+                    'text' => sprintf( 'Site: %s | Scan Duration: %ds', site_url(), $scan_summary['scan_duration'] )
+                ]
+            ]
+        ];
+        
+        $message = [
+            'text' => sprintf( '🚨 File changes detected on %s', get_bloginfo( 'name' ) ),
+            'blocks' => $blocks
+        ];
+        
+        $response = wp_remote_post( $webhook_url, [
+            'headers' => [
+                'Content-Type' => 'application/json',
+            ],
+            'body' => json_encode( $message ),
+            'timeout' => 15,
+        ] );
+        
+        if ( is_wp_error( $response ) ) {
+            error_log( 'Failed to send Slack notification: ' . $response->get_error_message() );
+            return false;
+        }
+        
+        $response_code = wp_remote_retrieve_response_code( $response );
+        if ( $response_code !== 200 ) {
+            error_log( 'Slack webhook returned error code: ' . $response_code );
+            return false;
+        }
+        
+        return true;
     }
 
     /**

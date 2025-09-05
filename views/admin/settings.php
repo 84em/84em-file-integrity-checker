@@ -165,28 +165,63 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <table class="form-table">
                     <tr>
                         <th scope="row">
-                            <label for="notification_enabled">Email Notifications</label>
+                            <label>Notification Methods</label>
                         </th>
                         <td>
-                            <input type="checkbox" 
-                                   name="notification_enabled" 
-                                   id="notification_enabled" 
-                                   value="1" 
-                                   <?php checked( $settings['notification_enabled'] ); ?> />
-                            <label for="notification_enabled">Send email notifications when file changes are detected</label>
+                            <fieldset>
+                                <label style="display: block; margin-bottom: 10px;">
+                                    <input type="checkbox" 
+                                           name="notification_enabled" 
+                                           id="notification_enabled" 
+                                           value="1" 
+                                           <?php checked( $settings['notification_enabled'] ); ?> />
+                                    Enable email notifications
+                                </label>
+                                <label style="display: block;">
+                                    <input type="checkbox" 
+                                           name="slack_enabled" 
+                                           id="slack_enabled" 
+                                           value="1" 
+                                           <?php checked( $settings['slack_enabled'] ); ?> />
+                                    Enable Slack notifications
+                                </label>
+                            </fieldset>
+                            <p class="description">Choose how you want to be notified when file changes are detected.</p>
                         </td>
                     </tr>
-                    <tr>
+                    <tr class="email-notification-row" <?php echo $settings['notification_enabled'] ? '' : 'style="display:none;"'; ?>>
                         <th scope="row">
-                            <label for="notification_email">Notification Email</label>
+                            <label for="notification_email">Email Address</label>
                         </th>
                         <td>
                             <input type="email" 
                                    name="notification_email" 
                                    id="notification_email" 
                                    value="<?php echo esc_attr( $settings['notification_email'] ); ?>" 
-                                   <?php echo $settings['notification_enabled'] ? '' : 'disabled'; ?> />
-                            <p class="description">Email address to receive change notifications. Leave empty to use the admin email.</p>
+                                   class="regular-text" />
+                            <p class="description">Email address to receive notifications. Leave empty to use the admin email.</p>
+                        </td>
+                    </tr>
+                    <tr class="slack-notification-row" <?php echo $settings['slack_enabled'] ? '' : 'style="display:none;"'; ?>>
+                        <th scope="row">
+                            <label for="slack_webhook_url">Slack Webhook URL</label>
+                        </th>
+                        <td>
+                            <input type="url" 
+                                   name="slack_webhook_url" 
+                                   id="slack_webhook_url" 
+                                   value="<?php echo esc_attr( $settings['slack_webhook_url'] ); ?>" 
+                                   class="regular-text code"
+                                   placeholder="https://hooks.slack.com/services/..." />
+                            <p class="description">
+                                Enter your Slack webhook URL. 
+                                <a href="https://api.slack.com/messaging/webhooks" target="_blank">Learn how to create a webhook</a>
+                            </p>
+                            <?php if ( $settings['slack_enabled'] && ! empty( $settings['slack_webhook_url'] ) ): ?>
+                            <button type="button" class="button button-secondary" id="test-slack-notification" style="margin-top: 10px;">
+                                Test Slack Connection
+                            </button>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 </table>

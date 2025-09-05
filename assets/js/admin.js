@@ -31,6 +31,11 @@
             $(document).on('change', '.file-extension-checkbox', this.handleFileExtensionChange.bind(this));
             $(document).on('click', '.cleanup-old-scans', this.handleCleanupOldScans.bind(this));
             
+            // Notification settings
+            $(document).on('change', '#notification_enabled', this.handleEmailNotificationToggle.bind(this));
+            $(document).on('change', '#slack_enabled', this.handleSlackNotificationToggle.bind(this));
+            $(document).on('click', '#test-slack-notification', this.handleTestSlackNotification.bind(this));
+            
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
             
@@ -410,6 +415,57 @@
             });
         },
 
+        // Handle email notification toggle
+        handleEmailNotificationToggle: function(e) {
+            const isChecked = $(e.target).is(':checked');
+            if (isChecked) {
+                $('.email-notification-row').show();
+            } else {
+                $('.email-notification-row').hide();
+            }
+        },
+        
+        // Handle Slack notification toggle
+        handleSlackNotificationToggle: function(e) {
+            const isChecked = $(e.target).is(':checked');
+            if (isChecked) {
+                $('.slack-notification-row').show();
+            } else {
+                $('.slack-notification-row').hide();
+            }
+        },
+        
+        // Handle test Slack notification
+        handleTestSlackNotification: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.target);
+            const webhookUrl = $('#slack_webhook_url').val();
+            
+            if (!webhookUrl) {
+                this.showError('Please enter a Slack webhook URL first');
+                return;
+            }
+            
+            button.prop('disabled', true).text('Testing...');
+            
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_test_slack',
+                webhook_url: webhookUrl,
+                _wpnonce: fileIntegrityChecker.nonce
+            }).then((response) => {
+                if (response.success) {
+                    this.showSuccess('Test message sent successfully! Check your Slack channel.');
+                } else {
+                    this.showError('Failed to send test message: ' + (response.data || 'Unknown error'));
+                }
+                button.prop('disabled', false).text('Test Slack Connection');
+            }).catch((error) => {
+                this.showError('Failed to test Slack connection');
+                button.prop('disabled', false).text('Test Slack Connection');
+            });
+        },
+        
         // Validate settings form
         validateSettingsForm: function(e) {
             let isValid = true;
