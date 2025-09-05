@@ -132,8 +132,19 @@ class FileScanner {
                     $file_data['status'] = 'unchanged';
                 }
             } else {
-                // New file
+                // New file - store its content for future diffs
                 $file_data['status'] = 'new';
+                
+                // Store content for future comparisons (text files only)
+                $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
+                $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+                
+                if ( in_array( $extension, $text_extensions, true ) && file_exists( $file_path ) ) {
+                    $content = file_get_contents( $file_path );
+                    if ( $content !== false && strlen( $content ) <= 1048576 ) {
+                        $this->storeFileContent( $file_path, $content );
+                    }
+                }
             }
 
             $updated_files[] = $file_data;
@@ -185,26 +196,23 @@ class FileScanner {
             return null;
         }
         
-        // Try to get the previous version from various sources
-        $previous_content = $this->getPreviousFileContent( $file_path, $previous_checksum );
+        // Get the previous content from storage
+        $previous_content = $this->getPreviousContentFromStorage( $file_path, $previous_checksum );
         
         if ( $previous_content !== null ) {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
+            
+            // Store current content for next time
+            $this->storeFileContent( $file_path, $current_content );
+            
             return $diff;
         }
         
-        // If we can't get the previous content from git, try to get it from database storage
-        // This would require storing file content in the database (future enhancement)
-        $previous_content_from_db = $this->getPreviousContentFromDatabase( $file_path, $previous_checksum );
+        // If we can't get the previous content, store current content for next time
+        $this->storeFileContent( $file_path, $current_content );
         
-        if ( $previous_content_from_db !== null ) {
-            // Generate a unified diff
-            $diff = $this->generateUnifiedDiff( $previous_content_from_db, $current_content, $file_path );
-            return $diff;
-        }
-        
-        // If we still can't get the previous content, return a summary
+        // Return a summary since we don't have previous content
         $diff_summary = [
             'type' => 'summary',
             'timestamp' => current_time( 'mysql' ),
@@ -221,102 +229,34 @@ class FileScanner {
     }
     
     /**
-     * Try to get previous file content using git or other methods
+     * Get previous file content from storage
      *
      * @param string $file_path Path to the file
      * @param string $previous_checksum Previous checksum to match
      * @return string|null Previous content or null if not available
      */
-    private function getPreviousFileContent( string $file_path, string $previous_checksum ): ?string {
-        // Check if git is available and file is in a git repository
-        $git_root = $this->findGitRoot( dirname( $file_path ) );
-        if ( $git_root !== null ) {
-            $relative_path = str_replace( $git_root . '/', '', $file_path );
-            
-            // First, try to get the last committed version
-            $command = sprintf(
-                'cd %s && git show HEAD:%s 2>/dev/null',
-                escapeshellarg( $git_root ),
-                escapeshellarg( $relative_path )
-            );
-            
-            $output = shell_exec( $command );
-            if ( $output !== null && $output !== '' ) {
-                // Check if this version matches our expected checksum
-                $test_checksum = hash( 'sha256', $output );
-                if ( $test_checksum === $previous_checksum ) {
-                    return $output;
-                }
-            }
-            
-            // If HEAD doesn't match, search git history for matching checksum
-            // Get last 50 commits that modified this file
-            $log_command = sprintf(
-                'cd %s && git log --format="%%H" -50 -- %s 2>/dev/null',
-                escapeshellarg( $git_root ),
-                escapeshellarg( $relative_path )
-            );
-            
-            $commits = shell_exec( $log_command );
-            if ( $commits !== null && $commits !== '' ) {
-                $commit_hashes = explode( "\n", trim( $commits ) );
-                
-                foreach ( $commit_hashes as $commit ) {
-                    if ( empty( $commit ) ) {
-                        continue;
-                    }
-                    
-                    // Get file content at this commit
-                    $show_command = sprintf(
-                        'cd %s && git show %s:%s 2>/dev/null',
-                        escapeshellarg( $git_root ),
-                        escapeshellarg( $commit ),
-                        escapeshellarg( $relative_path )
-                    );
-                    
-                    $content = shell_exec( $show_command );
-                    if ( $content !== null && $content !== '' ) {
-                        // Check if this version matches our checksum
-                        $test_checksum = hash( 'sha256', $content );
-                        if ( $test_checksum === $previous_checksum ) {
-                            return $content;
-                        }
-                    }
-                }
-            }
+    private function getPreviousContentFromStorage( string $file_path, string $previous_checksum ): ?string {
+        // Use file-based storage in wp-content directory
+        $storage_dir = WP_CONTENT_DIR . '/file-integrity-storage';
+        
+        // Create storage directory if it doesn't exist
+        if ( ! is_dir( $storage_dir ) ) {
+            return null;
         }
         
-        // Try to reconstruct from stored file content if we implement that in future
-        // For now, we could store file snapshots for critical files
+        // Use checksum as filename for easy retrieval
+        $storage_file = $storage_dir . '/' . $previous_checksum . '.gz';
         
-        return null;
-    }
-    
-    /**
-     * Try to get previous file content from database storage
-     *
-     * @param string $file_path Path to the file
-     * @param string $previous_checksum Previous checksum to match
-     * @return string|null Previous content or null if not available
-     */
-    private function getPreviousContentFromDatabase( string $file_path, string $previous_checksum ): ?string {
-        // For now, we don't store file content in the database
-        // This is a placeholder for future enhancement
-        // 
-        // In a future version, we could:
-        // 1. Store file content for critical files or files under a certain size
-        // 2. Use a separate table for file content storage
-        // 3. Compress the content to save space
-        // 4. Only store content for files that have changed
-        
-        // For now, check if we have a recent backup file with matching checksum
-        $backup_dir = WP_CONTENT_DIR . '/file-integrity-backups';
-        if ( is_dir( $backup_dir ) ) {
-            $backup_file = $backup_dir . '/' . $previous_checksum . '.txt';
-            if ( file_exists( $backup_file ) ) {
-                $content = file_get_contents( $backup_file );
-                if ( $content !== false && hash( 'sha256', $content ) === $previous_checksum ) {
-                    return $content;
+        if ( file_exists( $storage_file ) ) {
+            // Read and decompress the content
+            $compressed = file_get_contents( $storage_file );
+            if ( $compressed !== false ) {
+                $content = gzdecode( $compressed );
+                if ( $content !== false ) {
+                    // Verify the checksum matches
+                    if ( hash( 'sha256', $content ) === $previous_checksum ) {
+                        return $content;
+                    }
                 }
             }
         }
@@ -325,20 +265,86 @@ class FileScanner {
     }
     
     /**
-     * Find git repository root
+     * Store file content for future diff generation
      *
-     * @param string $path Starting path
-     * @return string|null Git root path or null if not in a git repo
+     * @param string $file_path Path to the file
+     * @param string $content File content to store
+     * @return bool True on success, false on failure
      */
-    private function findGitRoot( string $path ): ?string {
-        $current = $path;
-        while ( $current !== '/' && $current !== '' ) {
-            if ( is_dir( $current . '/.git' ) ) {
-                return $current;
-            }
-            $current = dirname( $current );
+    private function storeFileContent( string $file_path, string $content ): bool {
+        // Only store content for text files under 1MB
+        if ( strlen( $content ) > 1048576 ) {
+            return false;
         }
-        return null;
+        
+        // Use file-based storage in wp-content directory
+        $storage_dir = WP_CONTENT_DIR . '/file-integrity-storage';
+        
+        // Create storage directory if it doesn't exist
+        if ( ! is_dir( $storage_dir ) ) {
+            if ( ! wp_mkdir_p( $storage_dir ) ) {
+                return false;
+            }
+            
+            // Add .htaccess to prevent direct access
+            $htaccess = $storage_dir . '/.htaccess';
+            if ( ! file_exists( $htaccess ) ) {
+                file_put_contents( $htaccess, "Deny from all\n" );
+            }
+            
+            // Add index.php for extra security
+            $index = $storage_dir . '/index.php';
+            if ( ! file_exists( $index ) ) {
+                file_put_contents( $index, "<?php // Silence is golden\n" );
+            }
+        }
+        
+        // Use checksum as filename
+        $checksum = hash( 'sha256', $content );
+        $storage_file = $storage_dir . '/' . $checksum . '.gz';
+        
+        // Don't overwrite if it already exists
+        if ( file_exists( $storage_file ) ) {
+            return true;
+        }
+        
+        // Compress and store the content
+        $compressed = gzencode( $content, 9 );
+        if ( $compressed === false ) {
+            return false;
+        }
+        
+        $result = file_put_contents( $storage_file, $compressed );
+        
+        // Clean up old files (keep only last 100 changed files)
+        $this->cleanupOldStorageFiles( $storage_dir, 100 );
+        
+        return $result !== false;
+    }
+    
+    /**
+     * Clean up old storage files to prevent unlimited growth
+     *
+     * @param string $storage_dir Storage directory path
+     * @param int $keep_files Number of files to keep
+     * @return void
+     */
+    private function cleanupOldStorageFiles( string $storage_dir, int $keep_files = 100 ): void {
+        $files = glob( $storage_dir . '/*.gz' );
+        if ( ! $files || count( $files ) <= $keep_files ) {
+            return;
+        }
+        
+        // Sort by modification time (oldest first)
+        usort( $files, function( $a, $b ) {
+            return filemtime( $a ) - filemtime( $b );
+        } );
+        
+        // Delete oldest files
+        $to_delete = count( $files ) - $keep_files;
+        for ( $i = 0; $i < $to_delete; $i++ ) {
+            @unlink( $files[$i] );
+        }
     }
     
     /**
