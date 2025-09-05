@@ -245,7 +245,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <?php wp_nonce_field( 'file_integrity_action' ); ?>
                     <input type="hidden" name="action" value="cleanup_old_scans" />
                     <button type="submit" class="button cleanup-old-scans" 
-                            onclick="return confirm('This will delete scan results older than ' + <?php echo $settings['retention_period']; ?> + ' days. Continue?')">
+                            onclick="event.preventDefault(); FICModal.confirm('This will delete scan results older than <?php echo $settings['retention_period']; ?> days. Continue?', 'Delete Old Scans', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.form.submit(); }); return false;">
                         <span class="dashicons dashicons-trash"></span>
                         Cleanup Old Scans Now
                     </button>
@@ -281,33 +281,40 @@ function getCurrentMultiplier(value) {
 }
 
 function resetToDefaults() {
-    if (confirm('This will reset all settings to their default values. Continue?')) {
-        // Reset form fields to defaults
-        document.querySelector('select[name="scan_interval"]').value = 'daily';
-        document.querySelector('input[name="max_file_size"]').value = '10485760';
-        document.querySelector('input[name="notification_enabled"]').checked = true;
-        document.querySelector('input[name="auto_schedule"]').checked = true;
-        document.querySelector('input[name="retention_period"]').value = '90';
-        document.querySelector('input[name="notification_email"]').value = '';
-        
-        // Reset file type checkboxes
-        const defaultTypes = ['.js', '.css', '.html', '.php'];
-        document.querySelectorAll('.file-extension-checkbox').forEach(checkbox => {
-            checkbox.checked = defaultTypes.includes(checkbox.value);
-        });
-        
-        // Reset exclude patterns
-        const defaultPatterns = [
-            '*/cache/*',
-            '*/logs/*', 
-            '*/uploads/*',
-            '*/wp-content/cache/*',
-            '*/wp-content/backup*'
-        ].join('\n');
-        document.querySelector('textarea[name="exclude_patterns"]').value = defaultPatterns;
-        
-        alert('Settings reset to defaults. Click "Save Settings" to apply changes.');
-    }
+    FICModal.confirm(
+        'This will reset all settings to their default values. Continue?',
+        'Reset Settings',
+        'Yes, Reset',
+        'Cancel'
+    ).then(confirmed => {
+        if (confirmed) {
+            // Reset form fields to defaults
+            document.querySelector('select[name="scan_interval"]').value = 'daily';
+            document.querySelector('input[name="max_file_size"]').value = '10485760';
+            document.querySelector('input[name="notification_enabled"]').checked = true;
+            document.querySelector('input[name="auto_schedule"]').checked = true;
+            document.querySelector('input[name="retention_period"]').value = '90';
+            document.querySelector('input[name="notification_email"]').value = '';
+            
+            // Reset file type checkboxes
+            const defaultTypes = ['.js', '.css', '.html', '.php'];
+            document.querySelectorAll('.file-extension-checkbox').forEach(checkbox => {
+                checkbox.checked = defaultTypes.includes(checkbox.value);
+            });
+            
+            // Reset exclude patterns
+            const defaultPatterns = [
+                '*/cache/*',
+                '*/logs/*', 
+                '*/uploads/*',
+                '*/wp-content/cache/*',
+                '*/wp-content/backup*'
+            ].join('\n');
+            document.querySelector('textarea[name="exclude_patterns"]').value = defaultPatterns;
+            
+            FICModal.success('Settings reset to defaults. Click "Save Settings" to apply changes.');
+        }
+    });
 }
 
 // Toggle notification email field based on checkbox

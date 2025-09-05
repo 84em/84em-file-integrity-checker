@@ -341,7 +341,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                     </button>
                                 </form>
                                 
-                                <form method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this schedule?');">
+                                <form method="post" style="display: inline;" onsubmit="event.preventDefault(); FICModal.confirm('Are you sure you want to delete this schedule?', 'Delete Schedule', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.submit(); }); return false;">
                                     <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
                                     <input type="hidden" name="action" value="delete_schedule">
                                     <input type="hidden" name="schedule_id" value="<?php echo esc_attr( $schedule->id ); ?>">

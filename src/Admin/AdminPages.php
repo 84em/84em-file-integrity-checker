@@ -178,10 +178,19 @@ class AdminPages {
             EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION
         );
 
+        // Enqueue modal system first
+        wp_enqueue_script(
+            'file-integrity-checker-modal',
+            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . 'assets/js/modal.js',
+            [],
+            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION,
+            true
+        );
+
         wp_enqueue_script(
             'file-integrity-checker-admin',
             EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . 'assets/js/admin.js',
-            [ 'jquery' ],
+            [ 'jquery', 'file-integrity-checker-modal' ],
             EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION,
             true
         );

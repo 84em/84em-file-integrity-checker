@@ -51,30 +51,37 @@
             const originalText = button.text();
             
             // Show confirmation dialog
-            if (!confirm('This will scan your entire WordPress installation. This may take several minutes. Continue?')) {
-                return;
-            }
+            FICModal.confirm(
+                'This will scan your entire WordPress installation. This may take several minutes. Continue?',
+                'Start Integrity Scan',
+                'Start Scan',
+                'Cancel'
+            ).then(confirmed => {
+                if (!confirmed) {
+                    return;
+                }
             
-            // Update button state
-            button.prop('disabled', true)
-                  .text('Starting Scan...')
-                  .addClass('button-disabled');
-            
-            // Start the scan via AJAX
-            this.startScan().then(
-                (response) => {
-                    if (response.success) {
-                        this.showScanProgress(response.data.scan_id);
-                    } else {
-                        this.showError(response.data || 'Failed to start scan');
+                // Update button state
+                button.prop('disabled', true)
+                      .text('Starting Scan...')
+                      .addClass('button-disabled');
+                
+                // Start the scan via AJAX
+                this.startScan().then(
+                    (response) => {
+                        if (response.success) {
+                            this.showScanProgress(response.data.scan_id);
+                        } else {
+                            this.showError(response.data || 'Failed to start scan');
+                            this.resetScanButton(button, originalText);
+                        }
+                    },
+                    (error) => {
+                        this.showError('Failed to start scan: ' + error.statusText);
                         this.resetScanButton(button, originalText);
                     }
-                },
-                (error) => {
-                    this.showError('Failed to start scan: ' + error.statusText);
-                    this.resetScanButton(button, originalText);
-                }
-            );
+                );
+            });
         },
 
         // Start scan via AJAX
@@ -220,20 +227,27 @@
         handleCancelScan: function(e) {
             e.preventDefault();
             
-            if (confirm('Are you sure you want to cancel the current scan?')) {
-                $.post(fileIntegrityChecker.ajaxUrl, {
-                    action: 'file_integrity_cancel_scan',
-                    _wpnonce: fileIntegrityChecker.nonce
-                }).then((response) => {
-                    if (response.success) {
-                        $('.file-integrity-progress-container').remove();
-                        this.showSuccess('Scan cancelled successfully');
-                        this.resetScanButton($('.start-scan-btn'), 'Run Scan Now');
-                    } else {
-                        this.showError('Failed to cancel scan');
-                    }
-                });
-            }
+            FICModal.confirm(
+                'Are you sure you want to cancel the current scan?',
+                'Cancel Scan',
+                'Yes, Cancel',
+                'Continue Scanning'
+            ).then(confirmed => {
+                if (confirmed) {
+                    $.post(fileIntegrityChecker.ajaxUrl, {
+                        action: 'file_integrity_cancel_scan',
+                        _wpnonce: fileIntegrityChecker.nonce
+                    }).then((response) => {
+                        if (response.success) {
+                            $('.file-integrity-progress-container').remove();
+                            this.showSuccess('Scan cancelled successfully');
+                            this.resetScanButton($('.start-scan-btn'), 'Run Scan Now');
+                        } else {
+                            this.showError('Failed to cancel scan');
+                        }
+                    });
+                }
+            });
         },
 
         // Handle schedule scan
@@ -288,25 +302,32 @@
         handleCleanupOldScans: function(e) {
             e.preventDefault();
             
-            if (!confirm('This will permanently delete old scan results. Continue?')) {
-                return;
-            }
-            
-            const button = $(e.target);
-            button.prop('disabled', true).text('Cleaning up...');
-            
-            $.post(fileIntegrityChecker.ajaxUrl, {
-                action: 'file_integrity_cleanup_old_scans',
-                _wpnonce: fileIntegrityChecker.nonce
-            }).then((response) => {
-                if (response.success) {
-                    this.showSuccess(`Deleted ${response.data.deleted_scans} old scan results`);
-                    setTimeout(() => window.location.reload(), 2000);
-                } else {
-                    this.showError('Failed to cleanup old scans');
+            FICModal.confirm(
+                'This will permanently delete old scan results. Continue?',
+                'Delete Old Scans',
+                'Yes, Delete',
+                'Cancel'
+            ).then(confirmed => {
+                if (!confirmed) {
+                    return;
                 }
+            
+                const button = $(e.target);
+                button.prop('disabled', true).text('Cleaning up...');
                 
-                button.prop('disabled', false).text('Cleanup Old Scans');
+                $.post(fileIntegrityChecker.ajaxUrl, {
+                    action: 'file_integrity_cleanup_old_scans',
+                    _wpnonce: fileIntegrityChecker.nonce
+                }).then((response) => {
+                    if (response.success) {
+                        this.showSuccess(`Deleted ${response.data.deleted_scans} old scan results`);
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        this.showError('Failed to cleanup old scans');
+                    }
+                    
+                    button.prop('disabled', false).text('Cleanup Old Scans');
+                });
             });
         },
 

@@ -437,3 +437,162 @@ a .dashicons {
 /* Dark mode support - WordPress admin handles this automatically with CSS variables */
 /* The CSS variables will adapt to the user's admin color scheme */
 /* No explicit dark mode overrides needed when using WP admin CSS variables */
+
+/* Modal System Styles */
+.fic-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 160000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.fic-modal-overlay.fic-modal-show {
+    opacity: 1;
+}
+
+.fic-modal-overlay.fic-modal-closing {
+    opacity: 0;
+}
+
+.fic-modal {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow: hidden;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.fic-modal-overlay.fic-modal-show .fic-modal {
+    transform: scale(1);
+}
+
+.fic-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.fic-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1d2327;
+}
+
+.fic-modal-close {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: #787c82;
+    transition: color 0.2s;
+}
+
+.fic-modal-close:hover {
+    color: #d63638;
+}
+
+.fic-modal-close .dashicons {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+}
+
+.fic-modal-body {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.fic-modal-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.fic-modal-icon {
+    flex-shrink: 0;
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    margin-top: -4px;
+}
+
+.fic-modal-info .fic-modal-icon {
+    color: #2271b1;
+}
+
+.fic-modal-success .fic-modal-icon {
+    color: #00a32a;
+}
+
+.fic-modal-warning .fic-modal-icon {
+    color: #dba617;
+}
+
+.fic-modal-error .fic-modal-icon {
+    color: #d63638;
+}
+
+.fic-modal-confirm .fic-modal-icon {
+    color: #2271b1;
+}
+
+.fic-modal-message {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #3c434a;
+}
+
+.fic-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e0e0e0;
+    background: #f9f9f9;
+}
+
+.fic-modal-footer .button {
+    margin: 0;
+    min-width: 80px;
+}
+
+.fic-modal-footer .button-primary {
+    background: var(--wp-admin-theme-color);
+    border-color: var(--wp-admin-theme-color);
+    color: #fff;
+}
+
+.fic-modal-footer .button-primary:hover {
+    background: var(--wp-admin-theme-color-darker-10);
+    border-color: var(--wp-admin-theme-color-darker-10);
+}
+
+/* Responsive modal styles */
+@media screen and (max-width: 600px) {
+    .fic-modal {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .fic-modal-body {
+        max-height: 50vh;
+    }
+}

@@ -152,7 +152,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                 <form method="post" style="display: inline; margin-left: 10px;">
                     <?php wp_nonce_field( 'file_integrity_action' ); ?>
                     <input type="hidden" name="action" value="cleanup_old_scans" />
-                    <button type="submit" class="button cleanup-old-scans" onclick="return confirm('Delete old scan results? This will remove scan data older than your configured retention period.')">
+                    <button type="submit" class="button cleanup-old-scans" onclick="event.preventDefault(); FICModal.confirm('Delete old scan results? This will remove scan data older than your configured retention period.', 'Delete Old Scans', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.form.submit(); }); return false;">
                         <span class="dashicons dashicons-trash"></span>
                         Cleanup Old Results
                     </button>
