@@ -295,10 +295,10 @@ class AdminPages {
     private function handleUpdateSettings(): void {
         $settings = [];
 
-        // Scan file types
-        if ( isset( $_POST['scan_types'] ) ) {
-            $settings['scan_types'] = array_map( 'sanitize_text_field', $_POST['scan_types'] );
-        }
+        // Scan file types - if empty, use empty array to clear all selections
+        $settings['scan_types'] = isset( $_POST['scan_types'] ) 
+            ? array_map( 'sanitize_text_field', $_POST['scan_types'] )
+            : [];
 
         // Exclude patterns
         if ( isset( $_POST['exclude_patterns'] ) ) {

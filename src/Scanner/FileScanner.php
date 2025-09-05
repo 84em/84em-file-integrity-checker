@@ -382,9 +382,9 @@ class FileScanner {
         }
 
         $file_path = $file_info->getPathname();
-        $file_extension = strtolower( $file_info->getExtension() );
+        $file_extension = '.' . strtolower( $file_info->getExtension() );
 
-        // Check file extension
+        // Check file extension - if no extensions specified, scan all files
         if ( ! empty( $file_extensions ) && ! in_array( $file_extension, $file_extensions, true ) ) {
             return false;
         }
