@@ -113,10 +113,18 @@ class FileScanner {
     public function compareScans( array $current_files, array $previous_files ): array {
         $updated_files = [];
 
-        // Build lookup array for previous files
+        // Get current scan settings to filter previous files
+        $current_file_types = $this->settingsService->getScanFileTypes();
+        $exclude_patterns = $this->settingsService->getExcludePatterns();
+        $max_file_size = $this->settingsService->getMaxFileSize();
+
+        // Build lookup array for previous files that match current scan criteria
         $previous_lookup = [];
         foreach ( $previous_files as $file_record ) {
-            $previous_lookup[ $file_record->file_path ] = $file_record;
+            // Only include previous files that would be scanned with current settings
+            if ( $this->shouldIncludeFileInComparison( $file_record->file_path, $current_file_types ) ) {
+                $previous_lookup[ $file_record->file_path ] = $file_record;
+            }
         }
 
         // Check current files against previous
@@ -154,23 +162,46 @@ class FileScanner {
             $updated_files[] = $file_data;
         }
 
-        // Check for deleted files
+        // Check for deleted files - only among files that match current scan criteria
         $current_paths = array_column( $current_files, 'file_path' );
         foreach ( $previous_lookup as $file_path => $previous_record ) {
             if ( ! in_array( $file_path, $current_paths, true ) ) {
-                // File was deleted
-                $updated_files[] = [
-                    'file_path' => $file_path,
-                    'file_size' => $previous_record->file_size,
-                    'checksum' => '', // Empty for deleted files
-                    'last_modified' => $previous_record->last_modified,
-                    'status' => 'deleted',
-                    'previous_checksum' => $previous_record->checksum,
-                ];
+                // Check if file still exists on filesystem
+                if ( ! file_exists( $file_path ) ) {
+                    // File was actually deleted
+                    $updated_files[] = [
+                        'file_path' => $file_path,
+                        'file_size' => $previous_record->file_size,
+                        'checksum' => '', // Empty for deleted files
+                        'last_modified' => $previous_record->last_modified,
+                        'status' => 'deleted',
+                        'previous_checksum' => $previous_record->checksum,
+                    ];
+                }
+                // If file exists but wasn't in current scan, it's likely excluded by filters
+                // Don't mark it as deleted
             }
         }
 
         return $updated_files;
+    }
+    
+    /**
+     * Check if a file should be included in comparison based on current scan settings
+     *
+     * @param string $file_path File path to check
+     * @param array $file_types Current file type filters
+     * @return bool True if file should be included in comparison
+     */
+    private function shouldIncludeFileInComparison( string $file_path, array $file_types ): bool {
+        // If no file types specified, include all
+        if ( empty( $file_types ) ) {
+            return true;
+        }
+        
+        // Check file extension
+        $extension = '.' . strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+        return in_array( $extension, $file_types, true );
     }
 
     /**
