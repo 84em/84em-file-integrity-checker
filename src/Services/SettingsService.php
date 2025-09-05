@@ -44,7 +44,8 @@ class SettingsService {
             return strtolower( $type );
         }, $types );
 
-        return update_option( self::OPTION_PREFIX . 'scan_types', array_unique( $sanitized_types ) );
+        update_option( self::OPTION_PREFIX . 'scan_types', array_unique( $sanitized_types ) );
+        return true;
     }
 
     /**
@@ -69,7 +70,8 @@ class SettingsService {
             return false;
         }
 
-        return update_option( self::OPTION_PREFIX . 'scan_interval', $interval );
+        update_option( self::OPTION_PREFIX . 'scan_interval', $interval );
+        return true;
     }
 
     /**
@@ -101,7 +103,8 @@ class SettingsService {
         $sanitized_patterns = array_map( 'trim', $patterns );
         $sanitized_patterns = array_filter( $sanitized_patterns ); // Remove empty patterns
 
-        return update_option( self::OPTION_PREFIX . 'exclude_patterns', $sanitized_patterns );
+        update_option( self::OPTION_PREFIX . 'exclude_patterns', $sanitized_patterns );
+        return true;
     }
 
     /**
@@ -124,7 +127,9 @@ class SettingsService {
             return false;
         }
 
-        return update_option( self::OPTION_PREFIX . 'max_file_size', $size );
+        // update_option returns false if value doesn't change, but that's not an error
+        update_option( self::OPTION_PREFIX . 'max_file_size', $size );
+        return true;
     }
 
     /**
@@ -143,7 +148,8 @@ class SettingsService {
      * @return bool True on success, false on failure
      */
     public function setNotificationEnabled( bool $enabled ): bool {
-        return update_option( self::OPTION_PREFIX . 'notification_enabled', $enabled );
+        update_option( self::OPTION_PREFIX . 'notification_enabled', $enabled );
+        return true;
     }
 
     /**
@@ -166,7 +172,8 @@ class SettingsService {
             return false;
         }
 
-        return update_option( self::OPTION_PREFIX . 'notification_email', sanitize_email( $email ) );
+        update_option( self::OPTION_PREFIX . 'notification_email', sanitize_email( $email ) );
+        return true;
     }
 
     /**
@@ -185,7 +192,8 @@ class SettingsService {
      * @return bool True on success, false on failure
      */
     public function setAutoScheduleEnabled( bool $enabled ): bool {
-        return update_option( self::OPTION_PREFIX . 'auto_schedule', $enabled );
+        update_option( self::OPTION_PREFIX . 'auto_schedule', $enabled );
+        return true;
     }
 
     /**
@@ -208,7 +216,8 @@ class SettingsService {
             return false;
         }
 
-        return update_option( self::OPTION_PREFIX . 'retention_period', $days );
+        update_option( self::OPTION_PREFIX . 'retention_period', $days );
+        return true;
     }
 
     /**

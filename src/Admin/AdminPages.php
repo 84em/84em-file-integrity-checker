@@ -315,7 +315,7 @@ class AdminPages {
         // Notification settings
         $settings['notification_enabled'] = isset( $_POST['notification_enabled'] );
         
-        if ( isset( $_POST['notification_email'] ) ) {
+        if ( isset( $_POST['notification_email'] ) && ! empty( $_POST['notification_email'] ) ) {
             $settings['notification_email'] = sanitize_email( $_POST['notification_email'] );
         }
 
@@ -329,7 +329,24 @@ class AdminPages {
 
         $results = $this->settingsService->updateSettings( $settings );
         
-        if ( in_array( false, $results, true ) ) {
+        // Check for any failures
+        $has_failures = false;
+        $failed_settings = [];
+        foreach ( $results as $key => $success ) {
+            if ( ! $success ) {
+                $has_failures = true;
+                $failed_settings[] = $key;
+            }
+        }
+        
+        // Log failures for debugging
+        if ( $has_failures && WP_DEBUG ) {
+            error_log( 'File Integrity Checker: Failed to update settings: ' . implode( ', ', $failed_settings ) );
+        }
+        
+        // Only show error if critical settings failed
+        $critical_failures = array_intersect( $failed_settings, [ 'scan_types', 'max_file_size', 'retention_period' ] );
+        if ( ! empty( $critical_failures ) ) {
             wp_redirect( admin_url( 'admin.php?page=file-integrity-checker-settings&error=settings_update_failed' ) );
         } else {
             wp_redirect( admin_url( 'admin.php?page=file-integrity-checker-settings&message=settings_updated' ) );
