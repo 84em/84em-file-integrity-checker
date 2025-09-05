@@ -279,9 +279,38 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <td>
                                 <?php
                                 if ( $schedule->next_run && $schedule->is_active ) {
-                                    $next_run_time = strtotime( $schedule->next_run );
-                                    if ( $next_run_time > current_time( 'timestamp' ) ) {
-                                        echo 'In ' . esc_html( human_time_diff( current_time( 'timestamp' ), $next_run_time ) );
+                                    // Get timezone-aware DateTime objects
+                                    $tz = new DateTimeZone( wp_timezone_string() );
+                                    $now = new DateTime( 'now', $tz );
+                                    $next = new DateTime( $schedule->next_run, $tz );
+                                    
+                                    if ( $next > $now ) {
+                                        $diff = $now->diff( $next );
+                                        $hours = $diff->h + ($diff->days * 24);
+                                        
+                                        if ( $diff->days > 0 ) {
+                                            echo sprintf( 'In %d day%s, %d hour%s', 
+                                                $diff->days, 
+                                                $diff->days > 1 ? 's' : '',
+                                                $diff->h,
+                                                $diff->h != 1 ? 's' : ''
+                                            );
+                                        } elseif ( $hours > 0 ) {
+                                            echo sprintf( 'In %d hour%s, %d minute%s', 
+                                                $hours, 
+                                                $hours > 1 ? 's' : '',
+                                                $diff->i,
+                                                $diff->i != 1 ? 's' : ''
+                                            );
+                                        } else {
+                                            echo sprintf( 'In %d minute%s', 
+                                                $diff->i,
+                                                $diff->i != 1 ? 's' : ''
+                                            );
+                                        }
+                                        
+                                        // Also show the exact time
+                                        echo '<br><small>' . esc_html( $next->format( 'M j, g:i A' ) ) . '</small>';
                                     } else {
                                         echo '<em>Due now</em>';
                                     }

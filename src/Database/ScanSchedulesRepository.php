@@ -254,7 +254,7 @@ class ScanSchedulesRepository {
      * Calculate next run time based on schedule configuration
      *
      * @param array $schedule Schedule data
-     * @return string Next run datetime in MySQL format
+     * @return string Next run datetime in MySQL format (in site timezone)
      */
     private function calculateNextRun( array $schedule ): string {
         $timezone = new \DateTimeZone( $schedule['timezone'] ?? wp_timezone_string() );
@@ -264,7 +264,7 @@ class ScanSchedulesRepository {
         switch ( $schedule['frequency'] ) {
             case 'hourly':
                 $minute = $schedule['minute'] ?? 0;
-                $next->setTime( $next->format( 'H' ), $minute, 0 );
+                $next->setTime( (int) $next->format( 'H' ), (int) $minute, 0 );
                 if ( $next <= $now ) {
                     $next->modify( '+1 hour' );
                 }
@@ -277,7 +277,7 @@ class ScanSchedulesRepository {
                     $hour = $schedule['hour'] ?? 0;
                     $minute = $schedule['minute'] ?? 0;
                 }
-                $next->setTime( $hour, $minute, 0 );
+                $next->setTime( (int) $hour, (int) $minute, 0 );
                 if ( $next <= $now ) {
                     $next->modify( '+1 day' );
                 }
@@ -296,7 +296,7 @@ class ScanSchedulesRepository {
                 $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                 $target_day = $days[$day_of_week];
                 $next->modify( "next $target_day" );
-                $next->setTime( $hour, $minute, 0 );
+                $next->setTime( (int) $hour, (int) $minute, 0 );
                 
                 // If we're already past this week's scheduled time, move to next week
                 if ( $next <= $now ) {
@@ -314,8 +314,8 @@ class ScanSchedulesRepository {
                 }
                 
                 // Set to the specified day of month
-                $next->setDate( $next->format( 'Y' ), $next->format( 'm' ), $day_of_month );
-                $next->setTime( $hour, $minute, 0 );
+                $next->setDate( (int) $next->format( 'Y' ), (int) $next->format( 'm' ), (int) $day_of_month );
+                $next->setTime( (int) $hour, (int) $minute, 0 );
                 
                 // If we're already past this month's scheduled time, move to next month
                 if ( $next <= $now ) {
@@ -330,8 +330,8 @@ class ScanSchedulesRepository {
                 break;
         }
 
-        // Convert to WordPress timezone for storage
-        $next->setTimezone( new \DateTimeZone( 'UTC' ) );
+        // Store in site's timezone, not UTC - WordPress will handle the conversion
+        // Using current_time('mysql') format for consistency with WordPress
         return $next->format( 'Y-m-d H:i:s' );
     }
 
