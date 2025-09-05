@@ -71,6 +71,10 @@ class AdminPages {
         add_action( 'admin_menu', [ $this, 'addAdminPages' ] );
         add_action( 'admin_init', [ $this, 'handleActions' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
+        
+        // Register AJAX handlers
+        add_action( 'wp_ajax_file_integrity_start_scan', [ $this, 'ajaxStartScan' ] );
+        add_action( 'wp_ajax_file_integrity_check_progress', [ $this, 'ajaxCheckProgress' ] );
     }
 
     /**
@@ -347,5 +351,92 @@ class AdminPages {
     public function renderSchedulesPage(): void {
         $scheduler_service = $this->schedulerService;
         include plugin_dir_path( dirname( __DIR__ ) ) . 'views/admin/schedules.php';
+    }
+
+    /**
+     * AJAX handler for starting a scan
+     */
+    public function ajaxStartScan(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        try {
+            // Start the scan
+            $scan_result = $this->integrityService->runScan( 'manual' );
+            
+            if ( $scan_result && isset( $scan_result['scan_id'] ) ) {
+                wp_send_json_success( [
+                    'scan_id' => $scan_result['scan_id'],
+                    'message' => 'Scan started successfully'
+                ] );
+            } else {
+                wp_send_json_error( 'Failed to start scan' );
+            }
+        } catch ( \Exception $e ) {
+            wp_send_json_error( 'Error: ' . $e->getMessage() );
+        }
+    }
+
+    /**
+     * AJAX handler for checking scan progress
+     */
+    public function ajaxCheckProgress(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $scan_id = isset( $_POST['scan_id'] ) ? intval( $_POST['scan_id'] ) : 0;
+        
+        if ( ! $scan_id ) {
+            wp_send_json_error( 'Invalid scan ID' );
+        }
+        
+        try {
+            // Get scan progress
+            $scan = $this->scanResultsRepository->get( $scan_id );
+            
+            if ( ! $scan ) {
+                wp_send_json_error( 'Scan not found' );
+            }
+            
+            $response = [
+                'status' => $scan->status,
+                'progress' => 100, // Since scans run synchronously, they're either complete or failed
+                'message' => ''
+            ];
+            
+            if ( $scan->status === 'completed' ) {
+                $response['message'] = 'Scan completed successfully';
+                $response['stats'] = [
+                    'total_files' => $scan->total_files,
+                    'changed_files' => $scan->changed_files,
+                    'new_files' => $scan->new_files,
+                    'deleted_files' => $scan->deleted_files
+                ];
+            } elseif ( $scan->status === 'failed' ) {
+                $response['message'] = 'Scan failed: ' . ( $scan->notes ?: 'Unknown error' );
+            } else {
+                $response['message'] = 'Scan in progress...';
+                $response['progress'] = 50; // Approximate progress
+            }
+            
+            wp_send_json_success( $response );
+            
+        } catch ( \Exception $e ) {
+            wp_send_json_error( 'Error: ' . $e->getMessage() );
+        }
     }
 }
