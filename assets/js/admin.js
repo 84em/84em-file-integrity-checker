@@ -179,11 +179,6 @@
             // Reset scan button
             const button = $('.start-scan-btn');
             this.resetScanButton(button, 'Run Scan Now');
-            
-            // Refresh page after a delay to show updated data
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
         },
 
         // Display scan results
