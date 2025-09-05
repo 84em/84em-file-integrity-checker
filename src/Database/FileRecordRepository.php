@@ -36,6 +36,7 @@ class FileRecordRepository {
         $defaults = [
             'status' => 'unchanged',
             'previous_checksum' => null,
+            'diff_content' => null,
         ];
 
         $data = wp_parse_args( $data, $defaults );
@@ -50,6 +51,7 @@ class FileRecordRepository {
                 '%s', // checksum
                 '%s', // status
                 '%s', // previous_checksum
+                '%s', // diff_content
                 '%s', // last_modified
             ]
         );
@@ -81,13 +83,14 @@ class FileRecordRepository {
             $values[] = $record['checksum'];
             $values[] = $record['status'] ?? 'unchanged';
             $values[] = $record['previous_checksum'] ?? null;
+            $values[] = $record['diff_content'] ?? null;
             $values[] = $record['last_modified'];
             
-            $placeholders[] = '(%d, %s, %d, %s, %s, %s, %s)';
+            $placeholders[] = '(%d, %s, %d, %s, %s, %s, %s, %s)';
         }
 
         $sql = "INSERT INTO $table_name 
-                (scan_result_id, file_path, file_size, checksum, status, previous_checksum, last_modified) 
+                (scan_result_id, file_path, file_size, checksum, status, previous_checksum, diff_content, last_modified) 
                 VALUES " . implode( ', ', $placeholders );
 
         $result = $wpdb->query( $wpdb->prepare( $sql, $values ) );

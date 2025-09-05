@@ -68,6 +68,7 @@ class DatabaseManager {
             checksum varchar(64) NOT NULL,
             status varchar(20) NOT NULL DEFAULT 'unchanged',
             previous_checksum varchar(64) DEFAULT NULL,
+            diff_content LONGTEXT DEFAULT NULL,
             last_modified datetime NOT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -113,7 +114,7 @@ class DatabaseManager {
         dbDelta( $scan_schedules_sql );
 
         // Set database version
-        update_option( 'eightyfourem_file_integrity_db_version', '1.2.0' );
+        update_option( 'eightyfourem_file_integrity_db_version', '1.3.0' );
     }
 
     /**

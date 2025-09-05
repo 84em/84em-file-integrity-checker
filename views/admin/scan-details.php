@@ -209,6 +209,15 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                         Was: <?php echo esc_html( substr( $file->previous_checksum, 0, 16 ) ); ?>...
                                     </div>
                                 <?php endif; ?>
+                                <?php if ( ! empty( $file->diff_content ) && $file->status === 'changed' ): ?>
+                                    <button type="button" 
+                                            class="button button-small view-diff-btn" 
+                                            data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
+                                            data-diff="<?php echo esc_attr( $file->diff_content ); ?>"
+                                            style="margin-top: 5px;">
+                                        <span class="dashicons dashicons-visibility"></span> View Changes
+                                    </button>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="status-badge status-<?php echo esc_attr( $file->status ); ?>">
@@ -280,3 +289,205 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
     </div>
 
 </div>
+
+<!-- Diff Modal HTML -->
+<div id="diff-modal" class="fic-diff-modal" style="display: none;">
+    <div class="fic-diff-modal-overlay"></div>
+    <div class="fic-diff-modal-content">
+        <div class="fic-diff-modal-header">
+            <h3 id="diff-modal-title">File Changes</h3>
+            <button type="button" class="fic-diff-modal-close">
+                <span class="dashicons dashicons-no-alt"></span>
+            </button>
+        </div>
+        <div class="fic-diff-modal-body">
+            <div id="diff-content"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.fic-diff-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100000;
+}
+
+.fic-diff-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.fic-diff-modal-content {
+    position: relative;
+    background: white;
+    max-width: 90%;
+    max-height: 80%;
+    margin: 5% auto;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+.fic-diff-modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fic-diff-modal-header h3 {
+    margin: 0;
+}
+
+.fic-diff-modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 20px;
+    color: #666;
+}
+
+.fic-diff-modal-close:hover {
+    color: #000;
+}
+
+.fic-diff-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex-grow: 1;
+}
+
+.diff-info {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+
+.diff-preview {
+    font-family: monospace;
+    background: #f8f8f8;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.diff-section {
+    margin: 15px 0;
+}
+
+.diff-section h4 {
+    margin: 10px 0 5px;
+    color: #333;
+}
+</style>
+
+<script>
+jQuery(document).ready(function($) {
+    // Handle view diff button clicks
+    $('.view-diff-btn').on('click', function() {
+        var filePath = $(this).data('file-path');
+        var diffData = $(this).data('diff');
+        
+        // Parse diff data if it's JSON
+        try {
+            var diff = typeof diffData === 'string' ? JSON.parse(diffData) : diffData;
+            showDiffModal(filePath, diff);
+        } catch (e) {
+            // If not JSON, show as plain text
+            showDiffModal(filePath, diffData);
+        }
+    });
+    
+    // Function to show diff modal
+    function showDiffModal(filePath, diffData) {
+        $('#diff-modal-title').text('Changes in: ' + filePath);
+        
+        var content = '';
+        
+        if (typeof diffData === 'object' && diffData !== null) {
+            // Structured diff data
+            content += '<div class="diff-info">';
+            content += '<strong>Timestamp:</strong> ' + (diffData.timestamp || 'Unknown') + '<br>';
+            content += '<strong>File Size:</strong> ' + formatBytes(diffData.file_size || 0) + '<br>';
+            content += '<strong>Lines:</strong> ' + (diffData.lines_count || 'Unknown') + '<br>';
+            
+            if (diffData.checksum_changed) {
+                content += '<strong>Checksum Changed:</strong><br>';
+                content += '<span style="color: #d00;">- From: ' + (diffData.checksum_changed.from || 'N/A').substring(0, 32) + '...</span><br>';
+                content += '<span style="color: #0a0;">+ To: ' + (diffData.checksum_changed.to || 'N/A').substring(0, 32) + '...</span>';
+            }
+            content += '</div>';
+            
+            if (diffData.preview) {
+                content += '<div class="diff-section">';
+                content += '<h4>File Preview (First 5 lines):</h4>';
+                content += '<div class="diff-preview">';
+                if (diffData.preview.first_lines) {
+                    content += escapeHtml(diffData.preview.first_lines.join('\n'));
+                }
+                content += '</div>';
+                
+                if (diffData.preview.last_lines && diffData.preview.total_lines > 10) {
+                    content += '<h4>Last 5 lines:</h4>';
+                    content += '<div class="diff-preview">';
+                    content += escapeHtml(diffData.preview.last_lines.join('\n'));
+                    content += '</div>';
+                }
+                content += '</div>';
+            }
+        } else {
+            // Plain text diff
+            content = '<div class="diff-preview">' + escapeHtml(String(diffData)) + '</div>';
+        }
+        
+        $('#diff-content').html(content);
+        $('#diff-modal').fadeIn(200);
+    }
+    
+    // Close modal handlers
+    $('.fic-diff-modal-close, .fic-diff-modal-overlay').on('click', function() {
+        $('#diff-modal').fadeOut(200);
+    });
+    
+    // ESC key to close
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $('#diff-modal').is(':visible')) {
+            $('#diff-modal').fadeOut(200);
+        }
+    });
+    
+    // Helper functions
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        var k = 1024;
+        var sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function escapeHtml(text) {
+        var map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+});
+</script>

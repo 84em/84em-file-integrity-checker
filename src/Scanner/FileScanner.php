@@ -121,6 +121,12 @@ class FileScanner {
                     // File has changed
                     $file_data['status'] = 'changed';
                     $file_data['previous_checksum'] = $previous_record->checksum;
+                    
+                    // Generate diff for text files
+                    $file_data['diff_content'] = $this->generateFileDiff( 
+                        $file_path, 
+                        $previous_record->checksum 
+                    );
                 } else {
                     // File is unchanged
                     $file_data['status'] = 'unchanged';
@@ -150,6 +156,59 @@ class FileScanner {
         }
 
         return $updated_files;
+    }
+
+    /**
+     * Generate diff content for a changed file
+     *
+     * @param string $file_path Path to the file
+     * @param string $previous_checksum Previous checksum to compare
+     * @return string|null Diff content or null if unable to generate
+     */
+    private function generateFileDiff( string $file_path, string $previous_checksum ): ?string {
+        // Only generate diffs for text files
+        $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
+        $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
+        
+        if ( ! in_array( $extension, $text_extensions, true ) ) {
+            return null;
+        }
+        
+        // Check if file is too large for diff (limit to 1MB)
+        if ( filesize( $file_path ) > 1048576 ) {
+            return 'File too large for diff generation';
+        }
+        
+        // Get current content
+        $current_content = file_get_contents( $file_path );
+        if ( $current_content === false ) {
+            return null;
+        }
+        
+        // Try to get previous content from most recent backup or previous scan
+        // For now, we'll store a simple summary of changes
+        // In a production environment, you might want to store full file snapshots
+        // or integrate with a version control system
+        
+        $diff_summary = [
+            'timestamp' => current_time( 'mysql' ),
+            'checksum_changed' => [
+                'from' => $previous_checksum,
+                'to' => hash_file( 'sha256', $file_path )
+            ],
+            'file_size' => filesize( $file_path ),
+            'lines_count' => substr_count( $current_content, "\n" ) + 1,
+        ];
+        
+        // Store first/last few lines for context
+        $lines = explode( "\n", $current_content );
+        $diff_summary['preview'] = [
+            'first_lines' => array_slice( $lines, 0, 5 ),
+            'last_lines' => array_slice( $lines, -5 ),
+            'total_lines' => count( $lines )
+        ];
+        
+        return json_encode( $diff_summary );
     }
 
     /**
