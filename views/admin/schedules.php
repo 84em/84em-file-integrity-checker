@@ -152,7 +152,25 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     </th>
                     <td>
                         <input type="time" id="time" name="time" value="02:00">
-                        <p class="description">Time of day to run the scan (in your timezone: <?php echo esc_html( wp_timezone_string() ); ?>)</p>
+                        <?php 
+                        $display_tz = wp_timezone_string();
+                        // Handle WordPress timezone quirks
+                        if ( $display_tz === 'UTC' || strpos( $display_tz, '+' ) === 0 || strpos( $display_tz, '-' ) === 0 ) {
+                            $offset = get_option( 'gmt_offset' );
+                            if ( $offset ) {
+                                $temp_tz = timezone_name_from_abbr( '', $offset * 3600, date( 'I' ) );
+                                if ( $temp_tz ) {
+                                    $display_tz = $temp_tz;
+                                } else {
+                                    $display_tz = 'UTC' . ( $offset >= 0 ? '+' : '' ) . $offset;
+                                }
+                            }
+                        }
+                        ?>
+                        <p class="description">Time of day to run the scan (Timezone: <?php echo esc_html( $display_tz ); ?>)</p>
+                        <?php if ( wp_timezone_string() === 'UTC' || strpos( wp_timezone_string(), '+' ) === 0 || strpos( wp_timezone_string(), '-' ) === 0 ) : ?>
+                            <p class="description" style="color: #d63638;"><strong>Note:</strong> Your WordPress site is using a UTC offset instead of a named timezone. For best results, set a proper timezone in Settings → General.</p>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 
@@ -279,8 +297,22 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <td>
                                 <?php
                                 if ( $schedule->next_run && $schedule->is_active ) {
+                                    // Get the site timezone, handling WordPress quirks
+                                    $site_timezone = wp_timezone_string();
+                                    
+                                    // If WordPress returns UTC or an offset, use the system timezone
+                                    if ( $site_timezone === 'UTC' || strpos( $site_timezone, '+' ) === 0 || strpos( $site_timezone, '-' ) === 0 ) {
+                                        $offset = get_option( 'gmt_offset' );
+                                        if ( $offset ) {
+                                            $site_timezone = timezone_name_from_abbr( '', $offset * 3600, date( 'I' ) );
+                                            if ( ! $site_timezone ) {
+                                                $site_timezone = date_default_timezone_get();
+                                            }
+                                        }
+                                    }
+                                    
                                     // Get timezone-aware DateTime objects
-                                    $tz = new DateTimeZone( wp_timezone_string() );
+                                    $tz = new DateTimeZone( $site_timezone );
                                     $now = new DateTime( 'now', $tz );
                                     $next = new DateTime( $schedule->next_run, $tz );
                                     

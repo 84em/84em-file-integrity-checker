@@ -254,10 +254,28 @@ class ScanSchedulesRepository {
      * Calculate next run time based on schedule configuration
      *
      * @param array $schedule Schedule data
-     * @return string Next run datetime in MySQL format (in site timezone)
+     * @return string Next run datetime in MySQL format
      */
     private function calculateNextRun( array $schedule ): string {
-        $timezone = new \DateTimeZone( $schedule['timezone'] ?? wp_timezone_string() );
+        // WordPress stores times in the site's timezone by default
+        // We need to work in the site's timezone throughout
+        $site_timezone = wp_timezone_string();
+        
+        // If WordPress returns UTC or an offset, use the system timezone
+        if ( $site_timezone === 'UTC' || strpos( $site_timezone, '+' ) === 0 || strpos( $site_timezone, '-' ) === 0 ) {
+            // Try to get a real timezone from the offset
+            $offset = get_option( 'gmt_offset' );
+            if ( $offset ) {
+                // This is a workaround - ideally the site should set a proper timezone string
+                $site_timezone = timezone_name_from_abbr( '', $offset * 3600, date( 'I' ) );
+                if ( ! $site_timezone ) {
+                    // Fall back to system timezone
+                    $site_timezone = date_default_timezone_get();
+                }
+            }
+        }
+        
+        $timezone = new \DateTimeZone( $site_timezone );
         $now = new \DateTime( 'now', $timezone );
         $next = clone $now;
 
