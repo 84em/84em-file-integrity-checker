@@ -188,24 +188,31 @@
 
         // Display scan results
         displayScanResults: function(data) {
+            // Extract stats from nested object or use direct properties
+            const stats = data.stats || data;
+            const total_files = stats.total_files || 0;
+            const changed_files = stats.changed_files || 0;
+            const new_files = stats.new_files || 0;
+            const deleted_files = stats.deleted_files || 0;
+            
             const resultsHtml = `
                 <div class="file-integrity-results">
                     <h3>Scan Results</h3>
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <span class="stat-number">${this.formatNumber(data.total_files)}</span>
+                            <span class="stat-number">${this.formatNumber(total_files)}</span>
                             <span class="stat-label">Total Files</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number ${data.changed_files > 0 ? 'warning' : 'success'}">${this.formatNumber(data.changed_files)}</span>
+                            <span class="stat-number ${changed_files > 0 ? 'warning' : 'success'}">${this.formatNumber(changed_files)}</span>
                             <span class="stat-label">Changed</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number ${data.new_files > 0 ? 'warning' : ''}">${this.formatNumber(data.new_files)}</span>
+                            <span class="stat-number ${new_files > 0 ? 'warning' : ''}">${this.formatNumber(new_files)}</span>
                             <span class="stat-label">New</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-number ${data.deleted_files > 0 ? 'error' : ''}">${this.formatNumber(data.deleted_files)}</span>
+                            <span class="stat-number ${deleted_files > 0 ? 'error' : ''}">${this.formatNumber(deleted_files)}</span>
                             <span class="stat-label">Deleted</span>
                         </div>
                     </div>

@@ -414,6 +414,7 @@ class AdminPages {
             
             $response = [
                 'status' => $scan->status,
+                'scan_id' => $scan_id,
                 'progress' => 100, // Since scans run synchronously, they're either complete or failed
                 'message' => ''
             ];
