@@ -392,12 +392,12 @@ class SchedulerService {
         $schedule_id = $args['schedule_id'] ?? null;
         
         try {
-            // Run the integrity scan
-            $scan_result = $this->integrityService->runScan( $scan_type );
+            // Run the integrity scan, passing schedule_id if available
+            $scan_result = $this->integrityService->runScan( $scan_type, null, $schedule_id );
             
             if ( $scan_result && $scan_result['status'] === 'completed' ) {
                 // Log successful scan
-                error_log( "File integrity scan completed. ID: {$scan_result['scan_id']}" );
+                error_log( "File integrity scan completed. ID: {$scan_result['scan_id']}, Schedule ID: " . ($schedule_id ?: 'none') );
                 
                 // Send notification if there are changes
                 if ( $scan_result['changed_files'] > 0 || $scan_result['new_files'] > 0 || $scan_result['deleted_files'] > 0 ) {

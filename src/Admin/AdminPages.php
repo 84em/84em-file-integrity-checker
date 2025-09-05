@@ -10,6 +10,7 @@ namespace EightyFourEM\FileIntegrityChecker\Admin;
 use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
+use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 
 /**
  * Manages admin pages for the plugin
@@ -37,20 +38,30 @@ class AdminPages {
     private SchedulerService $schedulerService;
 
     /**
+     * Scan results repository
+     *
+     * @var ScanResultsRepository
+     */
+    private ScanResultsRepository $scanResultsRepository;
+
+    /**
      * Constructor
      *
-     * @param IntegrityService $integrityService Integrity service
-     * @param SettingsService  $settingsService  Settings service
-     * @param SchedulerService $schedulerService Scheduler service
+     * @param IntegrityService      $integrityService      Integrity service
+     * @param SettingsService       $settingsService       Settings service
+     * @param SchedulerService      $schedulerService      Scheduler service
+     * @param ScanResultsRepository $scanResultsRepository Scan results repository
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
-        SchedulerService $schedulerService
+        SchedulerService $schedulerService,
+        ScanResultsRepository $scanResultsRepository
     ) {
         $this->integrityService = $integrityService;
         $this->settingsService  = $settingsService;
         $this->schedulerService = $schedulerService;
+        $this->scanResultsRepository = $scanResultsRepository;
     }
 
     /**
@@ -213,7 +224,7 @@ class AdminPages {
         }
 
         // Show list of all scans
-        $results = $this->integrityService->scanResultsRepository->getPaginated( $page, $per_page );
+        $results = $this->scanResultsRepository->getPaginated( $page, $per_page );
         
         include EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH . 'views/admin/results.php';
     }

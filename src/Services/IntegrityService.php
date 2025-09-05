@@ -70,17 +70,24 @@ class IntegrityService {
      * @param callable|null $progress_callback Progress callback function
      * @return array|false Scan result array or false on failure
      */
-    public function runScan( string $scan_type = 'manual', callable $progress_callback = null ): array|false {
+    public function runScan( string $scan_type = 'manual', callable $progress_callback = null, ?int $schedule_id = null ): array|false {
         $start_time = time();
         $start_memory = memory_get_usage();
 
         // Create initial scan result record
-        $scan_id = $this->scanResultsRepository->create( [
+        $scan_data = [
             'scan_date' => current_time( 'mysql' ),
             'status' => 'running',
             'scan_type' => $scan_type,
             'notes' => "Scan started at " . current_time( 'mysql' ),
-        ] );
+        ];
+        
+        // Add schedule_id if provided
+        if ( $schedule_id !== null ) {
+            $scan_data['schedule_id'] = $schedule_id;
+        }
+        
+        $scan_id = $this->scanResultsRepository->create( $scan_data );
 
         if ( ! $scan_id ) {
             return false;

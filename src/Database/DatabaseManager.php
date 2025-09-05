@@ -47,13 +47,15 @@ class DatabaseManager {
             scan_duration int(11) UNSIGNED NOT NULL DEFAULT 0,
             memory_usage bigint(20) UNSIGNED NOT NULL DEFAULT 0,
             scan_type varchar(20) NOT NULL DEFAULT 'manual',
+            schedule_id bigint(20) UNSIGNED DEFAULT NULL,
             notes text,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY scan_date (scan_date),
             KEY status (status),
-            KEY scan_type (scan_type)
+            KEY scan_type (scan_type),
+            KEY schedule_id (schedule_id)
         ) $charset_collate;";
 
         // File records table
@@ -111,7 +113,7 @@ class DatabaseManager {
         dbDelta( $scan_schedules_sql );
 
         // Set database version
-        update_option( 'eightyfourem_file_integrity_db_version', '1.1.0' );
+        update_option( 'eightyfourem_file_integrity_db_version', '1.2.0' );
     }
 
     /**
@@ -120,7 +122,7 @@ class DatabaseManager {
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
         
-        if ( version_compare( $installed_version, '1.1.0', '<' ) ) {
+        if ( version_compare( $installed_version, '1.2.0', '<' ) ) {
             $this->createTables();
         }
     }

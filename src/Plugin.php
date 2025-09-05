@@ -181,7 +181,8 @@ class Plugin {
             return new AdminPages(
                 $container->get( IntegrityService::class ),
                 $container->get( SettingsService::class ),
-                $container->get( SchedulerService::class )
+                $container->get( SchedulerService::class ),
+                $container->get( ScanResultsRepository::class )
             );
         } );
 
