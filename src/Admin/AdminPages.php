@@ -75,6 +75,7 @@ class AdminPages {
         // Register AJAX handlers
         add_action( 'wp_ajax_file_integrity_start_scan', [ $this, 'ajaxStartScan' ] );
         add_action( 'wp_ajax_file_integrity_check_progress', [ $this, 'ajaxCheckProgress' ] );
+        add_action( 'wp_ajax_file_integrity_cleanup_old_scans', [ $this, 'ajaxCleanupOldScans' ] );
     }
 
     /**
@@ -343,6 +344,32 @@ class AdminPages {
             'admin.php?page=file-integrity-checker&message=cleanup_complete&deleted=' . $cleanup_stats['deleted_scans'] 
         ) );
         exit;
+    }
+
+    /**
+     * AJAX handler for cleanup old scans
+     */
+    public function ajaxCleanupOldScans(): void {
+        // Verify nonce
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'file_integrity_action' ) ) {
+            wp_send_json_error( 'Invalid nonce' );
+        }
+
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+
+        try {
+            $cleanup_stats = $this->integrityService->cleanupOldScans();
+            
+            wp_send_json_success( [
+                'deleted_scans' => $cleanup_stats['deleted_scans'],
+                'retention_period' => $cleanup_stats['retention_period']
+            ] );
+        } catch ( \Exception $e ) {
+            wp_send_json_error( 'Failed to cleanup old scans: ' . $e->getMessage() );
+        }
     }
 
     /**
