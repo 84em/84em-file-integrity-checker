@@ -263,7 +263,10 @@ class AdminPages {
         
         if ( isset( $_GET['scan_id'] ) ) {
             // Show individual scan details
-            $scan_id = (int) $_GET['scan_id'];
+            $scan_id = filter_var( $_GET['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] );
+            if ( $scan_id === false ) {
+                wp_die( 'Invalid scan ID' );
+            }
             $scan_summary = $this->integrityService->getScanSummary( $scan_id );
             
             if ( $scan_summary ) {
@@ -349,7 +352,10 @@ class AdminPages {
         $settings['notification_enabled'] = isset( $_POST['notification_enabled'] );
         
         if ( isset( $_POST['notification_email'] ) && ! empty( $_POST['notification_email'] ) ) {
-            $settings['notification_email'] = sanitize_email( $_POST['notification_email'] );
+            $emails = Security::validate_emails( $_POST['notification_email'] );
+            if ( ! empty( $emails ) ) {
+                $settings['notification_email'] = implode( ', ', $emails );
+            }
         }
         
         // Slack settings
@@ -451,9 +457,9 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $scan_id = isset( $_POST['scan_id'] ) ? intval( $_POST['scan_id'] ) : 0;
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
         
-        if ( ! $scan_id ) {
+        if ( $scan_id === false ) {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
@@ -491,9 +497,9 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $scan_id = isset( $_POST['scan_id'] ) ? intval( $_POST['scan_id'] ) : 0;
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
         
-        if ( ! $scan_id ) {
+        if ( $scan_id === false ) {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
@@ -533,11 +539,14 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $webhook_url = isset( $_POST['webhook_url'] ) ? sanitize_url( $_POST['webhook_url'] ) : '';
+        $webhook_url = isset( $_POST['webhook_url'] ) ? $_POST['webhook_url'] : '';
         
-        if ( empty( $webhook_url ) || strpos( $webhook_url, 'https://hooks.slack.com/' ) !== 0 ) {
-            wp_send_json_error( 'Invalid Slack webhook URL' );
+        // Use Security utility for proper webhook validation
+        $validated_url = Security::validate_webhook_url( $webhook_url, 'slack' );
+        if ( ! $validated_url ) {
+            wp_send_json_error( 'Invalid Slack webhook URL format' );
         }
+        $webhook_url = $validated_url;
         
         // Send test message
         $message = [
@@ -700,9 +709,9 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $scan_id = isset( $_POST['scan_id'] ) ? intval( $_POST['scan_id'] ) : 0;
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
         
-        if ( ! $scan_id ) {
+        if ( $scan_id === false ) {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
@@ -762,9 +771,9 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $scan_id = isset( $_POST['scan_id'] ) ? (int) $_POST['scan_id'] : 0;
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
         
-        if ( ! $scan_id ) {
+        if ( $scan_id === false ) {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
@@ -815,9 +824,9 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $scan_id = isset( $_POST['scan_id'] ) ? (int) $_POST['scan_id'] : 0;
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
         
-        if ( ! $scan_id ) {
+        if ( $scan_id === false ) {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
@@ -864,10 +873,10 @@ class AdminPages {
             wp_send_json_error( 'Insufficient permissions' );
         }
         
-        $file_path = isset( $_POST['file_path'] ) ? sanitize_text_field( $_POST['file_path'] ) : '';
-        $scan_id = isset( $_POST['scan_id'] ) ? (int) $_POST['scan_id'] : 0;
+        $file_path = isset( $_POST['file_path'] ) ? Security::sanitize_file_path( $_POST['file_path'] ) : false;
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
         
-        if ( empty( $file_path ) || ! $scan_id ) {
+        if ( ! $file_path || $scan_id === false ) {
             wp_send_json_error( 'Invalid parameters' );
         }
         
