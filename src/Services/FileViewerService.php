@@ -159,21 +159,40 @@ class FileViewerService {
         // Validate path is within WordPress installation
         $wp_root = rtrim( ABSPATH, '/' );
         
-        // Handle both absolute and relative paths
+        // Normalize and validate the path BEFORE any file operations
+        // Remove any directory traversal attempts
+        $file_path = str_replace( '..', '', $file_path );
+        $file_path = str_replace( '//', '/', $file_path );
+        
+        // Handle both absolute and relative paths securely
         if ( strpos( $file_path, $wp_root ) === 0 ) {
-            // Path is already absolute
+            // Path appears to be absolute - verify it's real
             $full_path = $file_path;
         } else {
             // Path is relative to WordPress root
-            $full_path = $wp_root . '/' . ltrim( $file_path, '/' );
+            // Remove leading slashes and dots to prevent traversal
+            $file_path = ltrim( $file_path, './' );
+            $full_path = $wp_root . '/' . $file_path;
         }
         
+        // Get the real path and validate it's within WordPress root
+        // This resolves any symlinks and validates the actual location
         $real_path = realpath( $full_path );
         
-        if ( ! $real_path || strpos( $real_path, $wp_root ) !== 0 ) {
+        // Critical security check: ensure resolved path is within WordPress installation
+        if ( $real_path === false ) {
             return [
                 'allowed' => false,
-                'reason' => 'Invalid file path'
+                'reason' => 'File path does not exist'
+            ];
+        }
+        
+        // Use realpath on wp_root too for accurate comparison
+        $real_wp_root = realpath( $wp_root );
+        if ( strpos( $real_path, $real_wp_root ) !== 0 ) {
+            return [
+                'allowed' => false,
+                'reason' => 'File path is outside WordPress installation'
             ];
         }
 
