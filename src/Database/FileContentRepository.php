@@ -7,14 +7,29 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Database;
 
+use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
+
 /**
  * Repository for managing file content storage
  */
 class FileContentRepository {
     /**
+     * Settings service
+     *
+     * @var SettingsService
+     */
+    private SettingsService $settings;
+    /**
      * Table name
      */
     private const TABLE_NAME = 'eightyfourem_integrity_file_content';
+
+    /**
+     * Constructor
+     */
+    public function __construct() {
+        $this->settings = new SettingsService();
+    }
 
     /**
      * Store file content
@@ -54,8 +69,9 @@ class FileContentRepository {
             [ '%s', '%s', '%d' ]
         );
 
-        // Clean up old entries (keep last 50000)
-        $this->cleanup( 50000 );
+        // Clean up old entries based on configured limit
+        $retention_limit = $this->settings->getContentRetentionLimit();
+        $this->cleanup( $retention_limit );
 
         return $result !== false;
     }
@@ -116,10 +132,14 @@ class FileContentRepository {
     /**
      * Clean up old entries to prevent unlimited growth
      *
-     * @param int $keep Number of entries to keep
+     * @param int $keep Number of entries to keep (optional, uses setting if not provided)
      * @return int Number of deleted entries
      */
-    public function cleanup( int $keep = 50000 ): int {
+    public function cleanup( int $keep = 0 ): int {
+        // Use configured limit if not provided
+        if ( $keep === 0 ) {
+            $keep = $this->settings->getContentRetentionLimit();
+        }
         global $wpdb;
 
         // Get total count

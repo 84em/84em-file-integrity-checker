@@ -333,6 +333,11 @@ class AdminPages {
             $settings['retention_period'] = (int) $_POST['retention_period'];
         }
 
+        // Content retention limit
+        if ( isset( $_POST['content_retention_limit'] ) ) {
+            $settings['content_retention_limit'] = (int) $_POST['content_retention_limit'];
+        }
+
         // Auto schedule
         $settings['auto_schedule'] = isset( $_POST['auto_schedule'] );
 

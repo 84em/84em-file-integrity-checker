@@ -271,6 +271,31 @@ class SettingsService {
     }
 
     /**
+     * Get content retention limit
+     *
+     * @return int Number of file content entries to retain
+     */
+    public function getContentRetentionLimit(): int {
+        return (int) get_option( self::OPTION_PREFIX . 'content_retention_limit', 50000 );
+    }
+
+    /**
+     * Set content retention limit
+     *
+     * @param int $limit Number of entries to retain
+     * @return bool True on success
+     */
+    public function setContentRetentionLimit( int $limit ): bool {
+        // Minimum of 1000, maximum of 500000
+        if ( $limit < 1000 || $limit > 500000 ) {
+            return false;
+        }
+        
+        update_option( self::OPTION_PREFIX . 'content_retention_limit', $limit );
+        return true;
+    }
+
+    /**
      * Get all settings as an array
      *
      * @return array All plugin settings
@@ -287,6 +312,7 @@ class SettingsService {
             'slack_webhook_url' => $this->getSlackWebhookUrl(),
             'auto_schedule' => $this->isAutoScheduleEnabled(),
             'retention_period' => $this->getRetentionPeriod(),
+            'content_retention_limit' => $this->getContentRetentionLimit(),
         ];
     }
 
@@ -331,6 +357,9 @@ class SettingsService {
                 case 'retention_period':
                     $results[ $key ] = $this->setRetentionPeriod( $value );
                     break;
+                case 'content_retention_limit':
+                    $results[ $key ] = $this->setContentRetentionLimit( $value );
+                    break;
                 default:
                     $results[ $key ] = false;
             }
@@ -354,6 +383,7 @@ class SettingsService {
             'notification_email',
             'auto_schedule',
             'retention_period',
+            'content_retention_limit',
         ];
 
         foreach ( $options as $option ) {

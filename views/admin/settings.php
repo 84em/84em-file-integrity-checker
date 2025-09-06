@@ -251,6 +251,26 @@ if ( ! defined( 'ABSPATH' ) ) {
                             </p>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="content_retention_limit">File Content History Limit</label>
+                        </th>
+                        <td>
+                            <input type="number" 
+                                   name="content_retention_limit" 
+                                   id="content_retention_limit" 
+                                   value="<?php echo esc_attr( $settings['content_retention_limit'] ?? 50000 ); ?>" 
+                                   min="1000" 
+                                   max="500000" 
+                                   step="1000" />
+                            entries
+                            <p class="description">
+                                Maximum number of file content versions to store for diff generation.
+                                Higher values allow more historical comparisons but use more database space.
+                                Recommended: 50,000 entries.
+                            </p>
+                        </td>
+                    </tr>
                 </table>
             </div>
         </div>
