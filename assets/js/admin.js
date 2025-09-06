@@ -724,7 +724,7 @@
                                 <pre class="file-content language-${data.language}"><code>${this.escapeHtml(data.content)}</code></pre>
                             </div>
                         </div>
-                        <div class="modal-footer">
+                        <div class="fic-modal-footer">
                             <button type="button" class="button modal-close">Close</button>
                         </div>
                     </div>
@@ -856,12 +856,6 @@
                             line-height: 1.5;
                             white-space: pre;
                             overflow-x: auto;
-                        }
-                        
-                        .file-integrity-modal .modal-footer {
-                            padding: 15px 20px;
-                            border-top: 1px solid #ddd;
-                            text-align: right;
                         }
                         
                         @keyframes fadeIn {
