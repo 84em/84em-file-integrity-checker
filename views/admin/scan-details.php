@@ -368,6 +368,9 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
         <div class="fic-diff-modal-body">
             <div id="diff-content"></div>
         </div>
+        <div class="fic-modal-footer">
+            <button type="button" class="button fic-diff-modal-close-btn">Close</button>
+        </div>
     </div>
 </div>
 
@@ -600,7 +603,7 @@ jQuery(document).ready(function($) {
     }
     
     // Close modal handlers
-    $('.fic-diff-modal-close, .fic-diff-modal-overlay').on('click', function() {
+    $('.fic-diff-modal-close, .fic-diff-modal-close-btn, .fic-diff-modal-overlay').on('click', function() {
         $('#diff-modal').fadeOut(200);
     });
     
