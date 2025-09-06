@@ -274,6 +274,15 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                         <span class="dashicons dashicons-visibility"></span> View Changes
                                     </button>
                                 <?php endif; ?>
+                                <?php if ( $file->status !== 'deleted' ): ?>
+                                    <button type="button" 
+                                            class="button button-small view-file-btn" 
+                                            data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
+                                            data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
+                                            style="margin-top: 5px; margin-left: 5px;">
+                                        <span class="dashicons dashicons-media-code"></span> View File
+                                    </button>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="status-badge status-<?php echo esc_attr( $file->status ); ?>">

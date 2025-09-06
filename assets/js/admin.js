@@ -45,6 +45,7 @@
             $(document).on('click', '.delete-scan-details', this.handleDeleteScanDetails.bind(this));
             $(document).on('click', '.resend-email-notification', this.handleResendEmailNotification.bind(this));
             $(document).on('click', '.resend-slack-notification', this.handleResendSlackNotification.bind(this));
+            $(document).on('click', '.view-file-btn', this.handleViewFile.bind(this));
             
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
@@ -665,6 +666,252 @@
                 this.showError('Failed to send Slack notification');
                 button.prop('disabled', false).html(originalHtml);
             });
+        },
+        
+        // Handle view file
+        handleViewFile: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.currentTarget);
+            const filePath = button.data('file-path');
+            const scanId = button.data('scan-id');
+            const originalHtml = button.html();
+            
+            button.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> Loading...');
+            
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_view_file',
+                file_path: filePath,
+                scan_id: scanId,
+                _wpnonce: fileIntegrityChecker.nonce
+            }).then((response) => {
+                button.prop('disabled', false).html(originalHtml);
+                
+                if (response.success) {
+                    this.showFileModal(response.data);
+                } else {
+                    this.showError(response.data || 'Failed to load file');
+                }
+            }).catch((error) => {
+                button.prop('disabled', false).html(originalHtml);
+                this.showError('Failed to load file: ' + error.statusText);
+            });
+        },
+        
+        // Show file content in modal
+        showFileModal: function(data) {
+            // Create modal HTML
+            const modalHtml = `
+                <div id="file-viewer-modal" class="file-integrity-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2>File Viewer</h2>
+                            <button type="button" class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="file-info">
+                                <div class="file-path"><strong>File:</strong> ${this.escapeHtml(data.file_path)}</div>
+                                <div class="file-stats">
+                                    <span><strong>Size:</strong> ${this.formatBytes(data.file_size)}</span>
+                                    <span><strong>Lines:</strong> ${data.lines}</span>
+                                    <span><strong>Language:</strong> ${data.language}</span>
+                                    ${data.redacted ? '<span class="warning"><strong>Note:</strong> Sensitive data has been redacted</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="file-content-wrapper">
+                                <pre class="file-content language-${data.language}"><code>${this.escapeHtml(data.content)}</code></pre>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="button button-primary modal-close">Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove any existing modal
+            $('#file-viewer-modal').remove();
+            
+            // Add modal to body
+            $('body').append(modalHtml);
+            
+            // Add modal styles if not already present
+            if (!$('#file-viewer-styles').length) {
+                const modalStyles = `
+                    <style id="file-viewer-styles">
+                        .file-integrity-modal {
+                            display: block;
+                            position: fixed;
+                            z-index: 100000;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            height: 100%;
+                            background-color: rgba(0,0,0,0.5);
+                            animation: fadeIn 0.3s;
+                        }
+                        
+                        .file-integrity-modal .modal-content {
+                            background-color: #fff;
+                            margin: 2% auto;
+                            border-radius: 4px;
+                            width: 90%;
+                            max-width: 1200px;
+                            max-height: 90vh;
+                            display: flex;
+                            flex-direction: column;
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+                        }
+                        
+                        .file-integrity-modal .modal-header {
+                            padding: 15px 20px;
+                            border-bottom: 1px solid #ddd;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        }
+                        
+                        .file-integrity-modal .modal-header h2 {
+                            margin: 0;
+                            font-size: 20px;
+                        }
+                        
+                        .file-integrity-modal .modal-close {
+                            background: none;
+                            border: none;
+                            font-size: 28px;
+                            cursor: pointer;
+                            color: #999;
+                            padding: 0;
+                            width: 30px;
+                            height: 30px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        
+                        .file-integrity-modal .modal-close:hover {
+                            color: #333;
+                        }
+                        
+                        .file-integrity-modal .modal-body {
+                            padding: 20px;
+                            overflow-y: auto;
+                            flex: 1;
+                        }
+                        
+                        .file-integrity-modal .file-info {
+                            background: #f5f5f5;
+                            padding: 15px;
+                            border-radius: 4px;
+                            margin-bottom: 20px;
+                        }
+                        
+                        .file-integrity-modal .file-path {
+                            font-family: monospace;
+                            margin-bottom: 10px;
+                            word-break: break-all;
+                        }
+                        
+                        .file-integrity-modal .file-stats {
+                            display: flex;
+                            gap: 20px;
+                            font-size: 13px;
+                            color: #666;
+                        }
+                        
+                        .file-integrity-modal .file-stats .warning {
+                            color: #d63638;
+                        }
+                        
+                        .file-integrity-modal .file-content-wrapper {
+                            background: #282c34;
+                            border-radius: 4px;
+                            overflow: auto;
+                            max-height: 500px;
+                        }
+                        
+                        .file-integrity-modal .file-content {
+                            margin: 0;
+                            padding: 20px;
+                            color: #abb2bf;
+                            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                            font-size: 13px;
+                            line-height: 1.5;
+                            white-space: pre;
+                            overflow-x: auto;
+                        }
+                        
+                        .file-integrity-modal .modal-footer {
+                            padding: 15px 20px;
+                            border-top: 1px solid #ddd;
+                            text-align: right;
+                        }
+                        
+                        @keyframes fadeIn {
+                            from { opacity: 0; }
+                            to { opacity: 1; }
+                        }
+                        
+                        .dashicons.spin {
+                            animation: spin 1s linear infinite;
+                        }
+                        
+                        @keyframes spin {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
+                    </style>
+                `;
+                $('head').append(modalStyles);
+            }
+            
+            // Bind close handlers
+            $('#file-viewer-modal .modal-close').on('click', function() {
+                $('#file-viewer-modal').fadeOut(300, function() {
+                    $(this).remove();
+                });
+            });
+            
+            // Close on overlay click
+            $('#file-viewer-modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                }
+            });
+            
+            // Close on ESC key
+            $(document).on('keydown.fileModal', function(e) {
+                if (e.key === 'Escape') {
+                    $('#file-viewer-modal').fadeOut(300, function() {
+                        $(this).remove();
+                    });
+                    $(document).off('keydown.fileModal');
+                }
+            });
+        },
+        
+        // Escape HTML for safe display
+        escapeHtml: function(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        },
+        
+        // Format bytes to human readable
+        formatBytes: function(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         },
         
         // Validate settings form

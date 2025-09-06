@@ -256,4 +256,26 @@ class FileRecordRepository {
 
         return $result !== false;
     }
+
+    /**
+     * Check if a file exists in a specific scan
+     *
+     * @param int    $scan_result_id Scan result ID
+     * @param string $file_path      File path
+     * @return bool True if file exists in scan, false otherwise
+     */
+    public function fileExistsInScan( int $scan_result_id, string $file_path ): bool {
+        global $wpdb;
+
+        $count = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_NAME . 
+                " WHERE scan_result_id = %d AND file_path = %s",
+                $scan_result_id,
+                $file_path
+            )
+        );
+
+        return (int) $count > 0;
+    }
 }

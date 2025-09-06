@@ -10,6 +10,7 @@ namespace EightyFourEM\FileIntegrityChecker\Admin;
 use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
+use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 
 /**
@@ -45,23 +46,33 @@ class AdminPages {
     private ScanResultsRepository $scanResultsRepository;
 
     /**
+     * File viewer service
+     *
+     * @var FileViewerService
+     */
+    private FileViewerService $fileViewerService;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
      * @param SettingsService       $settingsService       Settings service
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
+     * @param FileViewerService     $fileViewerService     File viewer service
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
         SchedulerService $schedulerService,
-        ScanResultsRepository $scanResultsRepository
+        ScanResultsRepository $scanResultsRepository,
+        FileViewerService $fileViewerService
     ) {
         $this->integrityService = $integrityService;
         $this->settingsService  = $settingsService;
         $this->schedulerService = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
+        $this->fileViewerService = $fileViewerService;
     }
 
     /**
@@ -82,6 +93,7 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_bulk_delete_scans', [ $this, 'ajaxBulkDeleteScans' ] );
         add_action( 'wp_ajax_file_integrity_resend_email', [ $this, 'ajaxResendEmailNotification' ] );
         add_action( 'wp_ajax_file_integrity_resend_slack', [ $this, 'ajaxResendSlackNotification' ] );
+        add_action( 'wp_ajax_file_integrity_view_file', [ $this, 'ajaxViewFile' ] );
     }
 
     /**
@@ -798,6 +810,37 @@ class AdminPages {
             wp_send_json_success( 'Slack notification sent successfully' );
         } else {
             wp_send_json_error( 'Failed to send Slack notification' );
+        }
+    }
+
+    /**
+     * AJAX handler for viewing file content
+     */
+    public function ajaxViewFile(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions - require admin access
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $file_path = isset( $_POST['file_path'] ) ? sanitize_text_field( $_POST['file_path'] ) : '';
+        $scan_id = isset( $_POST['scan_id'] ) ? (int) $_POST['scan_id'] : 0;
+        
+        if ( empty( $file_path ) || ! $scan_id ) {
+            wp_send_json_error( 'Invalid parameters' );
+        }
+        
+        // Get file content using the secure FileViewerService
+        $result = $this->fileViewerService->getFileContent( $file_path, $scan_id );
+        
+        if ( $result['success'] ) {
+            wp_send_json_success( $result );
+        } else {
+            wp_send_json_error( $result['error'] );
         }
     }
 }

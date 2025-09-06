@@ -19,6 +19,7 @@ use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
+use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
@@ -176,13 +177,20 @@ class Plugin {
             );
         } );
 
+        $this->container->register( FileViewerService::class, function ( $container ) {
+            return new FileViewerService(
+                $container->get( FileRecordRepository::class )
+            );
+        } );
+
         // Admin services
         $this->container->register( AdminPages::class, function ( $container ) {
             return new AdminPages(
                 $container->get( IntegrityService::class ),
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
-                $container->get( ScanResultsRepository::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( FileViewerService::class )
             );
         } );
 
