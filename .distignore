@@ -1,0 +1,82 @@
+# Files and directories to exclude from distribution ZIP
+
+# Development files
+/.git
+/.github
+/tests
+/node_modules
+/.vscode
+/.idea
+
+# Build files
+/build
+/dist
+build.sh
+.distignore
+
+# Development dependencies and configs
+composer.lock
+phpunit.xml
+phpunit.xml.dist
+patchwork.json
+.phpunit.result.cache
+phpcs.xml
+phpcs.xml.dist
+psalm.xml
+.php_cs
+.php_cs.dist
+.php-cs-fixer.dist.php
+infection.json
+infection.json.dist
+
+# Test related files
+run-tests.sh
+coverage/
+coverage.xml
+*.log
+
+# Documentation files (keep README.md)
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+
+# Git files
+.gitignore
+.gitattributes
+
+# Editor files
+.editorconfig
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# These files in vendor will be removed by build.sh anyway
+vendor/**/*.md
+vendor/**/*.txt
+vendor/**/tests
+vendor/**/Tests
+vendor/**/test
+vendor/**/Test
+vendor/**/docs
+vendor/**/examples
+vendor/**/.git
+vendor/**/.github
+vendor/**/composer.json
+!vendor/composer/
+
+# Keep the essential files
+!README.md
+!LICENSE
+!changelog.txt
+!vendor/autoload.php
+!vendor/composer/
