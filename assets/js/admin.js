@@ -706,7 +706,9 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h2>File Viewer</h2>
-                            <button type="button" class="modal-close">&times;</button>
+                            <button type="button" class="modal-close" title="Close">
+                                <span class="dashicons dashicons-no-alt"></span>
+                            </button>
                         </div>
                         <div class="modal-body">
                             <div class="file-info">
@@ -777,21 +779,35 @@
                         }
                         
                         .file-integrity-modal .modal-close {
-                            background: none;
-                            border: none;
-                            font-size: 28px;
+                            background: #f0f0f1;
+                            border: 1px solid #ddd;
+                            border-radius: 3px;
                             cursor: pointer;
-                            color: #999;
-                            padding: 0;
-                            width: 30px;
-                            height: 30px;
+                            color: #666;
+                            padding: 4px;
+                            width: 32px;
+                            height: 32px;
                             display: flex;
                             align-items: center;
                             justify-content: center;
+                            transition: all 0.2s;
                         }
                         
                         .file-integrity-modal .modal-close:hover {
+                            background: #e5e5e5;
+                            border-color: #999;
                             color: #333;
+                        }
+                        
+                        .file-integrity-modal .modal-close:focus {
+                            outline: 1px solid #2271b1;
+                            outline-offset: 1px;
+                        }
+                        
+                        .file-integrity-modal .modal-close .dashicons {
+                            font-size: 20px;
+                            width: 20px;
+                            height: 20px;
                         }
                         
                         .file-integrity-modal .modal-body {
