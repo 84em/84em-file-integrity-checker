@@ -12,6 +12,7 @@ use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
+use EightyFourEM\FileIntegrityChecker\Utils\Security;
 
 /**
  * Manages admin pages for the plugin
@@ -153,15 +154,20 @@ class AdminPages {
      * Handle admin actions
      */
     public function handleActions(): void {
-        if ( ! isset( $_POST['action'] ) || ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'file_integrity_action' ) ) {
+        if ( ! isset( $_POST['action'] ) || ! isset( $_POST['_wpnonce'] ) ) {
+            return;
+        }
+        
+        $action = sanitize_text_field( $_POST['action'] );
+        
+        // Verify action-specific nonce
+        if ( ! Security::verify_nonce( $_POST['_wpnonce'], 'admin_action_' . $action ) ) {
             return;
         }
 
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( 'You do not have sufficient permissions to perform this action.' );
         }
-
-        $action = sanitize_text_field( $_POST['action'] );
 
         switch ( $action ) {
             case 'run_scan':
@@ -221,7 +227,18 @@ class AdminPages {
         // Localize script with AJAX data
         wp_localize_script( 'file-integrity-checker-admin', 'fileIntegrityChecker', [
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'nonce' => wp_create_nonce( 'file_integrity_ajax' ),
+            'nonces' => [
+                'start_scan' => Security::create_nonce( 'ajax_start_scan' ),
+                'check_progress' => Security::create_nonce( 'ajax_check_progress' ),
+                'cancel_scan' => Security::create_nonce( 'ajax_cancel_scan' ),
+                'delete_scan' => Security::create_nonce( 'ajax_delete_scan' ),
+                'bulk_delete' => Security::create_nonce( 'ajax_bulk_delete_scans' ),
+                'cleanup_old' => Security::create_nonce( 'ajax_cleanup_old_scans' ),
+                'test_slack' => Security::create_nonce( 'ajax_test_slack' ),
+                'resend_email' => Security::create_nonce( 'ajax_resend_email' ),
+                'resend_slack' => Security::create_nonce( 'ajax_resend_slack' ),
+                'view_file' => Security::create_nonce( 'ajax_view_file' ),
+            ],
         ] );
     }
 
@@ -398,8 +415,8 @@ class AdminPages {
      * AJAX handler for cleanup old scans
      */
     public function ajaxCleanupOldScans(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_cleanup_old_scans', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
 
@@ -424,8 +441,8 @@ class AdminPages {
      * AJAX handler for canceling a scan
      */
     public function ajaxCancelScan(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_cancel_scan', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
         
@@ -464,8 +481,8 @@ class AdminPages {
      * AJAX handler for deleting a scan
      */
     public function ajaxDeleteScan(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_delete_scan', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
         
@@ -501,9 +518,14 @@ class AdminPages {
      * AJAX handler for testing Slack webhook
      */
     public function ajaxTestSlack(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce and rate limiting
+        if ( ! Security::check_ajax_referer( 'ajax_test_slack', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Rate limit webhook tests
+        if ( ! Security::check_rate_limit( 'test_slack', 3, 60 ) ) {
+            wp_send_json_error( 'Too many requests. Please wait before trying again.' );
         }
         
         // Check permissions
@@ -564,8 +586,8 @@ class AdminPages {
      * AJAX handler for bulk deleting scans
      */
     public function ajaxBulkDeleteScans(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_bulk_delete_scans', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
         
@@ -632,9 +654,14 @@ class AdminPages {
      * AJAX handler for starting a scan
      */
     public function ajaxStartScan(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce and rate limiting
+        if ( ! Security::check_ajax_referer( 'ajax_start_scan', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Rate limit scan starts
+        if ( ! Security::check_rate_limit( 'start_scan', 5, 300 ) ) {
+            wp_send_json_error( 'Too many scan attempts. Please wait before trying again.' );
         }
         
         // Check permissions
@@ -663,8 +690,8 @@ class AdminPages {
      * AJAX handler for checking scan progress
      */
     public function ajaxCheckProgress(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_check_progress', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
         
@@ -720,9 +747,14 @@ class AdminPages {
      * AJAX handler for resending email notification
      */
     public function ajaxResendEmailNotification(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce and rate limiting
+        if ( ! Security::check_ajax_referer( 'ajax_resend_email', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Rate limit email resends
+        if ( ! Security::check_rate_limit( 'resend_email', 3, 300 ) ) {
+            wp_send_json_error( 'Too many email requests. Please wait before trying again.' );
         }
         
         // Check permissions
@@ -768,9 +800,14 @@ class AdminPages {
      * AJAX handler for resending Slack notification  
      */
     public function ajaxResendSlackNotification(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce and rate limiting
+        if ( ! Security::check_ajax_referer( 'ajax_resend_slack', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Rate limit Slack resends
+        if ( ! Security::check_rate_limit( 'resend_slack', 3, 300 ) ) {
+            wp_send_json_error( 'Too many Slack requests. Please wait before trying again.' );
         }
         
         // Check permissions
@@ -817,8 +854,8 @@ class AdminPages {
      * AJAX handler for viewing file content
      */
     public function ajaxViewFile(): void {
-        // Check nonce
-        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_view_file', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
         
