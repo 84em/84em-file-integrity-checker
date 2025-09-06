@@ -164,8 +164,10 @@ class Plugin {
         } );
 
         // Scanner services
-        $this->container->register( ChecksumGenerator::class, function () {
-            return new ChecksumGenerator();
+        $this->container->register( ChecksumGenerator::class, function ( $container ) {
+            return new ChecksumGenerator(
+                $container->get( LoggerService::class )
+            );
         } );
 
         $this->container->register( FileScanner::class, function ( $container ) {

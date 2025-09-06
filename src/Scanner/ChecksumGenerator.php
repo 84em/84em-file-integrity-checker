@@ -7,6 +7,8 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Scanner;
 
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
+
 /**
  * Generates checksums for files
  */
@@ -20,6 +22,22 @@ class ChecksumGenerator {
      * Maximum file size to process (in bytes)
      */
     private const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+    /**
+     * Logger service
+     *
+     * @var LoggerService
+     */
+    private LoggerService $logger;
+
+    /**
+     * Constructor
+     *
+     * @param LoggerService $logger Logger service
+     */
+    public function __construct( LoggerService $logger ) {
+        $this->logger = $logger;
+    }
 
     /**
      * Generate checksum for a file
@@ -37,13 +55,24 @@ class ChecksumGenerator {
             $checksum = hash_file( self::HASH_ALGORITHM, $file_path );
             
             if ( $checksum === false ) {
-                error_log( "Failed to generate checksum for file: $file_path" );
+                $this->logger->error( 
+                    'Failed to generate checksum for file', 
+                    'scanner',
+                    [ 'file_path' => $file_path ]
+                );
                 return false;
             }
 
             return $checksum;
         } catch ( \Exception $e ) {
-            error_log( "Error generating checksum for $file_path: " . $e->getMessage() );
+            $this->logger->error(
+                'Error generating checksum',
+                'scanner',
+                [ 
+                    'file_path' => $file_path,
+                    'error' => $e->getMessage()
+                ]
+            );
             return false;
         }
     }
@@ -63,7 +92,11 @@ class ChecksumGenerator {
                 $checksums[ $file_path ] = $checksum;
             } else {
                 // Log the failure but continue processing other files
-                error_log( "Skipping file due to checksum failure: $file_path" );
+                $this->logger->warning(
+                    'Skipping file due to checksum failure',
+                    'scanner',
+                    [ 'file_path' => $file_path ]
+                );
             }
         }
 

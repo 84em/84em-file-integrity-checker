@@ -223,14 +223,12 @@ class Security {
      * Sanitize error messages to prevent information disclosure
      *
      * @param string $message The error message
-     * @param bool $log_full Whether to log the full error
+     * @param bool $log_full Whether to log the full error (deprecated - use LoggerService instead)
      * @return string Sanitized error message
      */
     public static function sanitize_error_message( string $message, bool $log_full = true ): string {
-        // Log the full error for debugging
-        if ( $log_full && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( 'File Integrity Checker Error: ' . $message );
-        }
+        // Note: Logging should be done by the calling code using LoggerService
+        // The $log_full parameter is kept for backward compatibility but deprecated
         
         // Return generic message to user
         // Check for specific error types and return appropriate generic messages
