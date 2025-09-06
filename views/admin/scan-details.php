@@ -14,6 +14,7 @@ use EightyFourEM\FileIntegrityChecker\Plugin;
 $plugin = Plugin::getInstance();
 $fileRecordRepository = $plugin->getContainer()->get( \EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository::class );
 $settingsService = $plugin->getContainer()->get( \EightyFourEM\FileIntegrityChecker\Services\SettingsService::class );
+$fileAccessSecurity = $plugin->getContainer()->get( \EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity::class );
 
 // Get changed files for this scan
 $changed_files = $fileRecordRepository->getChangedFiles( $scan_summary['scan_id'] );
@@ -265,23 +266,40 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                         Was: <?php echo esc_html( substr( $file->previous_checksum, 0, 16 ) ); ?>...
                                     </div>
                                 <?php endif; ?>
-                                <?php if ( ! empty( $file->diff_content ) && $file->status === 'changed' ): ?>
-                                    <button type="button" 
-                                            class="button button-small view-diff-btn" 
-                                            data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
-                                            data-diff="<?php echo htmlspecialchars( json_encode( $file->diff_content ), ENT_QUOTES, 'UTF-8' ); ?>"
-                                            style="margin-top: 5px;">
-                                        <span class="dashicons dashicons-visibility"></span> View Changes
-                                    </button>
-                                <?php endif; ?>
-                                <?php if ( $file->status !== 'deleted' ): ?>
-                                    <button type="button" 
-                                            class="button button-small view-file-btn" 
-                                            data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
-                                            data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
-                                            style="margin-top: 5px; margin-left: 5px;">
-                                        <span class="dashicons dashicons-media-code"></span> View File
-                                    </button>
+                                <?php 
+                                // Check if file is blocked for security reasons
+                                $security_check = $fileAccessSecurity->isFileAccessible( $file->file_path );
+                                $is_blocked = ! $security_check['allowed'];
+                                ?>
+                                
+                                <?php if ( $is_blocked ): ?>
+                                    <?php if ( $file->status === 'changed' ): ?>
+                                        <div style="margin-top: 5px; padding: 8px 12px; background: #f0f0f1; border-left: 3px solid #72aee6; border-radius: 2px;">
+                                            <span class="dashicons dashicons-lock" style="color: #72aee6; vertical-align: middle;"></span>
+                                            <span style="color: #50575e; font-size: 13px;">
+                                                This file contains sensitive information and cannot be viewed for security reasons
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <?php if ( ! empty( $file->diff_content ) && $file->status === 'changed' ): ?>
+                                        <button type="button" 
+                                                class="button button-small view-diff-btn" 
+                                                data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
+                                                data-diff="<?php echo htmlspecialchars( json_encode( $file->diff_content ), ENT_QUOTES, 'UTF-8' ); ?>"
+                                                style="margin-top: 5px;">
+                                            <span class="dashicons dashicons-visibility"></span> View Changes
+                                        </button>
+                                    <?php endif; ?>
+                                    <?php if ( $file->status !== 'deleted' ): ?>
+                                        <button type="button" 
+                                                class="button button-small view-file-btn" 
+                                                data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
+                                                data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
+                                                style="margin-top: 5px; margin-left: 5px;">
+                                            <span class="dashicons dashicons-media-code"></span> View File
+                                        </button>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                             <td>

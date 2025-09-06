@@ -226,12 +226,9 @@ class FileScanner {
         // First check if this file is allowed to have diffs generated
         $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
         if ( ! $security_check['allowed'] ) {
-            // Return a security notice instead of the actual diff
-            return json_encode( [
-                'type' => 'blocked',
-                'reason' => $security_check['reason'],
-                'timestamp' => current_time( 'mysql' )
-            ] );
+            // Return null for blocked files - no diff will be generated
+            // The UI will handle showing the security message
+            return null;
         }
         
         // Only generate diffs for text files
@@ -259,11 +256,6 @@ class FileScanner {
         if ( $previous_content !== null ) {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
-            
-            // Apply redaction if needed
-            if ( $security_check['needs_redaction'] ?? false ) {
-                $diff = $this->fileAccessSecurity->redactDiffContent( $diff, $file_path );
-            }
             
             // Store current content for next time
             $current_checksum = hash( 'sha256', $current_content );

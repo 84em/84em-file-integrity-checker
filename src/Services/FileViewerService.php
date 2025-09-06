@@ -68,40 +68,20 @@ class FileViewerService {
             ];
         }
         
-        // For files that need redaction (like wp-config.php), we allow viewing even if not in scan
-        // This is because sensitive files might be excluded from scanning but should still be viewable with redaction
-        $needs_redaction = isset($security_check['needs_redaction']) && $security_check['needs_redaction'];
-        
-        // Check if file is in scan record - but allow viewing with redaction even if not scanned
+        // Check if file is in scan record
         if ( ! $this->fileRecordRepository->fileExistsInScan( $scan_id, $file_path ) ) {
-            // If it's a file that needs redaction, allow viewing anyway
-            if ( ! $needs_redaction ) {
-                return [
-                    'allowed' => false,
-                    'reason' => 'File not found in scan record'
-                ];
-            }
-            // File needs redaction and exists on filesystem, so allow viewing
+            return [
+                'allowed' => false,
+                'reason' => 'File not found in scan record'
+            ];
         }
 
         return [
             'allowed' => true,
-            'path' => $path_validation['path'],
-            'needs_redaction' => $needs_redaction,
-            'redaction_notice' => $security_check['redaction_notice'] ?? null
+            'path' => $path_validation['path']
         ];
     }
 
-    /**
-     * Check if file needs redaction
-     *
-     * @param string $file_path File path
-     * @return bool True if file may contain sensitive data
-     */
-    private function needsRedaction( string $file_path ): bool {
-        // Now delegates to the centralized security service
-        return $this->fileAccessSecurity->needsRedaction( $file_path );
-    }
 
     /**
      * Get file content with security measures
@@ -131,14 +111,6 @@ class FileViewerService {
             ];
         }
         
-        // Apply redaction if needed
-        $redaction_notice = null;
-        if ( $can_view['needs_redaction'] ) {
-            $content = $this->redactSensitiveData( $content, $file_path );
-            // Use the redaction notice from canViewFile if available
-            $redaction_notice = $can_view['redaction_notice'] ?? 'Sensitive data has been redacted for security.';
-        }
-        
         // Detect language for syntax highlighting
         $language = $this->detectLanguage( $file_path );
         
@@ -146,25 +118,12 @@ class FileViewerService {
             'success' => true,
             'content' => $content,
             'language' => $language,
-            'redacted' => $can_view['needs_redaction'],
-            'redaction_notice' => $redaction_notice,
             'file_path' => $file_path,
             'file_size' => filesize( $can_view['path'] ),
             'lines' => substr_count( $content, "\n" ) + 1
         ];
     }
 
-    /**
-     * Redact sensitive data from content
-     *
-     * @param string $content   File content
-     * @param string $file_path File path for context
-     * @return string Redacted content
-     */
-    private function redactSensitiveData( string $content, string $file_path ): string {
-        // Now delegates to the centralized security service
-        return $this->fileAccessSecurity->redactSensitiveData( $content, $file_path );
-    }
 
     /**
      * Detect language for syntax highlighting
