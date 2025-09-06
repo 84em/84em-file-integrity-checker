@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Core;
 
 use EightyFourEM\FileIntegrityChecker\Database\DatabaseManager;
+use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 
 /**
  * Handles plugin activation
@@ -21,12 +22,21 @@ class Activator {
     private DatabaseManager $databaseManager;
 
     /**
+     * Scheduler service
+     *
+     * @var SchedulerService
+     */
+    private SchedulerService $schedulerService;
+
+    /**
      * Constructor
      *
-     * @param DatabaseManager $databaseManager Database manager
+     * @param DatabaseManager  $databaseManager  Database manager
+     * @param SchedulerService $schedulerService Scheduler service
      */
-    public function __construct( DatabaseManager $databaseManager ) {
+    public function __construct( DatabaseManager $databaseManager, SchedulerService $schedulerService ) {
         $this->databaseManager = $databaseManager;
+        $this->schedulerService = $schedulerService;
     }
 
     /**
@@ -81,15 +91,7 @@ class Activator {
      * Schedule initial scan
      */
     private function scheduleInitialScan(): void {
-        if ( class_exists( 'ActionScheduler' ) && function_exists( 'as_has_scheduled_action' ) ) {
-            if ( ! as_has_scheduled_action( 'eightyfourem_file_integrity_scan' ) ) {
-                as_schedule_single_action( 
-                    time() + 300, // Schedule 5 minutes from activation
-                    'eightyfourem_file_integrity_scan',
-                    [],
-                    'file-integrity-checker'
-                );
-            }
-        }
+        // Use SchedulerService to schedule the initial scan
+        $this->schedulerService->scheduleOnetimeScan( time() + 300 ); // Schedule 5 minutes from activation
     }
 }

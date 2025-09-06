@@ -120,7 +120,8 @@ class Plugin {
 
         $this->container->register( Activator::class, function ( $container ) {
             return new Activator(
-                $container->get( DatabaseManager::class )
+                $container->get( DatabaseManager::class ),
+                $container->get( SchedulerService::class )
             );
         } );
 
