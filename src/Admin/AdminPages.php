@@ -79,6 +79,7 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_cancel_scan', [ $this, 'ajaxCancelScan' ] );
         add_action( 'wp_ajax_file_integrity_delete_scan', [ $this, 'ajaxDeleteScan' ] );
         add_action( 'wp_ajax_file_integrity_test_slack', [ $this, 'ajaxTestSlack' ] );
+        add_action( 'wp_ajax_file_integrity_bulk_delete_scans', [ $this, 'ajaxBulkDeleteScans' ] );
     }
 
     /**
@@ -538,6 +539,66 @@ class AdminPages {
         }
         
         wp_send_json_success( 'Test message sent successfully' );
+    }
+    
+    /**
+     * AJAX handler for bulk deleting scans
+     */
+    public function ajaxBulkDeleteScans(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $scan_ids = isset( $_POST['scan_ids'] ) ? array_map( 'intval', $_POST['scan_ids'] ) : [];
+        
+        if ( empty( $scan_ids ) ) {
+            wp_send_json_error( 'No scan IDs provided' );
+        }
+        
+        $deleted_count = 0;
+        $failed_count = 0;
+        
+        foreach ( $scan_ids as $scan_id ) {
+            if ( $scan_id > 0 ) {
+                try {
+                    $deleted = $this->scanResultsRepository->delete( $scan_id );
+                    if ( $deleted ) {
+                        $deleted_count++;
+                    } else {
+                        $failed_count++;
+                    }
+                } catch ( \Exception $e ) {
+                    $failed_count++;
+                    error_log( 'Failed to delete scan ' . $scan_id . ': ' . $e->getMessage() );
+                }
+            }
+        }
+        
+        if ( $deleted_count > 0 ) {
+            $message = sprintf( 
+                'Successfully deleted %d scan%s', 
+                $deleted_count, 
+                $deleted_count === 1 ? '' : 's'
+            );
+            
+            if ( $failed_count > 0 ) {
+                $message .= sprintf( ' (%d failed)', $failed_count );
+            }
+            
+            wp_send_json_success( [
+                'message' => $message,
+                'deleted' => $deleted_count,
+                'failed' => $failed_count
+            ] );
+        } else {
+            wp_send_json_error( 'Failed to delete any scans' );
+        }
     }
     
     /**

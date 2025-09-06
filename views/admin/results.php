@@ -32,10 +32,28 @@ $total_pages = ceil( $results['total_count'] / $per_page );
             </div>
         </div>
 
+        <!-- Bulk Actions -->
+        <div class="tablenav top">
+            <div class="alignleft actions bulkactions">
+                <label for="bulk-action-selector-top" class="screen-reader-text">Select bulk action</label>
+                <select name="action" id="bulk-action-selector-top">
+                    <option value="-1">Bulk Actions</option>
+                    <option value="delete">Delete</option>
+                </select>
+                <input type="button" id="doaction" class="button action bulk-delete-btn" value="Apply">
+                <span class="selected-count" style="display: none; margin-left: 10px;">
+                    <span class="count">0</span> selected
+                </span>
+            </div>
+        </div>
+
         <!-- Results Table -->
         <table class="scan-results-table widefat striped">
             <thead>
                 <tr>
+                    <td class="manage-column column-cb check-column">
+                        <input type="checkbox" id="select-all-scans" />
+                    </td>
                     <th class="column-date">Date</th>
                     <th class="column-status">Status</th>
                     <th class="column-files">Total Files</th>
@@ -46,7 +64,10 @@ $total_pages = ceil( $results['total_count'] / $per_page );
             </thead>
             <tbody>
                 <?php foreach ( $results['results'] as $scan ): ?>
-                <tr>
+                <tr data-scan-id="<?php echo esc_attr( $scan->id ); ?>">
+                    <th scope="row" class="check-column">
+                        <input type="checkbox" class="scan-checkbox" value="<?php echo esc_attr( $scan->id ); ?>" />
+                    </th>
                     <td class="column-date">
                         <strong><?php echo esc_html( date( 'M j, Y', strtotime( $scan->scan_date ) ) ); ?></strong><br>
                         <small><?php echo esc_html( date( 'H:i:s', strtotime( $scan->scan_date ) ) ); ?></small>

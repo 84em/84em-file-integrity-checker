@@ -363,6 +363,25 @@ a .dashicons {
     100% { transform: rotate(360deg); }
 }
 
+/* Bulk actions */
+.tablenav {
+    margin: 10px 0;
+}
+
+.tablenav .actions {
+    padding: 0;
+}
+
+.selected-count {
+    color: #2271b1;
+    font-weight: 600;
+}
+
+.check-column {
+    width: 40px;
+    padding: 8px 0 8px 3px;
+}
+
 /* Action buttons */
 .column-actions {
     white-space: nowrap;

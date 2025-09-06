@@ -36,6 +36,11 @@
             $(document).on('change', '#slack_enabled', this.handleSlackNotificationToggle.bind(this));
             $(document).on('click', '#test-slack-notification', this.handleTestSlackNotification.bind(this));
             
+            // Bulk actions
+            $(document).on('change', '#select-all-scans', this.handleSelectAllScans.bind(this));
+            $(document).on('change', '.scan-checkbox', this.handleScanCheckboxChange.bind(this));
+            $(document).on('click', '.bulk-delete-btn', this.handleBulkDelete.bind(this));
+            
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
             
@@ -463,6 +468,103 @@
             }).catch((error) => {
                 this.showError('Failed to test Slack connection');
                 button.prop('disabled', false).text('Test Slack Connection');
+            });
+        },
+        
+        // Handle select all scans checkbox
+        handleSelectAllScans: function(e) {
+            const isChecked = $(e.target).is(':checked');
+            $('.scan-checkbox').prop('checked', isChecked);
+            this.updateSelectedCount();
+        },
+        
+        // Handle individual scan checkbox change
+        handleScanCheckboxChange: function(e) {
+            const totalCheckboxes = $('.scan-checkbox').length;
+            const checkedCheckboxes = $('.scan-checkbox:checked').length;
+            
+            // Update select all checkbox state
+            $('#select-all-scans').prop('checked', totalCheckboxes === checkedCheckboxes);
+            $('#select-all-scans').prop('indeterminate', checkedCheckboxes > 0 && checkedCheckboxes < totalCheckboxes);
+            
+            this.updateSelectedCount();
+        },
+        
+        // Update selected count display
+        updateSelectedCount: function() {
+            const count = $('.scan-checkbox:checked').length;
+            $('.selected-count .count').text(count);
+            
+            if (count > 0) {
+                $('.selected-count').show();
+            } else {
+                $('.selected-count').hide();
+            }
+        },
+        
+        // Handle bulk delete
+        handleBulkDelete: function(e) {
+            e.preventDefault();
+            
+            const action = $('#bulk-action-selector-top').val();
+            if (action !== 'delete') {
+                return;
+            }
+            
+            const selectedScans = $('.scan-checkbox:checked').map(function() {
+                return $(this).val();
+            }).get();
+            
+            if (selectedScans.length === 0) {
+                this.showError('Please select at least one scan to delete');
+                return;
+            }
+            
+            const confirmMessage = selectedScans.length === 1 
+                ? 'Are you sure you want to delete this scan result?'
+                : `Are you sure you want to delete ${selectedScans.length} scan results?`;
+            
+            FICModal.confirm(
+                confirmMessage + ' This action cannot be undone.',
+                'Delete Scan Results',
+                'Yes, Delete',
+                'Cancel'
+            ).then(confirmed => {
+                if (!confirmed) {
+                    return;
+                }
+                
+                const button = $(e.target);
+                button.prop('disabled', true).text('Deleting...');
+                
+                // Send AJAX request to delete scans
+                $.post(fileIntegrityChecker.ajaxUrl, {
+                    action: 'file_integrity_bulk_delete_scans',
+                    scan_ids: selectedScans,
+                    _wpnonce: fileIntegrityChecker.nonce
+                }).then((response) => {
+                    if (response.success) {
+                        this.showSuccess(`Successfully deleted ${response.data.deleted} scan results`);
+                        
+                        // Remove deleted rows from table
+                        selectedScans.forEach(scanId => {
+                            $(`tr[data-scan-id="${scanId}"]`).fadeOut(500, function() {
+                                $(this).remove();
+                            });
+                        });
+                        
+                        // Reset checkboxes
+                        $('#select-all-scans').prop('checked', false);
+                        this.updateSelectedCount();
+                    } else {
+                        this.showError('Failed to delete scans: ' + (response.data || 'Unknown error'));
+                    }
+                    
+                    button.prop('disabled', false).text('Apply');
+                }).catch((error) => {
+                    this.showError('Failed to delete scans');
+                    button.prop('disabled', false).text('Apply');
+                });
             });
         },
         
