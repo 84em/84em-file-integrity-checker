@@ -157,8 +157,17 @@ class FileViewerService {
         }
 
         // Validate path is within WordPress installation
-        $wp_root = ABSPATH;
-        $full_path = $wp_root . ltrim( $file_path, '/' );
+        $wp_root = rtrim( ABSPATH, '/' );
+        
+        // Handle both absolute and relative paths
+        if ( strpos( $file_path, $wp_root ) === 0 ) {
+            // Path is already absolute
+            $full_path = $file_path;
+        } else {
+            // Path is relative to WordPress root
+            $full_path = $wp_root . '/' . ltrim( $file_path, '/' );
+        }
+        
         $real_path = realpath( $full_path );
         
         if ( ! $real_path || strpos( $real_path, $wp_root ) !== 0 ) {
