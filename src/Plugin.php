@@ -24,6 +24,7 @@ use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
 use EightyFourEM\FileIntegrityChecker\Security\SecurityHeaders;
+use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 
 /**
  * Main plugin bootstrap class
@@ -150,6 +151,11 @@ class Plugin {
             );
         } );
 
+        // Security services
+        $this->container->register( FileAccessSecurity::class, function () {
+            return new FileAccessSecurity();
+        } );
+
         // Scanner services
         $this->container->register( ChecksumGenerator::class, function () {
             return new ChecksumGenerator();
@@ -158,7 +164,8 @@ class Plugin {
         $this->container->register( FileScanner::class, function ( $container ) {
             return new FileScanner(
                 $container->get( ChecksumGenerator::class ),
-                $container->get( SettingsService::class )
+                $container->get( SettingsService::class ),
+                $container->get( FileAccessSecurity::class )
             );
         } );
 
@@ -185,7 +192,8 @@ class Plugin {
 
         $this->container->register( FileViewerService::class, function ( $container ) {
             return new FileViewerService(
-                $container->get( FileRecordRepository::class )
+                $container->get( FileRecordRepository::class ),
+                $container->get( FileAccessSecurity::class )
             );
         } );
 

@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Scanner;
 
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
+use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 use EightyFourEM\FileIntegrityChecker\Database\FileContentRepository;
 use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 
@@ -35,16 +36,25 @@ class FileScanner {
      * @var FileContentRepository
      */
     private FileContentRepository $fileContentRepository;
+    
+    /**
+     * File access security service
+     *
+     * @var FileAccessSecurity
+     */
+    private FileAccessSecurity $fileAccessSecurity;
 
     /**
      * Constructor
      *
      * @param ChecksumGenerator $checksumGenerator Checksum generator
      * @param SettingsService   $settingsService   Settings service
+     * @param FileAccessSecurity $fileAccessSecurity File access security service
      */
-    public function __construct( ChecksumGenerator $checksumGenerator, SettingsService $settingsService ) {
+    public function __construct( ChecksumGenerator $checksumGenerator, SettingsService $settingsService, FileAccessSecurity $fileAccessSecurity ) {
         $this->checksumGenerator = $checksumGenerator;
         $this->settingsService   = $settingsService;
+        $this->fileAccessSecurity = $fileAccessSecurity;
         $this->fileContentRepository = new FileContentRepository();
     }
 
@@ -213,6 +223,17 @@ class FileScanner {
      * @return string|null Diff content or null if unable to generate
      */
     private function generateFileDiff( string $file_path, string $previous_checksum ): ?string {
+        // First check if this file is allowed to have diffs generated
+        $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
+        if ( ! $security_check['allowed'] ) {
+            // Return a security notice instead of the actual diff
+            return json_encode( [
+                'type' => 'blocked',
+                'reason' => $security_check['reason'],
+                'timestamp' => current_time( 'mysql' )
+            ] );
+        }
+        
         // Only generate diffs for text files
         $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
         $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
@@ -238,6 +259,11 @@ class FileScanner {
         if ( $previous_content !== null ) {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
+            
+            // Apply redaction if needed
+            if ( $security_check['needs_redaction'] ?? false ) {
+                $diff = $this->fileAccessSecurity->redactDiffContent( $diff, $file_path );
+            }
             
             // Store current content for next time
             $current_checksum = hash( 'sha256', $current_content );

@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Services;
 
 use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
+use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 
 /**
  * Handles secure file viewing with proper security measures
@@ -21,95 +22,24 @@ class FileViewerService {
     private FileRecordRepository $fileRecordRepository;
 
     /**
-     * Files that should never be viewable
+     * File access security service
      *
-     * @var array
+     * @var FileAccessSecurity
      */
-    private const BLOCKED_FILES = [
-        'wp-config.php',
-        'wp-config-sample.php',
-        '.env',
-        '.env.local',
-        '.env.production',
-        '.htaccess',
-        '.htpasswd',
-        'auth.json',
-        'local.php',
-        'wp-config-local.php',
-        'config.php',
-        'database.php',
-        'db.php',
-    ];
+    private FileAccessSecurity $fileAccessSecurity;
 
-    /**
-     * Path patterns that should be blocked
-     *
-     * @var array
-     */
-    private const BLOCKED_PATTERNS = [
-        '/.git/',
-        '/.svn/',
-        '/.ssh/',
-        '/credentials/',
-        '/secrets/',
-        '/private/',
-        '/passwords/',
-        '/keys/',
-    ];
-
-    /**
-     * Sensitive data patterns for redaction
-     *
-     * @var array
-     */
-    private const REDACTION_PATTERNS = [
-        // Database credentials
-        '/define\s*\(\s*[\'"]DB_(USER|PASSWORD|HOST|NAME)[\'"][^)]+\)/i' => "define('DB_$1', '[REDACTED]')",
-        
-        // WordPress keys and salts
-        '/define\s*\(\s*[\'"][A-Z_]*(KEY|SALT)[\'"][^)]+\)/i' => "define('[KEY_REDACTED]', '[REDACTED]')",
-        
-        // API keys and tokens
-        '/(api[_-]?key|api[_-]?secret|token|password|secret[_-]?key|client[_-]?secret)\s*[=:]\s*[\'"]([^\'\"]{8,})[\'\"]/i' => '$1 = \'[REDACTED]\'',
-        
-        // AWS credentials
-        '/(aws[_-]?access[_-]?key[_-]?id|aws[_-]?secret[_-]?access[_-]?key)\s*[=:]\s*[\'"][^\'\"]+[\'\"]/i' => '$1 = \'[REDACTED]\'',
-        
-        // Database connection strings
-        '/(mysql|postgres|mongodb):\/\/[^@]+@[^\s]+/i' => '$1://[REDACTED]@[REDACTED]',
-        
-        // Bearer tokens
-        '/Bearer\s+[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+/i' => 'Bearer [REDACTED]',
-        
-        // Basic auth in URLs
-        '/https?:\/\/[^:]+:[^@]+@/i' => 'https://[REDACTED]:[REDACTED]@',
-    ];
-
-    /**
-     * Allowed file extensions for viewing
-     *
-     * @var array
-     */
-    private const ALLOWED_EXTENSIONS = [
-        'php', 'js', 'css', 'html', 'htm', 'xml', 'json', 
-        'txt', 'md', 'yml', 'yaml', 'ini', 'conf', 'log',
-        'scss', 'sass', 'less', 'vue', 'jsx', 'tsx', 'ts'
-    ];
-
-    /**
-     * Maximum file size for viewing (in bytes)
-     *
-     * @var int
-     */
-    private const MAX_FILE_SIZE = 1048576; // 1MB
+    // All security constants and patterns have been moved to FileAccessSecurity class
+    // for centralized management and to avoid duplication of security logic
 
     /**
      * Constructor
      *
      * @param FileRecordRepository $fileRecordRepository File record repository
+     * @param FileAccessSecurity   $fileAccessSecurity   File access security service
      */
-    public function __construct( FileRecordRepository $fileRecordRepository ) {
+    public function __construct( FileRecordRepository $fileRecordRepository, FileAccessSecurity $fileAccessSecurity ) {
         $this->fileRecordRepository = $fileRecordRepository;
+        $this->fileAccessSecurity = $fileAccessSecurity;
     }
 
     /**
@@ -128,95 +58,28 @@ class FileViewerService {
             ];
         }
 
-        // Check blocked files
-        $basename = basename( $file_path );
-        if ( in_array( strtolower( $basename ), array_map( 'strtolower', self::BLOCKED_FILES ) ) ) {
+        // First validate the file path is within WordPress installation
+        $path_validation = $this->fileAccessSecurity->validateFilePath( $file_path );
+        if ( ! $path_validation['valid'] ) {
             return [
                 'allowed' => false,
-                'reason' => 'This file contains sensitive configuration and cannot be viewed for security reasons'
+                'reason' => $path_validation['reason']
             ];
         }
 
-        // Check blocked patterns
-        foreach ( self::BLOCKED_PATTERNS as $pattern ) {
-            if ( strpos( $file_path, $pattern ) !== false ) {
-                return [
-                    'allowed' => false,
-                    'reason' => 'Files in this directory cannot be viewed for security reasons'
-                ];
-            }
-        }
-
-        // Check file extension
-        $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
-        if ( ! in_array( $extension, self::ALLOWED_EXTENSIONS ) ) {
+        // Now check if the file is accessible according to security rules
+        $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
+        if ( ! $security_check['allowed'] ) {
             return [
                 'allowed' => false,
-                'reason' => 'This file type cannot be viewed'
-            ];
-        }
-
-        // Validate path is within WordPress installation
-        $wp_root = rtrim( ABSPATH, '/' );
-        
-        // Normalize and validate the path BEFORE any file operations
-        // Remove any directory traversal attempts
-        $file_path = str_replace( '..', '', $file_path );
-        $file_path = str_replace( '//', '/', $file_path );
-        
-        // Handle both absolute and relative paths securely
-        if ( strpos( $file_path, $wp_root ) === 0 ) {
-            // Path appears to be absolute - verify it's real
-            $full_path = $file_path;
-        } else {
-            // Path is relative to WordPress root
-            // Remove leading slashes and dots to prevent traversal
-            $file_path = ltrim( $file_path, './' );
-            $full_path = $wp_root . '/' . $file_path;
-        }
-        
-        // Get the real path and validate it's within WordPress root
-        // This resolves any symlinks and validates the actual location
-        $real_path = realpath( $full_path );
-        
-        // Critical security check: ensure resolved path is within WordPress installation
-        if ( $real_path === false ) {
-            return [
-                'allowed' => false,
-                'reason' => 'File path does not exist'
-            ];
-        }
-        
-        // Use realpath on wp_root too for accurate comparison
-        $real_wp_root = realpath( $wp_root );
-        if ( strpos( $real_path, $real_wp_root ) !== 0 ) {
-            return [
-                'allowed' => false,
-                'reason' => 'File path is outside WordPress installation'
-            ];
-        }
-
-        // Check if file exists
-        if ( ! file_exists( $real_path ) ) {
-            return [
-                'allowed' => false,
-                'reason' => 'File not found on filesystem'
-            ];
-        }
-
-        // Check file size
-        $file_size = filesize( $real_path );
-        if ( $file_size > self::MAX_FILE_SIZE ) {
-            return [
-                'allowed' => false,
-                'reason' => 'File is too large to view (max ' . size_format( self::MAX_FILE_SIZE ) . ')'
+                'reason' => $security_check['reason']
             ];
         }
 
         return [
             'allowed' => true,
-            'path' => $real_path,
-            'needs_redaction' => $this->needsRedaction( $file_path )
+            'path' => $path_validation['path'],
+            'needs_redaction' => $security_check['needs_redaction'] ?? false
         ];
     }
 
@@ -227,25 +90,8 @@ class FileViewerService {
      * @return bool True if file may contain sensitive data
      */
     private function needsRedaction( string $file_path ): bool {
-        $sensitive_files = [
-            'config', 'settings', 'env', 'database', 
-            'credentials', 'auth', 'secret'
-        ];
-        
-        $basename = strtolower( basename( $file_path ) );
-        
-        foreach ( $sensitive_files as $keyword ) {
-            if ( strpos( $basename, $keyword ) !== false ) {
-                return true;
-            }
-        }
-        
-        // Check if it's in wp-content/plugins or themes config directories
-        if ( preg_match( '/\/(config|settings|conf)\//i', $file_path ) ) {
-            return true;
-        }
-        
-        return false;
+        // Now delegates to the centralized security service
+        return $this->fileAccessSecurity->needsRedaction( $file_path );
     }
 
     /**
@@ -277,8 +123,12 @@ class FileViewerService {
         }
         
         // Apply redaction if needed
+        $redaction_notice = null;
         if ( $can_view['needs_redaction'] ) {
             $content = $this->redactSensitiveData( $content, $file_path );
+            // Get redaction notice from security check
+            $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
+            $redaction_notice = $security_check['redaction_notice'] ?? 'Sensitive data has been redacted for security.';
         }
         
         // Detect language for syntax highlighting
@@ -289,6 +139,7 @@ class FileViewerService {
             'content' => $content,
             'language' => $language,
             'redacted' => $can_view['needs_redaction'],
+            'redaction_notice' => $redaction_notice,
             'file_path' => $file_path,
             'file_size' => filesize( $can_view['path'] ),
             'lines' => substr_count( $content, "\n" ) + 1
@@ -303,28 +154,8 @@ class FileViewerService {
      * @return string Redacted content
      */
     private function redactSensitiveData( string $content, string $file_path ): string {
-        foreach ( self::REDACTION_PATTERNS as $pattern => $replacement ) {
-            $content = preg_replace( $pattern, $replacement, $content );
-        }
-        
-        // Additional file-specific redaction
-        $basename = basename( $file_path );
-        
-        // For .env files, redact all values
-        if ( strpos( $basename, '.env' ) !== false ) {
-            $content = preg_replace( '/^([A-Z_]+)=(.+)$/m', '$1=[REDACTED]', $content );
-        }
-        
-        // For JSON files, redact common sensitive keys
-        if ( pathinfo( $file_path, PATHINFO_EXTENSION ) === 'json' ) {
-            $content = preg_replace( 
-                '/"(password|secret|token|key|apiKey|api_key|client_secret|private_key)"\s*:\s*"[^"]+"/i',
-                '"$1": "[REDACTED]"',
-                $content
-            );
-        }
-        
-        return $content;
+        // Now delegates to the centralized security service
+        return $this->fileAccessSecurity->redactSensitiveData( $content, $file_path );
     }
 
     /**
