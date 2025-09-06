@@ -3,7 +3,13 @@
 # Build script for 84EM File Integrity Checker WordPress Plugin
 # Creates a production-ready ZIP file for distribution
 #
-# Usage: ./build.sh
+# Usage: 
+#   ./build.sh                    # Standard build with locked dependencies
+#   UPDATE_DEPS=true ./build.sh  # Build with updated dependencies
+#
+# Environment Variables:
+#   UPDATE_DEPS=true  - Updates all production dependencies to latest versions
+#                       before building (default: false, uses composer.lock)
 #
 
 set -e  # Exit on error
@@ -24,6 +30,31 @@ ZIP_NAME="${PLUGIN_SLUG}-${VERSION}.zip"
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Building ${PLUGIN_SLUG} v${VERSION}${NC}"
 echo -e "${GREEN}========================================${NC}"
+
+# Pre-build checks
+echo -e "\n${YELLOW}→ Running pre-build checks...${NC}"
+
+# Check if composer.lock exists and has Action Scheduler
+if [ -f "composer.lock" ]; then
+    if ! grep -q "woocommerce/action-scheduler" composer.lock; then
+        echo -e "${YELLOW}Warning: Action Scheduler not found in composer.lock${NC}"
+        echo -e "${YELLOW}Run 'composer update woocommerce/action-scheduler' to update lock file${NC}"
+    fi
+else
+    echo -e "${YELLOW}Warning: composer.lock not found. Build will create one.${NC}"
+fi
+
+# Check if Action Scheduler is in require (not require-dev)
+if grep -A 5 '"require-dev"' composer.json | grep -q '"woocommerce/action-scheduler"'; then
+    echo -e "${RED}Error: Action Scheduler is in 'require-dev' section of composer.json${NC}"
+    echo -e "${YELLOW}It should be in the 'require' section for production use${NC}"
+    exit 1
+fi
+
+if ! grep -A 10 '"require"' composer.json | grep -q '"woocommerce/action-scheduler"'; then
+    echo -e "${RED}Error: Action Scheduler not found in 'require' section of composer.json${NC}"
+    exit 1
+fi
 
 # Step 1: Clean up previous builds
 echo -e "\n${YELLOW}→ Cleaning previous builds...${NC}"
@@ -71,13 +102,43 @@ if ! command -v composer &> /dev/null; then
     exit 1
 fi
 
-# Install only production dependencies with optimized autoloader
-composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist --quiet
+# Verify composer.json has Action Scheduler as a dependency
+if ! grep -q "woocommerce/action-scheduler" composer.json; then
+    echo -e "${RED}Error: Action Scheduler is not defined as a dependency in composer.json${NC}"
+    echo -e "${YELLOW}Adding Action Scheduler to composer.json...${NC}"
+    composer require woocommerce/action-scheduler:^3.7 --no-interaction --no-scripts
+fi
+
+# Option to update dependencies to latest versions (can be controlled by environment variable)
+if [ "${UPDATE_DEPS}" = "true" ]; then
+    echo -e "${YELLOW}→ Updating dependencies to latest versions...${NC}"
+    composer update --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist
+else
+    # Install from lock file (default behavior for consistency)
+    echo -e "${YELLOW}→ Installing from composer.lock...${NC}"
+    composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist
+fi
 
 # Verify Action Scheduler was installed
 if [ ! -d "vendor/woocommerce/action-scheduler" ]; then
-    echo -e "${RED}Warning: Action Scheduler was not installed${NC}"
+    echo -e "${RED}Error: Action Scheduler was not installed!${NC}"
+    echo -e "${YELLOW}Attempting to install Action Scheduler directly...${NC}"
+    composer require woocommerce/action-scheduler:^3.7 --no-dev --optimize-autoloader --no-interaction --no-scripts
+    
+    # Check again
+    if [ ! -d "vendor/woocommerce/action-scheduler" ]; then
+        echo -e "${RED}Fatal: Failed to install Action Scheduler. Build cannot continue.${NC}"
+        exit 1
+    fi
 fi
+
+# Verify Action Scheduler main file exists
+if [ ! -f "vendor/woocommerce/action-scheduler/action-scheduler.php" ]; then
+    echo -e "${RED}Error: Action Scheduler main file not found${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Action Scheduler installed successfully${NC}"
 
 # Step 5: Clean up composer files (but keep autoloader!)
 echo -e "${YELLOW}→ Cleaning up build files...${NC}"
@@ -161,7 +222,8 @@ REQUIRED_FILES=(
     "${PLUGIN_SLUG}/src/Plugin.php"
     "${PLUGIN_SLUG}/vendor/autoload.php"
     "${PLUGIN_SLUG}/vendor/composer/autoload_real.php"
-    "${PLUGIN_SLUG}/README.md"
+    "${PLUGIN_SLUG}/LICENSE.txt"
+    "${PLUGIN_SLUG}/changelog.txt"
 )
 
 MISSING_FILES=0

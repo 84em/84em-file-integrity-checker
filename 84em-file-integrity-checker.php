@@ -21,6 +21,11 @@ if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
     require_once __DIR__ . '/vendor/autoload.php';
 }
 
+// Load Action Scheduler library
+if ( file_exists( __DIR__ . '/vendor/woocommerce/action-scheduler/action-scheduler.php' ) ) {
+    require_once __DIR__ . '/vendor/woocommerce/action-scheduler/action-scheduler.php';
+}
+
 // Initialize and run the plugin using the new architecture
 if ( class_exists( 'EightyFourEM\FileIntegrityChecker\Plugin' ) ) {
     // Get plugin instance and run
