@@ -354,6 +354,12 @@ class FileScanner {
         if ( ! empty( $file_extensions ) && ! in_array( $file_extension, $file_extensions, true ) ) {
             return false;
         }
+        
+        // Additional MIME type validation for executable files
+        // This helps prevent scanning of renamed malicious files
+        if ( $this->isPotentiallyDangerousFile( $file_path, $file_extension ) ) {
+            return false;
+        }
 
         // Check exclude patterns
         foreach ( $exclude_patterns as $pattern ) {
@@ -396,6 +402,56 @@ class FileScanner {
         $pattern = str_replace( '\?', '.', $pattern );
         
         return '/^' . $pattern . '$/';
+    }
+    
+    /**
+     * Check if a file is potentially dangerous based on MIME type
+     *
+     * @param string $file_path Path to the file
+     * @param string $file_extension File extension with dot
+     * @return bool True if file is potentially dangerous
+     */
+    private function isPotentiallyDangerousFile( string $file_path, string $file_extension ): bool {
+        // Whitelist of safe text-based extensions that don't need MIME checking
+        $safe_text_extensions = [
+            '.php', '.js', '.css', '.html', '.htm', '.txt', '.json', 
+            '.xml', '.ini', '.htaccess', '.sql', '.md', '.yml', '.yaml',
+            '.scss', '.less', '.ts', '.tsx', '.jsx', '.vue'
+        ];
+        
+        // If it's a known safe text file, allow it
+        if ( in_array( $file_extension, $safe_text_extensions, true ) ) {
+            return false;
+        }
+        
+        // Check MIME type for other files
+        if ( function_exists( 'finfo_open' ) && file_exists( $file_path ) ) {
+            $finfo = finfo_open( FILEINFO_MIME_TYPE );
+            $mime_type = finfo_file( $finfo, $file_path );
+            finfo_close( $finfo );
+            
+            // Block executable MIME types even if renamed
+            $dangerous_mime_types = [
+                'application/x-executable',
+                'application/x-sharedlib',
+                'application/x-elf',
+                'application/x-mach-binary',
+                'application/x-msdownload',
+                'application/x-msdos-program',
+                'application/x-dosexec'
+            ];
+            
+            if ( in_array( $mime_type, $dangerous_mime_types, true ) ) {
+                return true;
+            }
+            
+            // Check for PHP code in files with non-PHP extensions
+            if ( $file_extension !== '.php' && strpos( $mime_type, 'php' ) !== false ) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**
