@@ -10,6 +10,7 @@ namespace EightyFourEM\FileIntegrityChecker\Services;
 use EightyFourEM\FileIntegrityChecker\Scanner\FileScanner;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
+use EightyFourEM\FileIntegrityChecker\Utils\Security;
 
 /**
  * Main service for file integrity operations
@@ -171,15 +172,19 @@ class IntegrityService {
 
         } catch ( \Exception $e ) {
             // Update scan result with error
+            // Log detailed error for debugging
+            error_log( "File integrity scan failed: " . $e->getMessage() );
+            
+            // Store sanitized error message
+            $sanitized_message = Security::sanitize_error_message( $e->getMessage() );
+            
             $this->scanResultsRepository->update( $scan_id, [
                 'status' => 'failed',
-                'notes' => 'Scan failed: ' . $e->getMessage(),
+                'notes' => $sanitized_message,
             ] );
 
-            error_log( "File integrity scan failed: " . $e->getMessage() );
-
             if ( $progress_callback ) {
-                call_user_func( $progress_callback, "Scan failed: " . $e->getMessage(), '' );
+                call_user_func( $progress_callback, $sanitized_message, '' );
             }
 
             return false;

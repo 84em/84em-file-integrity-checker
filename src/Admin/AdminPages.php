@@ -439,7 +439,8 @@ class AdminPages {
                 'retention_period' => $cleanup_stats['retention_period']
             ] );
         } catch ( \Exception $e ) {
-            wp_send_json_error( 'Failed to cleanup old scans: ' . $e->getMessage() );
+            error_log( 'File Integrity Checker - Failed to cleanup old scans: ' . $e->getMessage() );
+            wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
 
@@ -479,7 +480,8 @@ class AdminPages {
                 wp_send_json_error( 'Failed to cancel scan' );
             }
         } catch ( \Exception $e ) {
-            wp_send_json_error( 'Failed to cancel scan: ' . $e->getMessage() );
+            error_log( 'File Integrity Checker - Failed to cancel scan: ' . $e->getMessage() );
+            wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
     
@@ -516,7 +518,8 @@ class AdminPages {
                 wp_send_json_error( 'Failed to delete scan' );
             }
         } catch ( \Exception $e ) {
-            wp_send_json_error( 'Failed to delete scan: ' . $e->getMessage() );
+            error_log( 'File Integrity Checker - Failed to delete scan: ' . $e->getMessage() );
+            wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
     
@@ -691,7 +694,8 @@ class AdminPages {
                 wp_send_json_error( 'Failed to start scan' );
             }
         } catch ( \Exception $e ) {
-            wp_send_json_error( 'Error: ' . $e->getMessage() );
+            error_log( 'File Integrity Checker - Error during operation: ' . $e->getMessage() );
+            wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
 
@@ -748,7 +752,8 @@ class AdminPages {
             wp_send_json_success( $response );
             
         } catch ( \Exception $e ) {
-            wp_send_json_error( 'Error: ' . $e->getMessage() );
+            error_log( 'File Integrity Checker - Error during operation: ' . $e->getMessage() );
+            wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
 
