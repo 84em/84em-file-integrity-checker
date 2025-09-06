@@ -80,6 +80,8 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_delete_scan', [ $this, 'ajaxDeleteScan' ] );
         add_action( 'wp_ajax_file_integrity_test_slack', [ $this, 'ajaxTestSlack' ] );
         add_action( 'wp_ajax_file_integrity_bulk_delete_scans', [ $this, 'ajaxBulkDeleteScans' ] );
+        add_action( 'wp_ajax_file_integrity_resend_email', [ $this, 'ajaxResendEmailNotification' ] );
+        add_action( 'wp_ajax_file_integrity_resend_slack', [ $this, 'ajaxResendSlackNotification' ] );
     }
 
     /**
@@ -699,6 +701,231 @@ class AdminPages {
             
         } catch ( \Exception $e ) {
             wp_send_json_error( 'Error: ' . $e->getMessage() );
+        }
+    }
+
+    /**
+     * AJAX handler for resending email notification
+     */
+    public function ajaxResendEmailNotification(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $scan_id = isset( $_POST['scan_id'] ) ? (int) $_POST['scan_id'] : 0;
+        
+        if ( ! $scan_id ) {
+            wp_send_json_error( 'Invalid scan ID' );
+        }
+        
+        // Get scan summary
+        $scan_summary = $this->integrityService->getScanSummary( $scan_id );
+        if ( ! $scan_summary ) {
+            wp_send_json_error( 'Scan not found' );
+        }
+        
+        // Check if there are changes
+        if ( $scan_summary['changed_files'] === 0 && 
+             $scan_summary['new_files'] === 0 && 
+             $scan_summary['deleted_files'] === 0 ) {
+            wp_send_json_error( 'No changes to notify about' );
+        }
+        
+        // Get changed files
+        $changed_files = $this->fileRecordRepository->getChangedFiles( $scan_id );
+        
+        // Send email notification
+        $email_to = $this->settingsService->getNotificationEmail();
+        $subject = sprintf( 
+            '[%s] File Integrity Scan - Changes Detected (Resent)', 
+            get_bloginfo( 'name' )
+        );
+        
+        $message = sprintf(
+            "This is a resent notification for Scan #%d.\n\n" .
+            "Changes detected during the file integrity scan:\n\n" .
+            "Changed Files: %d\n" .
+            "New Files: %d\n" .
+            "Deleted Files: %d\n" .
+            "Total Files Scanned: %d\n\n",
+            $scan_id,
+            $scan_summary['changed_files'],
+            $scan_summary['new_files'],
+            $scan_summary['deleted_files'],
+            $scan_summary['total_files']
+        );
+        
+        if ( ! empty( $changed_files ) ) {
+            $message .= "Changed files:\n";
+            foreach ( array_slice( $changed_files, 0, 10 ) as $file ) {
+                $message .= "  - " . $file->file_path . "\n";
+            }
+            if ( count( $changed_files ) > 10 ) {
+                $message .= sprintf( "  ... and %d more\n", count( $changed_files ) - 10 );
+            }
+        }
+        
+        $message .= sprintf( "\nView full details: %s", 
+            admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_id ) 
+        );
+        
+        $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
+        
+        if ( wp_mail( $email_to, $subject, $message, $headers ) ) {
+            wp_send_json_success( 'Email notification sent successfully' );
+        } else {
+            wp_send_json_error( 'Failed to send email notification' );
+        }
+    }
+
+    /**
+     * AJAX handler for resending Slack notification  
+     */
+    public function ajaxResendSlackNotification(): void {
+        // Check nonce
+        if ( ! check_ajax_referer( 'file_integrity_ajax', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+        
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+        
+        $scan_id = isset( $_POST['scan_id'] ) ? (int) $_POST['scan_id'] : 0;
+        
+        if ( ! $scan_id ) {
+            wp_send_json_error( 'Invalid scan ID' );
+        }
+        
+        // Get scan summary
+        $scan_summary = $this->integrityService->getScanSummary( $scan_id );
+        if ( ! $scan_summary ) {
+            wp_send_json_error( 'Scan not found' );
+        }
+        
+        // Check if there are changes
+        if ( $scan_summary['changed_files'] === 0 && 
+             $scan_summary['new_files'] === 0 && 
+             $scan_summary['deleted_files'] === 0 ) {
+            wp_send_json_error( 'No changes to notify about' );
+        }
+        
+        $webhook_url = $this->settingsService->getSlackWebhookUrl();
+        
+        if ( empty( $webhook_url ) ) {
+            wp_send_json_error( 'Slack webhook URL not configured' );
+        }
+        
+        // Get changed files
+        $changed_files = $this->fileRecordRepository->getChangedFiles( $scan_id );
+        
+        // Build Slack message with blocks
+        $blocks = [
+            [
+                'type' => 'header',
+                'text' => [
+                    'type' => 'plain_text',
+                    'text' => '🚨 File Integrity Alert (Resent)',
+                    'emoji' => true
+                ]
+            ],
+            [
+                'type' => 'section',
+                'text' => [
+                    'type' => 'mrkdwn',
+                    'text' => sprintf(
+                        "*Changes detected on %s* (Scan #%d)\n\n" .
+                        "• *Changed Files:* %d\n" .
+                        "• *New Files:* %d\n" .
+                        "• *Deleted Files:* %d\n" .
+                        "• *Total Files:* %d",
+                        get_bloginfo( 'name' ),
+                        $scan_id,
+                        $scan_summary['changed_files'],
+                        $scan_summary['new_files'],
+                        $scan_summary['deleted_files'],
+                        $scan_summary['total_files']
+                    )
+                ]
+            ]
+        ];
+        
+        // Add changed files if any
+        if ( ! empty( $changed_files ) ) {
+            $file_list = array_slice( $changed_files, 0, 5 );
+            $file_text = "*Recently Changed Files:*\n";
+            foreach ( $file_list as $file ) {
+                $file_text .= "• `" . $file->file_path . "`\n";
+            }
+            if ( count( $changed_files ) > 5 ) {
+                $file_text .= "_... and " . ( count( $changed_files ) - 5 ) . " more_";
+            }
+            
+            $blocks[] = [
+                'type' => 'section',
+                'text' => [
+                    'type' => 'mrkdwn',
+                    'text' => $file_text
+                ]
+            ];
+        }
+        
+        // Add action button
+        $blocks[] = [
+            'type' => 'actions',
+            'elements' => [
+                [
+                    'type' => 'button',
+                    'text' => [
+                        'type' => 'plain_text',
+                        'text' => 'View Scan Details',
+                        'emoji' => true
+                    ],
+                    'url' => admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_id ),
+                    'style' => 'primary'
+                ]
+            ]
+        ];
+        
+        // Add context
+        $blocks[] = [
+            'type' => 'context',
+            'elements' => [
+                [
+                    'type' => 'mrkdwn',
+                    'text' => sprintf( 'Site: %s | Scan Duration: %ds', site_url(), $scan_summary['duration'] ?? 0 )
+                ]
+            ]
+        ];
+        
+        $message = [
+            'text' => sprintf( '🚨 File changes detected on %s (Resent)', get_bloginfo( 'name' ) ),
+            'blocks' => $blocks
+        ];
+        
+        // Send to Slack
+        $response = wp_remote_post( $webhook_url, [
+            'headers' => [ 'Content-Type' => 'application/json' ],
+            'body' => wp_json_encode( $message ),
+            'timeout' => 10
+        ] );
+        
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( 'Failed to send Slack notification: ' . $response->get_error_message() );
+        }
+        
+        $response_code = wp_remote_retrieve_response_code( $response );
+        if ( $response_code === 200 ) {
+            wp_send_json_success( 'Slack notification sent successfully' );
+        } else {
+            wp_send_json_error( 'Slack API returned error code: ' . $response_code );
         }
     }
 }

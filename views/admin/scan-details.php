@@ -13,6 +13,7 @@ use EightyFourEM\FileIntegrityChecker\Plugin;
 
 $plugin = Plugin::getInstance();
 $fileRecordRepository = $plugin->getContainer()->get( \EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository::class );
+$settingsService = $plugin->getContainer()->get( \EightyFourEM\FileIntegrityChecker\Services\SettingsService::class );
 
 // Get changed files for this scan
 $changed_files = $fileRecordRepository->getChangedFiles( $scan_summary['scan_id'] );
@@ -117,6 +118,56 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
             </div>
         </div>
 
+    </div>
+
+    <!-- Actions Section -->
+    <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <h3>Actions</h3>
+        <div class="card-content">
+            <div class="card-actions">
+                <?php 
+                // Check if there are changes to notify about
+                $has_changes = $scan_summary['changed_files'] > 0 || $scan_summary['new_files'] > 0 || $scan_summary['deleted_files'] > 0;
+                
+                // Check if email notifications are enabled
+                $email_enabled = $settingsService->isNotificationEnabled() && $has_changes;
+                
+                // Check if Slack notifications are enabled
+                $slack_enabled = $settingsService->isSlackEnabled() && 
+                                !empty( $settingsService->getSlackWebhookUrl() ) && 
+                                $has_changes;
+                ?>
+                
+                <?php if ( $email_enabled ): ?>
+                <button type="button" class="button resend-email-notification" 
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
+                    <span class="dashicons dashicons-email"></span>
+                    Resend Email Notification
+                </button>
+                <?php endif; ?>
+                
+                <?php if ( $slack_enabled ): ?>
+                <button type="button" class="button resend-slack-notification" 
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
+                    <span class="dashicons dashicons-admin-comments"></span>
+                    Resend Slack Notification
+                </button>
+                <?php endif; ?>
+                
+                <button type="button" class="button button-link-delete delete-scan-details" 
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
+                        style="margin-left: auto;">
+                    <span class="dashicons dashicons-trash"></span>
+                    Delete This Scan
+                </button>
+            </div>
+            
+            <?php if ( ! $has_changes && ( $settingsService->isNotificationEnabled() || $settingsService->isSlackEnabled() ) ): ?>
+            <p class="description" style="margin-top: 10px;">
+                <em>Notifications are only available for scans with detected changes.</em>
+            </p>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if ( ! empty( $changed_files ) ): ?>

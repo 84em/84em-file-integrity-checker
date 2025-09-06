@@ -41,6 +41,11 @@
             $(document).on('change', '.scan-checkbox', this.handleScanCheckboxChange.bind(this));
             $(document).on('click', '.bulk-delete-btn', this.handleBulkDelete.bind(this));
             
+            // Scan details page actions
+            $(document).on('click', '.delete-scan-details', this.handleDeleteScanDetails.bind(this));
+            $(document).on('click', '.resend-email-notification', this.handleResendEmailNotification.bind(this));
+            $(document).on('click', '.resend-slack-notification', this.handleResendSlackNotification.bind(this));
+            
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
             
@@ -565,6 +570,100 @@
                     this.showError('Failed to delete scans');
                     button.prop('disabled', false).text('Apply');
                 });
+            });
+        },
+        
+        // Handle delete scan from details page
+        handleDeleteScanDetails: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.currentTarget);
+            const scanId = button.data('scan-id');
+            
+            FICModal.confirm(
+                'Are you sure you want to delete this scan result? This action cannot be undone.',
+                'Delete Scan Result',
+                'Yes, Delete',
+                'Cancel'
+            ).then(confirmed => {
+                if (confirmed) {
+                    button.prop('disabled', true).text('Deleting...');
+                    
+                    $.post(fileIntegrityChecker.ajaxUrl, {
+                        action: 'file_integrity_delete_scan',
+                        scan_id: scanId,
+                        _wpnonce: fileIntegrityChecker.nonce
+                    }).then((response) => {
+                        if (response.success) {
+                            this.showSuccess('Scan deleted successfully. Redirecting...');
+                            setTimeout(() => {
+                                window.location.href = 'admin.php?page=file-integrity-checker-results';
+                            }, 1500);
+                        } else {
+                            this.showError('Failed to delete scan: ' + (response.data || 'Unknown error'));
+                            button.prop('disabled', false).html('<span class="dashicons dashicons-trash"></span> Delete This Scan');
+                        }
+                    }).catch((error) => {
+                        this.showError('Failed to delete scan');
+                        button.prop('disabled', false).html('<span class="dashicons dashicons-trash"></span> Delete This Scan');
+                    });
+                }
+            });
+        },
+        
+        // Handle resend email notification
+        handleResendEmailNotification: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.currentTarget);
+            const scanId = button.data('scan-id');
+            const originalHtml = button.html();
+            
+            button.prop('disabled', true).html('<span class="dashicons dashicons-email"></span> Sending...');
+            
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_resend_email',
+                scan_id: scanId,
+                _wpnonce: fileIntegrityChecker.nonce
+            }).then((response) => {
+                if (response.success) {
+                    this.showSuccess('Email notification sent successfully');
+                    button.prop('disabled', false).html(originalHtml);
+                } else {
+                    this.showError('Failed to send email: ' + (response.data || 'Unknown error'));
+                    button.prop('disabled', false).html(originalHtml);
+                }
+            }).catch((error) => {
+                this.showError('Failed to send email notification');
+                button.prop('disabled', false).html(originalHtml);
+            });
+        },
+        
+        // Handle resend Slack notification
+        handleResendSlackNotification: function(e) {
+            e.preventDefault();
+            
+            const button = $(e.currentTarget);
+            const scanId = button.data('scan-id');
+            const originalHtml = button.html();
+            
+            button.prop('disabled', true).html('<span class="dashicons dashicons-admin-comments"></span> Sending...');
+            
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_resend_slack',
+                scan_id: scanId,
+                _wpnonce: fileIntegrityChecker.nonce
+            }).then((response) => {
+                if (response.success) {
+                    this.showSuccess('Slack notification sent successfully');
+                    button.prop('disabled', false).html(originalHtml);
+                } else {
+                    this.showError('Failed to send Slack notification: ' + (response.data || 'Unknown error'));
+                    button.prop('disabled', false).html(originalHtml);
+                }
+            }).catch((error) => {
+                this.showError('Failed to send Slack notification');
+                button.prop('disabled', false).html(originalHtml);
             });
         },
         
