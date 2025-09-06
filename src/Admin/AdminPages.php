@@ -11,6 +11,7 @@ use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
+use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 
 /**
  * Manages admin pages for the plugin
@@ -45,23 +46,33 @@ class AdminPages {
     private ScanResultsRepository $scanResultsRepository;
 
     /**
+     * File record repository
+     *
+     * @var FileRecordRepository
+     */
+    private FileRecordRepository $fileRecordRepository;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
      * @param SettingsService       $settingsService       Settings service
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
+     * @param FileRecordRepository  $fileRecordRepository  File record repository
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
         SchedulerService $schedulerService,
-        ScanResultsRepository $scanResultsRepository
+        ScanResultsRepository $scanResultsRepository,
+        FileRecordRepository $fileRecordRepository
     ) {
         $this->integrityService = $integrityService;
         $this->settingsService  = $settingsService;
         $this->schedulerService = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
+        $this->fileRecordRepository = $fileRecordRepository;
     }
 
     /**

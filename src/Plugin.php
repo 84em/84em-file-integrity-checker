@@ -182,7 +182,8 @@ class Plugin {
                 $container->get( IntegrityService::class ),
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
-                $container->get( ScanResultsRepository::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( FileRecordRepository::class )
             );
         } );
 

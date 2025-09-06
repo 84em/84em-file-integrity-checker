@@ -118,11 +118,9 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
             </div>
         </div>
 
-    </div>
-
-    <!-- Actions Section -->
-    <div class="file-integrity-card" style="margin-bottom: 30px;">
-        <h3>Actions</h3>
+        <!-- Actions Card -->
+        <div class="file-integrity-card">
+            <h3>Actions</h3>
         <div class="card-content">
             <div class="card-actions">
                 <?php 
@@ -168,6 +166,8 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
             </p>
             <?php endif; ?>
         </div>
+    </div>
+
     </div>
 
     <?php if ( ! empty( $changed_files ) ): ?>
