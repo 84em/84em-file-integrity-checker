@@ -106,7 +106,7 @@
         startScan: function() {
             return $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_start_scan',
-                _wpnonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.start_scan
             });
         },
 
@@ -125,7 +125,7 @@
                 $.post(fileIntegrityChecker.ajaxUrl, {
                     action: 'file_integrity_check_progress',
                     scan_id: scanId,
-                    _wpnonce: fileIntegrityChecker.nonce
+                    _wpnonce: fileIntegrityChecker.nonces.check_progress
                 }).then((response) => {
                     if (response.success) {
                         this.updateProgress(response.data);
@@ -256,7 +256,7 @@
                 if (confirmed) {
                     $.post(fileIntegrityChecker.ajaxUrl, {
                         action: 'file_integrity_cancel_scan',
-                        _wpnonce: fileIntegrityChecker.nonce
+                        _wpnonce: fileIntegrityChecker.nonces.cancel_scan
                     }).then((response) => {
                         if (response.success) {
                             $('.file-integrity-progress-container').remove();
@@ -279,7 +279,7 @@
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_schedule_scan',
                 interval: interval,
-                _wpnonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.schedule_scan || fileIntegrityChecker.nonce
             }).then((response) => {
                 if (response.success) {
                     this.showSuccess('Scan scheduled successfully');
@@ -337,7 +337,7 @@
                     $.post(fileIntegrityChecker.ajaxUrl, {
                         action: 'file_integrity_cancel_scan',
                         scan_id: scanId,
-                        _wpnonce: fileIntegrityChecker.nonce
+                        _wpnonce: fileIntegrityChecker.nonces.cancel_scan
                     }).then((response) => {
                         if (response.success) {
                             this.showSuccess('Scan cancelled successfully');
@@ -373,7 +373,7 @@
                     $.post(fileIntegrityChecker.ajaxUrl, {
                         action: 'file_integrity_delete_scan',
                         scan_id: scanId,
-                        _wpnonce: fileIntegrityChecker.nonce
+                        _wpnonce: fileIntegrityChecker.nonces.delete_scan
                     }).then((response) => {
                         if (response.success) {
                             this.showSuccess('Scan result deleted successfully');
@@ -412,7 +412,7 @@
                 
                 $.post(fileIntegrityChecker.ajaxUrl, {
                     action: 'file_integrity_cleanup_old_scans',
-                    _wpnonce: fileIntegrityChecker.nonce
+                    _wpnonce: fileIntegrityChecker.nonces.cleanup_old
                 }).then((response) => {
                     if (response.success) {
                         this.showSuccess(`Deleted ${response.data.deleted_scans} old scan results`);
@@ -463,7 +463,7 @@
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_test_slack',
                 webhook_url: webhookUrl,
-                _wpnonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.test_slack
             }).then((response) => {
                 if (response.success) {
                     this.showSuccess('Test message sent successfully! Check your Slack channel.');
@@ -547,7 +547,7 @@
                 $.post(fileIntegrityChecker.ajaxUrl, {
                     action: 'file_integrity_bulk_delete_scans',
                     scan_ids: selectedScans,
-                    _wpnonce: fileIntegrityChecker.nonce
+                    _wpnonce: fileIntegrityChecker.nonces.bulk_delete
                 }).then((response) => {
                     if (response.success) {
                         this.showSuccess(`Successfully deleted ${response.data.deleted} scan results`);
@@ -593,7 +593,7 @@
                     $.post(fileIntegrityChecker.ajaxUrl, {
                         action: 'file_integrity_delete_scan',
                         scan_id: scanId,
-                        _wpnonce: fileIntegrityChecker.nonce
+                        _wpnonce: fileIntegrityChecker.nonces.delete_scan
                     }).then((response) => {
                         if (response.success) {
                             this.showSuccess('Scan deleted successfully. Redirecting...');
@@ -625,7 +625,7 @@
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_resend_email',
                 scan_id: scanId,
-                _wpnonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.resend_email
             }).then((response) => {
                 if (response.success) {
                     this.showSuccess('Email notification sent successfully');
@@ -653,7 +653,7 @@
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_resend_slack',
                 scan_id: scanId,
-                _wpnonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.resend_slack
             }).then((response) => {
                 if (response.success) {
                     this.showSuccess('Slack notification sent successfully');
@@ -683,7 +683,7 @@
                 action: 'file_integrity_view_file',
                 file_path: filePath,
                 scan_id: scanId,
-                _wpnonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.view_file
             }).then((response) => {
                 button.prop('disabled', false).html(originalHtml);
                 

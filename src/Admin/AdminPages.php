@@ -227,9 +227,6 @@ class AdminPages {
         // Localize script with AJAX data
         wp_localize_script( 'file-integrity-checker-admin', 'fileIntegrityChecker', [
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            // Keep the old single nonce for backward compatibility
-            'nonce' => wp_create_nonce( 'file_integrity_ajax' ),
-            // Add new action-specific nonces
             'nonces' => [
                 'start_scan' => Security::create_nonce( 'ajax_start_scan' ),
                 'check_progress' => Security::create_nonce( 'ajax_check_progress' ),

@@ -47,20 +47,7 @@ class Security {
      * @return bool True if valid, false otherwise
      */
     public static function check_ajax_referer( string $action, string $query_arg = '_wpnonce', bool $die = false ): bool {
-        // First try the action-specific nonce
-        $result = check_ajax_referer( self::NONCE_PREFIX . $action, $query_arg, false );
-        
-        // If that fails, try the generic nonce for backward compatibility
-        if ( $result === false ) {
-            $result = check_ajax_referer( 'file_integrity_ajax', $query_arg, false );
-        }
-        
-        // If both failed and $die is true, die with error
-        if ( $result === false && $die ) {
-            wp_die( -1, 403 );
-        }
-        
-        return $result !== false;
+        return check_ajax_referer( self::NONCE_PREFIX . $action, $query_arg, $die ) !== false;
     }
     
     /**
