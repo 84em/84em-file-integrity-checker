@@ -725,7 +725,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="button button-primary modal-close">Close</button>
+                            <button type="button" class="button modal-close">Close</button>
                         </div>
                     </div>
                 </div>
