@@ -11,7 +11,6 @@ use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
-use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 
 /**
  * Manages admin pages for the plugin
@@ -46,33 +45,23 @@ class AdminPages {
     private ScanResultsRepository $scanResultsRepository;
 
     /**
-     * File record repository
-     *
-     * @var FileRecordRepository
-     */
-    private FileRecordRepository $fileRecordRepository;
-
-    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
      * @param SettingsService       $settingsService       Settings service
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
-     * @param FileRecordRepository  $fileRecordRepository  File record repository
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
         SchedulerService $schedulerService,
-        ScanResultsRepository $scanResultsRepository,
-        FileRecordRepository $fileRecordRepository
+        ScanResultsRepository $scanResultsRepository
     ) {
         $this->integrityService = $integrityService;
         $this->settingsService  = $settingsService;
         $this->schedulerService = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
-        $this->fileRecordRepository = $fileRecordRepository;
     }
 
     /**
@@ -735,7 +724,7 @@ class AdminPages {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
-        // Get scan summary
+        // Get scan summary to validate
         $scan_summary = $this->integrityService->getScanSummary( $scan_id );
         if ( ! $scan_summary ) {
             wp_send_json_error( 'Scan not found' );
@@ -748,47 +737,15 @@ class AdminPages {
             wp_send_json_error( 'No changes to notify about' );
         }
         
-        // Get changed files
-        $changed_files = $this->fileRecordRepository->getChangedFiles( $scan_id );
-        
-        // Send email notification
-        $email_to = $this->settingsService->getNotificationEmail();
-        $subject = sprintf( 
-            '[%s] File Integrity Scan - Changes Detected (Resent)', 
-            get_bloginfo( 'name' )
-        );
-        
-        $message = sprintf(
-            "This is a resent notification for Scan #%d.\n\n" .
-            "Changes detected during the file integrity scan:\n\n" .
-            "Changed Files: %d\n" .
-            "New Files: %d\n" .
-            "Deleted Files: %d\n" .
-            "Total Files Scanned: %d\n\n",
-            $scan_id,
-            $scan_summary['changed_files'],
-            $scan_summary['new_files'],
-            $scan_summary['deleted_files'],
-            $scan_summary['total_files']
-        );
-        
-        if ( ! empty( $changed_files ) ) {
-            $message .= "Changed files:\n";
-            foreach ( array_slice( $changed_files, 0, 10 ) as $file ) {
-                $message .= "  - " . $file->file_path . "\n";
-            }
-            if ( count( $changed_files ) > 10 ) {
-                $message .= sprintf( "  ... and %d more\n", count( $changed_files ) - 10 );
-            }
+        // Check if email is enabled
+        if ( ! $this->settingsService->isNotificationEnabled() ) {
+            wp_send_json_error( 'Email notifications are not enabled' );
         }
         
-        $message .= sprintf( "\nView full details: %s", 
-            admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_id ) 
-        );
+        // Use the existing sendChangeNotification method
+        $sent = $this->integrityService->sendChangeNotification( $scan_id );
         
-        $headers = [ 'Content-Type: text/plain; charset=UTF-8' ];
-        
-        if ( wp_mail( $email_to, $subject, $message, $headers ) ) {
+        if ( $sent ) {
             wp_send_json_success( 'Email notification sent successfully' );
         } else {
             wp_send_json_error( 'Failed to send email notification' );
@@ -815,7 +772,7 @@ class AdminPages {
             wp_send_json_error( 'Invalid scan ID' );
         }
         
-        // Get scan summary
+        // Get scan summary to validate
         $scan_summary = $this->integrityService->getScanSummary( $scan_id );
         if ( ! $scan_summary ) {
             wp_send_json_error( 'Scan not found' );
@@ -828,115 +785,19 @@ class AdminPages {
             wp_send_json_error( 'No changes to notify about' );
         }
         
-        $webhook_url = $this->settingsService->getSlackWebhookUrl();
-        
-        if ( empty( $webhook_url ) ) {
-            wp_send_json_error( 'Slack webhook URL not configured' );
+        // Check if Slack is enabled
+        if ( ! $this->settingsService->isSlackEnabled() || 
+             empty( $this->settingsService->getSlackWebhookUrl() ) ) {
+            wp_send_json_error( 'Slack notifications are not configured' );
         }
         
-        // Get changed files
-        $changed_files = $this->fileRecordRepository->getChangedFiles( $scan_id );
+        // Use the existing sendChangeNotification method
+        $sent = $this->integrityService->sendChangeNotification( $scan_id );
         
-        // Build Slack message with blocks
-        $blocks = [
-            [
-                'type' => 'header',
-                'text' => [
-                    'type' => 'plain_text',
-                    'text' => '🚨 File Integrity Alert (Resent)',
-                    'emoji' => true
-                ]
-            ],
-            [
-                'type' => 'section',
-                'text' => [
-                    'type' => 'mrkdwn',
-                    'text' => sprintf(
-                        "*Changes detected on %s* (Scan #%d)\n\n" .
-                        "• *Changed Files:* %d\n" .
-                        "• *New Files:* %d\n" .
-                        "• *Deleted Files:* %d\n" .
-                        "• *Total Files:* %d",
-                        get_bloginfo( 'name' ),
-                        $scan_id,
-                        $scan_summary['changed_files'],
-                        $scan_summary['new_files'],
-                        $scan_summary['deleted_files'],
-                        $scan_summary['total_files']
-                    )
-                ]
-            ]
-        ];
-        
-        // Add changed files if any
-        if ( ! empty( $changed_files ) ) {
-            $file_list = array_slice( $changed_files, 0, 5 );
-            $file_text = "*Recently Changed Files:*\n";
-            foreach ( $file_list as $file ) {
-                $file_text .= "• `" . $file->file_path . "`\n";
-            }
-            if ( count( $changed_files ) > 5 ) {
-                $file_text .= "_... and " . ( count( $changed_files ) - 5 ) . " more_";
-            }
-            
-            $blocks[] = [
-                'type' => 'section',
-                'text' => [
-                    'type' => 'mrkdwn',
-                    'text' => $file_text
-                ]
-            ];
-        }
-        
-        // Add action button
-        $blocks[] = [
-            'type' => 'actions',
-            'elements' => [
-                [
-                    'type' => 'button',
-                    'text' => [
-                        'type' => 'plain_text',
-                        'text' => 'View Scan Details',
-                        'emoji' => true
-                    ],
-                    'url' => admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_id ),
-                    'style' => 'primary'
-                ]
-            ]
-        ];
-        
-        // Add context
-        $blocks[] = [
-            'type' => 'context',
-            'elements' => [
-                [
-                    'type' => 'mrkdwn',
-                    'text' => sprintf( 'Site: %s | Scan Duration: %ds', site_url(), $scan_summary['duration'] ?? 0 )
-                ]
-            ]
-        ];
-        
-        $message = [
-            'text' => sprintf( '🚨 File changes detected on %s (Resent)', get_bloginfo( 'name' ) ),
-            'blocks' => $blocks
-        ];
-        
-        // Send to Slack
-        $response = wp_remote_post( $webhook_url, [
-            'headers' => [ 'Content-Type' => 'application/json' ],
-            'body' => wp_json_encode( $message ),
-            'timeout' => 10
-        ] );
-        
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( 'Failed to send Slack notification: ' . $response->get_error_message() );
-        }
-        
-        $response_code = wp_remote_retrieve_response_code( $response );
-        if ( $response_code === 200 ) {
+        if ( $sent ) {
             wp_send_json_success( 'Slack notification sent successfully' );
         } else {
-            wp_send_json_error( 'Slack API returned error code: ' . $response_code );
+            wp_send_json_error( 'Failed to send Slack notification' );
         }
     }
 }
