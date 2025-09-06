@@ -122,7 +122,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
         <div class="file-integrity-card">
             <h3>Actions</h3>
         <div class="card-content">
-            <div class="card-actions">
+            <div class="card-actions" style="display: flex; flex-direction: column; gap: 10px;">
                 <?php 
                 // Check if there are changes to notify about
                 $has_changes = $scan_summary['changed_files'] > 0 || $scan_summary['new_files'] > 0 || $scan_summary['deleted_files'] > 0;
@@ -137,24 +137,28 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 ?>
                 
                 <?php if ( $email_enabled ): ?>
-                <button type="button" class="button resend-email-notification" 
-                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
+                <button type="button" class="button button-secondary resend-email-notification" 
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
+                        style="width: 100%; justify-content: center;">
                     <span class="dashicons dashicons-email"></span>
                     Resend Email Notification
                 </button>
                 <?php endif; ?>
                 
                 <?php if ( $slack_enabled ): ?>
-                <button type="button" class="button resend-slack-notification" 
-                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
+                <button type="button" class="button button-secondary resend-slack-notification" 
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
+                        style="width: 100%; justify-content: center;">
                     <span class="dashicons dashicons-admin-comments"></span>
                     Resend Slack Notification
                 </button>
                 <?php endif; ?>
                 
+                <hr style="margin: 5px 0; border: none; border-top: 1px solid #ddd;">
+                
                 <button type="button" class="button button-link-delete delete-scan-details" 
                         data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
-                        style="margin-left: auto;">
+                        style="width: 100%; justify-content: center; color: #d63638;">
                     <span class="dashicons dashicons-trash"></span>
                     Delete This Scan
                 </button>
