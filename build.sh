@@ -54,9 +54,7 @@ fi
 cp ${PLUGIN_SLUG}.php ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy documentation files
-cp README.md ${BUILD_DIR}/${PLUGIN_SLUG}/
-[ -f "LICENSE" ] && cp LICENSE ${BUILD_DIR}/${PLUGIN_SLUG}/
-[ -f "changelog.txt" ] && cp changelog.txt ${BUILD_DIR}/${PLUGIN_SLUG}/
+cp LICENSE.txt ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy composer.json for dependency installation
 cp composer.json ${BUILD_DIR}/${PLUGIN_SLUG}/
