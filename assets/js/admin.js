@@ -46,7 +46,6 @@
             $(document).on('click', '.resend-email-notification', this.handleResendEmailNotification.bind(this));
             $(document).on('click', '.resend-slack-notification', this.handleResendSlackNotification.bind(this));
             $(document).on('click', '.view-file-btn', this.handleViewFile.bind(this));
-            $(document).on('click', '.view-diff-btn', this.handleViewDiff.bind(this));
             
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
@@ -701,16 +700,6 @@
         
         // Show file content in modal
         showFileModal: function(data) {
-            // Build redaction notice if needed
-            let redactionNotice = '';
-            if (data.redacted && data.redaction_notice) {
-                redactionNotice = `
-                    <div class="redaction-notice" style="background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 10px 15px; border-radius: 4px; margin-bottom: 15px;">
-                        <strong>Security Notice:</strong> ${this.escapeHtml(data.redaction_notice)}
-                    </div>
-                `;
-            }
-            
             // Create modal HTML
             const modalHtml = `
                 <div id="file-viewer-modal" class="file-integrity-modal">
@@ -728,10 +717,9 @@
                                     <span><strong>Size:</strong> ${this.formatBytes(data.file_size)}</span>
                                     <span><strong>Lines:</strong> ${data.lines}</span>
                                     <span><strong>Language:</strong> ${data.language}</span>
-                                    ${data.redacted && !data.redaction_notice ? '<span class="warning"><strong>Note:</strong> Sensitive data has been redacted</span>' : ''}
+                                    ${data.redacted ? '<span class="warning"><strong>Note:</strong> Sensitive data has been redacted</span>' : ''}
                                 </div>
                             </div>
-                            ${redactionNotice}
                             <div class="file-content-wrapper">
                                 <pre class="file-content language-${data.language}"><code>${this.escapeHtml(data.content)}</code></pre>
                             </div>
@@ -913,257 +901,6 @@
                     $(document).off('keydown.fileModal');
                 }
             });
-        },
-        
-        // Handle view diff button click
-        handleViewDiff: function(e) {
-            e.preventDefault();
-            
-            const button = $(e.currentTarget);
-            const filePath = button.data('file-path');
-            const diffData = button.data('diff');
-            
-            // Check if diff data is available
-            if (!diffData) {
-                this.showError('No changes available for this file');
-                return;
-            }
-            
-            // Parse diff data if it's a string
-            let diff;
-            try {
-                diff = typeof diffData === 'string' ? JSON.parse(diffData) : diffData;
-            } catch (error) {
-                // If parsing fails, assume it's raw diff content
-                diff = diffData;
-            }
-            
-            // Show diff in modal
-            this.showDiffModal(filePath, diff);
-        },
-        
-        // Show diff content in modal
-        showDiffModal: function(filePath, diff) {
-            // Check if diff is blocked
-            if (typeof diff === 'object' && diff.type === 'blocked') {
-                // For sensitive files, we should still show the diff with redacted content
-                // The backend should have already applied redaction
-                this.showInfo('This file contains sensitive information. The diff will be shown with sensitive data redacted.');
-            }
-            
-            // Create modal for diff viewing
-            const modalHtml = `
-                <div id="diff-viewer-modal" class="file-integrity-modal-overlay">
-                    <div class="file-integrity-modal">
-                        <div class="modal-header">
-                            <h2>Changes in: ${this.escapeHtml(filePath)}</h2>
-                            <button class="modal-close" title="Close">
-                                <span class="dashicons dashicons-no"></span>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            ${this.formatDiffContent(diff, filePath)}
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Remove any existing modal
-            $('#diff-viewer-modal').remove();
-            
-            // Add modal to body
-            $('body').append(modalHtml);
-            
-            // Add modal styles if not already present
-            if ($('#file-viewer-modal-styles').length === 0) {
-                const modalStyles = `
-                    <style id="file-viewer-modal-styles">
-                        .file-integrity-modal-overlay {
-                            position: fixed;
-                            top: 0;
-                            left: 0;
-                            right: 0;
-                            bottom: 0;
-                            background: rgba(0, 0, 0, 0.8);
-                            z-index: 100000;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            animation: fadeIn 0.3s ease;
-                        }
-                        
-                        .file-integrity-modal {
-                            background: white;
-                            border-radius: 8px;
-                            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-                            width: 90%;
-                            max-width: 1200px;
-                            height: 80vh;
-                            display: flex;
-                            flex-direction: column;
-                        }
-                        
-                        .modal-header {
-                            padding: 20px;
-                            border-bottom: 1px solid #ddd;
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                        }
-                        
-                        .modal-header h2 {
-                            margin: 0;
-                            font-size: 18px;
-                            font-weight: 600;
-                        }
-                        
-                        .modal-close {
-                            background: none;
-                            border: none;
-                            cursor: pointer;
-                            padding: 5px;
-                            font-size: 20px;
-                            color: #666;
-                        }
-                        
-                        .modal-close:hover {
-                            color: #000;
-                        }
-                        
-                        .modal-body {
-                            flex: 1;
-                            overflow: auto;
-                            padding: 20px;
-                        }
-                        
-                        .diff-content {
-                            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-                            font-size: 13px;
-                            line-height: 1.6;
-                            white-space: pre;
-                            overflow-x: auto;
-                        }
-                        
-                        .diff-line {
-                            padding: 2px 10px;
-                            margin: 0;
-                        }
-                        
-                        .diff-line.added {
-                            background-color: #e6ffec;
-                            color: #24663b;
-                        }
-                        
-                        .diff-line.removed {
-                            background-color: #ffebe9;
-                            color: #82071e;
-                        }
-                        
-                        .diff-line.context {
-                            color: #666;
-                        }
-                        
-                        .diff-line.header {
-                            background-color: #f0f0f0;
-                            color: #000;
-                            font-weight: bold;
-                            margin: 10px 0 5px 0;
-                        }
-                        
-                        .redaction-notice {
-                            background: #fff3cd;
-                            border: 1px solid #ffc107;
-                            color: #856404;
-                            padding: 10px 15px;
-                            border-radius: 4px;
-                            margin-bottom: 15px;
-                        }
-                        
-                        @keyframes fadeIn {
-                            from { opacity: 0; }
-                            to { opacity: 1; }
-                        }
-                    </style>
-                `;
-                $('head').append(modalStyles);
-            }
-            
-            // Bind close handlers
-            $('#diff-viewer-modal .modal-close').on('click', function() {
-                $('#diff-viewer-modal').fadeOut(300, function() {
-                    $(this).remove();
-                });
-            });
-            
-            // Close on overlay click
-            $('#diff-viewer-modal').on('click', function(e) {
-                if (e.target === this) {
-                    $(this).fadeOut(300, function() {
-                        $(this).remove();
-                    });
-                }
-            });
-            
-            // Close on ESC key
-            $(document).on('keydown.diffModal', function(e) {
-                if (e.key === 'Escape') {
-                    $('#diff-viewer-modal').fadeOut(300, function() {
-                        $(this).remove();
-                    });
-                    $(document).off('keydown.diffModal');
-                }
-            });
-        },
-        
-        // Format diff content for display
-        formatDiffContent: function(diff, filePath) {
-            let html = '';
-            
-            // Check if the file needs redaction notice
-            const sensitiveFiles = ['wp-config.php', '.env', '.htaccess', 'config.php'];
-            const basename = filePath.split('/').pop();
-            if (sensitiveFiles.some(file => basename.includes(file))) {
-                html += '<div class="redaction-notice">';
-                html += '<strong>Security Notice:</strong> This file contains sensitive information. ';
-                html += 'All passwords, keys, and credentials have been redacted for security.';
-                html += '</div>';
-            }
-            
-            // Handle different diff formats
-            if (typeof diff === 'object' && diff.type === 'blocked') {
-                html += '<div class="redaction-notice">';
-                html += this.escapeHtml(diff.reason || 'This file cannot be displayed for security reasons.');
-                html += '</div>';
-                return html;
-            }
-            
-            // If it's a string, format it as a unified diff
-            if (typeof diff === 'string') {
-                html += '<div class="diff-content">';
-                
-                const lines = diff.split('\n');
-                lines.forEach(line => {
-                    let lineClass = 'context';
-                    
-                    if (line.startsWith('+++') || line.startsWith('---')) {
-                        lineClass = 'header';
-                    } else if (line.startsWith('@@')) {
-                        lineClass = 'header';
-                    } else if (line.startsWith('+')) {
-                        lineClass = 'added';
-                    } else if (line.startsWith('-')) {
-                        lineClass = 'removed';
-                    }
-                    
-                    html += `<div class="diff-line ${lineClass}">${this.escapeHtml(line)}</div>`;
-                });
-                
-                html += '</div>';
-            } else {
-                html += '<div class="diff-content">No changes to display</div>';
-            }
-            
-            return html;
         },
         
         // Escape HTML for safe display
