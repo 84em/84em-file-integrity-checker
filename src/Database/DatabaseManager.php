@@ -18,6 +18,7 @@ class DatabaseManager {
     private const TABLE_FILE_RECORDS = 'eightyfourem_integrity_file_records';
     private const TABLE_SCAN_SCHEDULES = 'eightyfourem_integrity_scan_schedules';
     private const TABLE_FILE_CONTENT = 'eightyfourem_integrity_file_content';
+    private const TABLE_LOGS = 'eightyfourem_integrity_logs';
 
     /**
      * Initialize database tables
@@ -116,15 +117,36 @@ class DatabaseManager {
             KEY created_at (created_at)
         ) $charset_collate;";
 
+        // Logs table
+        $logs_table = $wpdb->prefix . self::TABLE_LOGS;
+        $logs_sql = "CREATE TABLE $logs_table (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            log_level varchar(20) NOT NULL DEFAULT 'info',
+            context varchar(50) NOT NULL DEFAULT 'general',
+            message text NOT NULL,
+            data longtext DEFAULT NULL,
+            user_id bigint(20) UNSIGNED DEFAULT NULL,
+            ip_address varchar(45) DEFAULT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY log_level (log_level),
+            KEY context (context),
+            KEY user_id (user_id),
+            KEY created_at (created_at),
+            KEY level_context (log_level, context),
+            KEY context_created (context, created_at)
+        ) $charset_collate;";
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         
         dbDelta( $scan_results_sql );
         dbDelta( $file_records_sql );
         dbDelta( $scan_schedules_sql );
         dbDelta( $file_content_sql );
+        dbDelta( $logs_sql );
 
         // Set database version
-        update_option( 'eightyfourem_file_integrity_db_version', '1.4.0' );
+        update_option( 'eightyfourem_file_integrity_db_version', '1.5.0' );
     }
 
     /**
@@ -133,7 +155,7 @@ class DatabaseManager {
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
         
-        if ( version_compare( $installed_version, '1.4.0', '<' ) ) {
+        if ( version_compare( $installed_version, '1.5.0', '<' ) ) {
             $this->createTables();
         }
     }
@@ -148,12 +170,14 @@ class DatabaseManager {
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
         $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
         $file_content_table = $wpdb->prefix . self::TABLE_FILE_CONTENT;
+        $logs_table = $wpdb->prefix . self::TABLE_LOGS;
 
         // Drop tables in reverse order due to foreign key constraints
         $wpdb->query( "DROP TABLE IF EXISTS $file_records_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $file_content_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_schedules_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_results_table" );
+        $wpdb->query( "DROP TABLE IF EXISTS $logs_table" );
 
         // Remove options
         delete_option( 'eightyfourem_file_integrity_db_version' );

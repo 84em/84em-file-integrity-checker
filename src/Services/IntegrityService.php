@@ -45,23 +45,43 @@ class IntegrityService {
     private SettingsService $settingsService;
 
     /**
+     * Logger service
+     *
+     * @var LoggerService
+     */
+    private LoggerService $logger;
+
+    /**
+     * Notification service
+     *
+     * @var NotificationService
+     */
+    private NotificationService $notificationService;
+
+    /**
      * Constructor
      *
      * @param FileScanner           $fileScanner           File scanner
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
      * @param FileRecordRepository  $fileRecordRepository  File record repository
      * @param SettingsService       $settingsService       Settings service
+     * @param LoggerService         $logger                Logger service
+     * @param NotificationService   $notificationService   Notification service
      */
     public function __construct(
         FileScanner $fileScanner,
         ScanResultsRepository $scanResultsRepository,
         FileRecordRepository $fileRecordRepository,
-        SettingsService $settingsService
+        SettingsService $settingsService,
+        LoggerService $logger,
+        NotificationService $notificationService
     ) {
         $this->fileScanner           = $fileScanner;
         $this->scanResultsRepository = $scanResultsRepository;
         $this->fileRecordRepository  = $fileRecordRepository;
         $this->settingsService       = $settingsService;
+        $this->logger                = $logger;
+        $this->notificationService   = $notificationService;
     }
 
     /**
@@ -91,8 +111,19 @@ class IntegrityService {
         $scan_id = $this->scanResultsRepository->create( $scan_data );
 
         if ( ! $scan_id ) {
+            $this->logger->error(
+                'Failed to create scan result record',
+                LoggerService::CONTEXT_SCANNER,
+                [ 'scan_type' => $scan_type ]
+            );
             return false;
         }
+        
+        $this->logger->info(
+            "Starting $scan_type scan (ID: $scan_id)",
+            LoggerService::CONTEXT_SCANNER,
+            [ 'scan_id' => $scan_id, 'scan_type' => $scan_type ]
+        );
 
         try {
             // Get the latest completed scan for comparison
@@ -146,17 +177,40 @@ class IntegrityService {
             ] );
 
             if ( ! $update_success ) {
-                error_log( "Failed to update scan result with final statistics for scan ID: $scan_id" );
+                $this->logger->error( 
+                    "Failed to update scan result with final statistics for scan ID: $scan_id",
+                    LoggerService::CONTEXT_SCANNER,
+                    [ 'scan_id' => $scan_id ]
+                );
             }
 
             if ( $progress_callback ) {
                 call_user_func( $progress_callback, "Scan completed successfully!", '' );
             }
 
-            // Send notification email if changes were detected
+            // Send notifications if changes were detected
             if ( ( $stats['changed_files'] > 0 || $stats['new_files'] > 0 || $stats['deleted_files'] > 0 ) ) {
-                $this->sendChangeNotification( $scan_id );
+                $this->notificationService->sendScanNotification( $scan_id );
             }
+            
+            // Log successful completion
+            $this->logger->success(
+                sprintf(
+                    'Scan completed successfully - Total: %d, Changed: %d, New: %d, Deleted: %d',
+                    $stats['total_files'],
+                    $stats['changed_files'],
+                    $stats['new_files'],
+                    $stats['deleted_files']
+                ),
+                LoggerService::CONTEXT_SCANNER,
+                [
+                    'scan_id' => $scan_id,
+                    'scan_type' => $scan_type,
+                    'duration' => $scan_duration,
+                    'memory_usage' => $memory_usage,
+                    'stats' => $stats,
+                ]
+            );
 
             return [
                 'scan_id' => $scan_id,
@@ -173,7 +227,15 @@ class IntegrityService {
         } catch ( \Exception $e ) {
             // Update scan result with error
             // Log detailed error for debugging
-            error_log( "File integrity scan failed: " . $e->getMessage() );
+            $this->logger->error(
+                "File integrity scan failed: " . $e->getMessage(),
+                LoggerService::CONTEXT_SCANNER,
+                [
+                    'scan_id' => $scan_id,
+                    'exception' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]
+            );
             
             // Store sanitized error message
             $sanitized_message = Security::sanitize_error_message( $e->getMessage() );
@@ -247,175 +309,6 @@ class IntegrityService {
         ];
     }
 
-    /**
-     * Send change notification (email and/or Slack)
-     *
-     * @param int $scan_id Scan result ID
-     * @return bool True if any notification sent successfully, false otherwise
-     */
-    public function sendChangeNotification( int $scan_id ): bool {
-        $scan_summary = $this->getScanSummary( $scan_id );
-        if ( ! $scan_summary ) {
-            return false;
-        }
-
-        $changed_files = $this->fileRecordRepository->getChangedFiles( $scan_id );
-        
-        $email_sent = false;
-        $slack_sent = false;
-        
-        // Send email notification if enabled
-        if ( $this->settingsService->isNotificationEnabled() ) {
-            $email_to = $this->settingsService->getNotificationEmail();
-            $subject = sprintf( 
-                '[%s] File Integrity Scan - Changes Detected', 
-                get_bloginfo( 'name' ) 
-            );
-
-            $message = $this->buildNotificationMessage( $scan_summary, $changed_files );
-
-            $headers = [
-                'Content-Type: text/html; charset=UTF-8',
-                'From: File Integrity Checker <' . get_option( 'admin_email' ) . '>',
-            ];
-
-            $email_sent = wp_mail( $email_to, $subject, $message, $headers );
-        }
-        
-        // Send Slack notification if enabled
-        if ( $this->settingsService->isSlackEnabled() ) {
-            $slack_sent = $this->sendSlackNotification( $scan_summary, $changed_files );
-        }
-
-        return $email_sent || $slack_sent;
-    }
-    
-    /**
-     * Send Slack notification
-     *
-     * @param array $scan_summary Scan summary data
-     * @param array $changed_files Array of changed files
-     * @return bool True if sent successfully, false otherwise
-     */
-    private function sendSlackNotification( array $scan_summary, array $changed_files ): bool {
-        $webhook_url = $this->settingsService->getSlackWebhookUrl();
-        
-        if ( empty( $webhook_url ) ) {
-            return false;
-        }
-        
-        // Build Slack message with blocks
-        $blocks = [
-            [
-                'type' => 'header',
-                'text' => [
-                    'type' => 'plain_text',
-                    'text' => '🚨 File Integrity Alert',
-                    'emoji' => true
-                ]
-            ],
-            [
-                'type' => 'section',
-                'text' => [
-                    'type' => 'mrkdwn',
-                    'text' => sprintf(
-                        "*Changes detected on %s*\n\n" .
-                        "• *Changed Files:* %d\n" .
-                        "• *New Files:* %d\n" .
-                        "• *Deleted Files:* %d\n" .
-                        "• *Total Files Scanned:* %d",
-                        get_bloginfo( 'name' ),
-                        $scan_summary['changed_files'],
-                        $scan_summary['new_files'],
-                        $scan_summary['deleted_files'],
-                        $scan_summary['total_files']
-                    )
-                ]
-            ]
-        ];
-        
-        // Add top changed files if any
-        if ( ! empty( $changed_files ) ) {
-            $file_list = array_slice( $changed_files, 0, 5 );
-            $file_text = "";
-            
-            foreach ( $file_list as $file ) {
-                $status_icon = match( $file->status ) {
-                    'changed' => '📝',
-                    'new' => '➕',
-                    'deleted' => '❌',
-                    default => '•'
-                };
-                $file_text .= sprintf( "%s `%s`\n", $status_icon, basename( $file->file_path ) );
-            }
-            
-            if ( count( $changed_files ) > 5 ) {
-                $file_text .= sprintf( "_...and %d more files_", count( $changed_files ) - 5 );
-            }
-            
-            $blocks[] = [
-                'type' => 'section',
-                'text' => [
-                    'type' => 'mrkdwn',
-                    'text' => "*Affected Files:*\n" . $file_text
-                ]
-            ];
-        }
-        
-        // Add action button
-        $blocks[] = [
-            'type' => 'actions',
-            'elements' => [
-                [
-                    'type' => 'button',
-                    'text' => [
-                        'type' => 'plain_text',
-                        'text' => 'View Scan Details',
-                        'emoji' => true
-                    ],
-                    'url' => admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_summary['scan_id'] ),
-                    'style' => 'primary'
-                ]
-            ]
-        ];
-        
-        // Add context
-        $blocks[] = [
-            'type' => 'context',
-            'elements' => [
-                [
-                    'type' => 'mrkdwn',
-                    'text' => sprintf( 'Site: %s | Scan Duration: %ds', site_url(), $scan_summary['duration'] ?? 0 )
-                ]
-            ]
-        ];
-        
-        $message = [
-            'text' => sprintf( '🚨 File changes detected on %s', get_bloginfo( 'name' ) ),
-            'blocks' => $blocks
-        ];
-        
-        $response = wp_remote_post( $webhook_url, [
-            'headers' => [
-                'Content-Type' => 'application/json',
-            ],
-            'body' => json_encode( $message ),
-            'timeout' => 15,
-        ] );
-        
-        if ( is_wp_error( $response ) ) {
-            error_log( 'Failed to send Slack notification: ' . $response->get_error_message() );
-            return false;
-        }
-        
-        $response_code = wp_remote_retrieve_response_code( $response );
-        if ( $response_code !== 200 ) {
-            error_log( 'Slack webhook returned error code: ' . $response_code );
-            return false;
-        }
-        
-        return true;
-    }
 
     /**
      * Clean up old scan data
@@ -457,66 +350,5 @@ class IntegrityService {
         }
 
         return true;
-    }
-
-    /**
-     * Build notification email message
-     *
-     * @param array $scan_summary Scan summary
-     * @param array $changed_files Changed files
-     * @return string Email message HTML
-     */
-    private function buildNotificationMessage( array $scan_summary, array $changed_files ): string {
-        $site_name = get_bloginfo( 'name' );
-        $site_url = get_home_url();
-        
-        $message = "<html><body>";
-        $message .= "<h2>File Integrity Scan Results</h2>";
-        $message .= "<p><strong>Site:</strong> <a href=\"$site_url\">$site_name</a></p>";
-        $message .= "<p><strong>Scan Date:</strong> " . $scan_summary['scan_date'] . "</p>";
-        $message .= "<p><strong>Status:</strong> " . ucfirst( $scan_summary['status'] ) . "</p>";
-        
-        $message .= "<h3>Summary</h3>";
-        $message .= "<ul>";
-        $message .= "<li><strong>Total Files:</strong> " . number_format( $scan_summary['total_files'] ) . "</li>";
-        $message .= "<li><strong>Changed Files:</strong> " . number_format( $scan_summary['changed_files'] ) . "</li>";
-        $message .= "<li><strong>New Files:</strong> " . number_format( $scan_summary['new_files'] ) . "</li>";
-        $message .= "<li><strong>Deleted Files:</strong> " . number_format( $scan_summary['deleted_files'] ) . "</li>";
-        $message .= "<li><strong>Scan Duration:</strong> " . $scan_summary['duration'] . " seconds</li>";
-        $message .= "</ul>";
-
-        if ( ! empty( $changed_files ) ) {
-            $message .= "<h3>Changed Files</h3>";
-            $message .= "<table border='1' cellpadding='5' cellspacing='0'>";
-            $message .= "<tr><th>File Path</th><th>Status</th><th>Size</th></tr>";
-            
-            foreach ( array_slice( $changed_files, 0, 50 ) as $file ) { // Limit to first 50 files
-                $status_color = match( $file->status ) {
-                    'new' => 'green',
-                    'changed' => 'orange',
-                    'deleted' => 'red',
-                    default => 'black'
-                };
-                
-                $message .= "<tr>";
-                $message .= "<td>" . esc_html( $file->file_path ) . "</td>";
-                $message .= "<td style='color: $status_color'>" . ucfirst( $file->status ) . "</td>";
-                $message .= "<td>" . size_format( $file->file_size ) . "</td>";
-                $message .= "</tr>";
-            }
-            
-            $message .= "</table>";
-            
-            if ( count( $changed_files ) > 50 ) {
-                $message .= "<p><em>... and " . ( count( $changed_files ) - 50 ) . " more files. Check the admin panel for full details.</em></p>";
-            }
-        }
-
-        $admin_url = admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan_summary['scan_id'] );
-        $message .= "<p><a href=\"$admin_url\">View Full Scan Results</a></p>";
-        
-        $message .= "</body></html>";
-
-        return $message;
     }
 }

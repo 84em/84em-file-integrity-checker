@@ -14,12 +14,15 @@ use EightyFourEM\FileIntegrityChecker\Database\DatabaseManager;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 use EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository;
+use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
 use EightyFourEM\FileIntegrityChecker\Scanner\FileScanner;
 use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
+use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
@@ -151,6 +154,10 @@ class Plugin {
             );
         } );
 
+        $this->container->register( LogRepository::class, function () {
+            return new LogRepository();
+        } );
+
         // Security services
         $this->container->register( FileAccessSecurity::class, function () {
             return new FileAccessSecurity();
@@ -174,10 +181,28 @@ class Plugin {
             return new SettingsService();
         } );
 
+        $this->container->register( LoggerService::class, function ( $container ) {
+            return new LoggerService(
+                $container->get( LogRepository::class ),
+                $container->get( SettingsService::class )
+            );
+        } );
+
         $this->container->register( SchedulerService::class, function ( $container ) {
             return new SchedulerService(
                 $container->get( IntegrityService::class ),
-                $container->get( ScanSchedulesRepository::class )
+                $container->get( ScanSchedulesRepository::class ),
+                $container->get( LoggerService::class ),
+                $container->get( NotificationService::class )
+            );
+        } );
+
+        $this->container->register( NotificationService::class, function ( $container ) {
+            return new NotificationService(
+                $container->get( SettingsService::class ),
+                $container->get( ScanResultsRepository::class ),
+                $container->get( FileRecordRepository::class ),
+                $container->get( LoggerService::class )
             );
         } );
 
@@ -186,7 +211,9 @@ class Plugin {
                 $container->get( FileScanner::class ),
                 $container->get( ScanResultsRepository::class ),
                 $container->get( FileRecordRepository::class ),
-                $container->get( SettingsService::class )
+                $container->get( SettingsService::class ),
+                $container->get( LoggerService::class ),
+                $container->get( NotificationService::class )
             );
         } );
 
@@ -204,7 +231,9 @@ class Plugin {
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
                 $container->get( ScanResultsRepository::class ),
-                $container->get( FileViewerService::class )
+                $container->get( FileViewerService::class ),
+                $container->get( LoggerService::class ),
+                $container->get( NotificationService::class )
             );
         } );
 

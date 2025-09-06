@@ -59,6 +59,7 @@
             this.initProgressBars();
             this.initTooltips();
             this.checkScanStatus();
+            this.checkScanCompletion();
         },
 
         // Handle start scan button click
@@ -188,15 +189,24 @@
             $('.file-integrity-progress-container').remove();
             
             if (data.status === 'completed') {
-                this.showSuccess('Scan completed successfully!');
-                this.displayScanResults(data);
+                // Store scan completion data in session storage
+                const scanData = {
+                    scan_id: data.scan_id,
+                    total_files: data.stats ? data.stats.total_files : (data.total_files || 0),
+                    changed_files: data.stats ? data.stats.changed_files : (data.changed_files || 0),
+                    new_files: data.stats ? data.stats.new_files : (data.new_files || 0),
+                    deleted_files: data.stats ? data.stats.deleted_files : (data.deleted_files || 0)
+                };
+                sessionStorage.setItem('scan_completed', JSON.stringify(scanData));
+                
+                // Refresh the page to show updated results
+                window.location.href = 'admin.php?page=file-integrity-checker&scan_completed=1';
             } else {
                 this.showError('Scan failed: ' + (data.error || 'Unknown error'));
+                // Reset scan button
+                const button = $('.start-scan-btn');
+                this.resetScanButton(button, 'Run Scan Now');
             }
-            
-            // Reset scan button
-            const button = $('.start-scan-btn');
-            this.resetScanButton(button, 'Run Scan Now');
         },
 
         // Display scan results
@@ -966,6 +976,66 @@
             }
         },
 
+        // Check if a scan just completed (after page refresh)
+        checkScanCompletion: function() {
+            // Check URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const scanCompleted = urlParams.get('scan_completed');
+            
+            if (scanCompleted === '1') {
+                // Get scan data from session storage
+                const scanDataStr = sessionStorage.getItem('scan_completed');
+                
+                if (scanDataStr) {
+                    try {
+                        const scanData = JSON.parse(scanDataStr);
+                        
+                        // Build success message
+                        let message = '<strong>Scan completed successfully!</strong><br>';
+                        message += `Scanned ${this.formatNumber(scanData.total_files)} files. `;
+                        
+                        const totalChanges = scanData.changed_files + scanData.new_files + scanData.deleted_files;
+                        
+                        if (totalChanges > 0) {
+                            message += '<br>Changes detected: ';
+                            const changes = [];
+                            
+                            if (scanData.changed_files > 0) {
+                                changes.push(`${this.formatNumber(scanData.changed_files)} modified`);
+                            }
+                            if (scanData.new_files > 0) {
+                                changes.push(`${this.formatNumber(scanData.new_files)} new`);
+                            }
+                            if (scanData.deleted_files > 0) {
+                                changes.push(`${this.formatNumber(scanData.deleted_files)} deleted`);
+                            }
+                            
+                            message += changes.join(', ');
+                            
+                            if (scanData.scan_id) {
+                                message += ` <a href="admin.php?page=file-integrity-checker-results&scan_id=${scanData.scan_id}">View Details</a>`;
+                            }
+                        } else {
+                            message += 'No changes detected.';
+                        }
+                        
+                        // Show the success message
+                        this.showNotice(message, 'success', false); // false = don't auto-hide
+                        
+                        // Clear session storage
+                        sessionStorage.removeItem('scan_completed');
+                        
+                        // Clean up URL
+                        const cleanUrl = window.location.pathname + '?page=file-integrity-checker';
+                        window.history.replaceState({}, document.title, cleanUrl);
+                        
+                    } catch (e) {
+                        console.error('Error parsing scan completion data:', e);
+                    }
+                }
+            }
+        },
+
         // Initialize progress bars (for existing data)
         initProgressBars: function() {
             $('.file-integrity-progress').each(function() {
@@ -1045,7 +1115,7 @@
         },
 
         // Show notice
-        showNotice: function(message, type) {
+        showNotice: function(message, type, autoHide = true) {
             const alertClass = 'alert-' + type;
             const iconClass = type === 'error' ? 'warning' : type;
             
@@ -1062,8 +1132,8 @@
             // Add new notice
             $('.wrap > h1').after(notice);
             
-            // Auto-remove success messages
-            if (type === 'success' || type === 'info') {
+            // Auto-remove success messages if requested
+            if (autoHide && (type === 'success' || type === 'info')) {
                 setTimeout(() => {
                     notice.fadeOut(500, function() {
                         $(this).remove();

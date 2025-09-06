@@ -275,6 +275,96 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
         </div>
 
+        <!-- Logging Configuration -->
+        <div class="file-integrity-card" style="margin-bottom: 30px;">
+            <h3>Logging Configuration</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label>Log Levels to Record</label>
+                        </th>
+                        <td>
+                            <?php 
+                            $enabled_levels = $settings['log_levels'] ?? [ 'success', 'error', 'warning', 'info' ];
+                            $all_levels = [
+                                'success' => 'Success',
+                                'error' => 'Error',
+                                'warning' => 'Warning',
+                                'info' => 'Info',
+                                'debug' => 'Debug'
+                            ];
+                            ?>
+                            <fieldset>
+                                <?php foreach ( $all_levels as $level => $label ) : ?>
+                                    <label style="display: block; margin-bottom: 5px;">
+                                        <input type="checkbox" 
+                                               name="log_levels[]" 
+                                               value="<?php echo esc_attr( $level ); ?>"
+                                               <?php checked( in_array( $level, $enabled_levels ) ); ?> />
+                                        <?php echo esc_html( $label ); ?>
+                                    </label>
+                                <?php endforeach; ?>
+                            </fieldset>
+                            <p class="description">Select which types of log messages to record in the database.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="log_retention_days">Log Retention Period</label>
+                        </th>
+                        <td>
+                            <input type="number" 
+                                   name="log_retention_days" 
+                                   id="log_retention_days" 
+                                   value="<?php echo esc_attr( $settings['log_retention_days'] ?? 30 ); ?>" 
+                                   min="1" 
+                                   max="365" /> days
+                            <p class="description">
+                                Automatically delete logs older than this many days. Set to 0 to disable auto-deletion.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="auto_log_cleanup">Auto Log Cleanup</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" 
+                                       name="auto_log_cleanup" 
+                                       id="auto_log_cleanup" 
+                                       value="1" 
+                                       <?php checked( $settings['auto_log_cleanup'] ?? true ); ?> />
+                                Enable automatic daily cleanup of old logs
+                            </label>
+                            <p class="description">
+                                Runs daily at 3 AM to remove logs older than the retention period.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="debug_mode">Debug Mode</label>
+                        </th>
+                        <td>
+                            <label>
+                                <input type="checkbox" 
+                                       name="debug_mode" 
+                                       id="debug_mode" 
+                                       value="1" 
+                                       <?php checked( $settings['debug_mode'] ?? false ); ?> />
+                                Enable debug logging
+                            </label>
+                            <p class="description">
+                                Records additional debug information. Only enable when troubleshooting issues.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
         <!-- Submit Button -->
         <p class="submit">
             <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings" />

@@ -16,7 +16,10 @@ if ( ! defined( 'ABSPATH' ) ) {
     <h1>84EM File Integrity Checker</h1>
 
     <?php
-    // Show messages
+    // Note: Scan completion messages are handled by JavaScript to avoid duplication
+    // The JS checkScanCompletion() method in admin.js displays the success notice
+    
+    // Show other messages
     if ( isset( $_GET['message'] ) ) {
         switch ( $_GET['message'] ) {
             case 'scan_scheduled':

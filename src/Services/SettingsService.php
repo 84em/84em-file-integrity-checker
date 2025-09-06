@@ -227,6 +227,26 @@ class SettingsService {
     }
 
     /**
+     * Check if file lists should be included in notifications
+     *
+     * @return bool True if file lists should be included, false otherwise
+     */
+    public function shouldIncludeFileList(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'include_file_list', true );
+    }
+
+    /**
+     * Set whether to include file lists in notifications
+     *
+     * @param bool $include Whether to include file lists
+     * @return bool True on success
+     */
+    public function setIncludeFileList( bool $include ): bool {
+        update_option( self::OPTION_PREFIX . 'include_file_list', $include );
+        return true;
+    }
+
+    /**
      * Check if auto-scheduling is enabled
      *
      * @return bool True if auto-scheduling is enabled, false otherwise
@@ -296,6 +316,96 @@ class SettingsService {
     }
 
     /**
+     * Get log retention period in days
+     *
+     * @return int Number of days to keep logs
+     */
+    public function getLogRetentionDays(): int {
+        return (int) get_option( self::OPTION_PREFIX . 'log_retention_days', 30 );
+    }
+
+    /**
+     * Set log retention period
+     *
+     * @param int $days Number of days to keep logs
+     * @return bool True on success, false on failure
+     */
+    public function setLogRetentionDays( int $days ): bool {
+        if ( $days < 1 || $days > 365 ) {
+            return false;
+        }
+        
+        update_option( self::OPTION_PREFIX . 'log_retention_days', $days );
+        return true;
+    }
+
+    /**
+     * Get enabled log levels
+     *
+     * @return array Array of enabled log levels
+     */
+    public function getEnabledLogLevels(): array {
+        return get_option( 
+            self::OPTION_PREFIX . 'log_levels',
+            [ 'success', 'error', 'warning', 'info' ]
+        );
+    }
+
+    /**
+     * Set enabled log levels
+     *
+     * @param array $levels Array of log levels to enable
+     * @return bool True on success
+     */
+    public function setEnabledLogLevels( array $levels ): bool {
+        $valid_levels = [ 'success', 'error', 'warning', 'info', 'debug' ];
+        $levels = array_intersect( $levels, $valid_levels );
+        
+        update_option( self::OPTION_PREFIX . 'log_levels', $levels );
+        return true;
+    }
+
+    /**
+     * Check if debug mode is enabled
+     *
+     * @return bool
+     */
+    public function isDebugModeEnabled(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'debug_mode', false );
+    }
+
+    /**
+     * Set debug mode
+     *
+     * @param bool $enabled Whether debug mode is enabled
+     * @return bool True on success
+     */
+    public function setDebugMode( bool $enabled ): bool {
+        update_option( self::OPTION_PREFIX . 'debug_mode', $enabled );
+        return true;
+    }
+
+    /**
+     * Check if auto log cleanup is enabled
+     *
+     * @return bool
+     */
+    public function isAutoLogCleanupEnabled(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'auto_log_cleanup', true );
+    }
+
+    /**
+     * Set auto log cleanup
+     *
+     * @param bool $enabled Whether auto cleanup is enabled
+     * @return bool True on success
+     */
+    public function setAutoLogCleanup( bool $enabled ): bool {
+        update_option( self::OPTION_PREFIX . 'auto_log_cleanup', $enabled );
+        return true;
+    }
+
+    /**
      * Get all settings as an array
      *
      * @return array All plugin settings
@@ -313,6 +423,10 @@ class SettingsService {
             'auto_schedule' => $this->isAutoScheduleEnabled(),
             'retention_period' => $this->getRetentionPeriod(),
             'content_retention_limit' => $this->getContentRetentionLimit(),
+            'log_levels' => $this->getEnabledLogLevels(),
+            'log_retention_days' => $this->getLogRetentionDays(),
+            'auto_log_cleanup' => $this->isAutoLogCleanupEnabled(),
+            'debug_mode' => $this->isDebugModeEnabled(),
         ];
     }
 
@@ -360,6 +474,18 @@ class SettingsService {
                 case 'content_retention_limit':
                     $results[ $key ] = $this->setContentRetentionLimit( $value );
                     break;
+                case 'log_levels':
+                    $results[ $key ] = $this->setEnabledLogLevels( $value );
+                    break;
+                case 'log_retention_days':
+                    $results[ $key ] = $this->setLogRetentionDays( $value );
+                    break;
+                case 'auto_log_cleanup':
+                    $results[ $key ] = $this->setAutoLogCleanup( $value );
+                    break;
+                case 'debug_mode':
+                    $results[ $key ] = $this->setDebugMode( $value );
+                    break;
                 default:
                     $results[ $key ] = false;
             }
@@ -384,6 +510,10 @@ class SettingsService {
             'auto_schedule',
             'retention_period',
             'content_retention_limit',
+            'log_levels',
+            'log_retention_days',
+            'auto_log_cleanup',
+            'debug_mode',
         ];
 
         foreach ( $options as $option ) {

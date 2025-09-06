@@ -11,6 +11,8 @@ use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
+use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 use EightyFourEM\FileIntegrityChecker\Utils\Security;
 
@@ -54,6 +56,20 @@ class AdminPages {
     private FileViewerService $fileViewerService;
 
     /**
+     * Logger service
+     *
+     * @var LoggerService
+     */
+    private LoggerService $logger;
+
+    /**
+     * Notification service
+     *
+     * @var NotificationService
+     */
+    private NotificationService $notificationService;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
@@ -61,19 +77,25 @@ class AdminPages {
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
      * @param FileViewerService     $fileViewerService     File viewer service
+     * @param LoggerService         $logger                Logger service
+     * @param NotificationService   $notificationService   Notification service
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
         SchedulerService $schedulerService,
         ScanResultsRepository $scanResultsRepository,
-        FileViewerService $fileViewerService
+        FileViewerService $fileViewerService,
+        LoggerService $logger,
+        NotificationService $notificationService
     ) {
         $this->integrityService = $integrityService;
         $this->settingsService  = $settingsService;
         $this->schedulerService = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
         $this->fileViewerService = $fileViewerService;
+        $this->logger = $logger;
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -147,6 +169,15 @@ class AdminPages {
             'manage_options',
             'file-integrity-checker-settings',
             [ $this, 'renderSettingsPage' ]
+        );
+
+        add_submenu_page(
+            'file-integrity-checker',
+            'System Logs',
+            'System Logs',
+            'manage_options',
+            'file-integrity-checker-logs',
+            [ $this, 'renderLogsPage' ]
         );
     }
 
@@ -250,6 +281,10 @@ class AdminPages {
         $next_scan = $this->schedulerService->getNextScheduledScan();
         $scheduler_available = $this->schedulerService->isAvailable();
         $scheduler_service = $this->schedulerService;
+        
+        // Note: Scan completion notifications are handled entirely by JavaScript
+        // to avoid duplicate notices. The JS checkScanCompletion() method in admin.js
+        // uses sessionStorage to display the success message when scan_completed=1 is in URL
 
         include EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH . 'views/admin/dashboard.php';
     }
@@ -377,6 +412,20 @@ class AdminPages {
 
         // Auto schedule
         $settings['auto_schedule'] = isset( $_POST['auto_schedule'] );
+        
+        // Log settings
+        if ( isset( $_POST['log_levels'] ) && is_array( $_POST['log_levels'] ) ) {
+            $settings['log_levels'] = array_map( 'sanitize_text_field', $_POST['log_levels'] );
+        } else {
+            $settings['log_levels'] = [];
+        }
+        
+        if ( isset( $_POST['log_retention_days'] ) ) {
+            $settings['log_retention_days'] = (int) $_POST['log_retention_days'];
+        }
+        
+        $settings['auto_log_cleanup'] = isset( $_POST['auto_log_cleanup'] );
+        $settings['debug_mode'] = isset( $_POST['debug_mode'] );
 
         $results = $this->settingsService->updateSettings( $settings );
         
@@ -391,8 +440,12 @@ class AdminPages {
         }
         
         // Log failures for debugging
-        if ( $has_failures && WP_DEBUG ) {
-            error_log( 'File Integrity Checker: Failed to update settings: ' . implode( ', ', $failed_settings ) );
+        if ( $has_failures ) {
+            $this->logger->warning(
+                'Failed to update some settings: ' . implode( ', ', $failed_settings ),
+                LoggerService::CONTEXT_SETTINGS,
+                [ 'failed_settings' => $failed_settings ]
+            );
         }
         
         // Only show error if critical settings failed
@@ -439,7 +492,11 @@ class AdminPages {
                 'retention_period' => $cleanup_stats['retention_period']
             ] );
         } catch ( \Exception $e ) {
-            error_log( 'File Integrity Checker - Failed to cleanup old scans: ' . $e->getMessage() );
+            $this->logger->error(
+                'Failed to cleanup old scans: ' . $e->getMessage(),
+                LoggerService::CONTEXT_ADMIN,
+                [ 'exception' => $e->getMessage() ]
+            );
             wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
@@ -480,7 +537,11 @@ class AdminPages {
                 wp_send_json_error( 'Failed to cancel scan' );
             }
         } catch ( \Exception $e ) {
-            error_log( 'File Integrity Checker - Failed to cancel scan: ' . $e->getMessage() );
+            $this->logger->error(
+                'Failed to cancel scan: ' . $e->getMessage(),
+                LoggerService::CONTEXT_ADMIN,
+                [ 'scan_id' => $scan_id, 'exception' => $e->getMessage() ]
+            );
             wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
@@ -518,7 +579,11 @@ class AdminPages {
                 wp_send_json_error( 'Failed to delete scan' );
             }
         } catch ( \Exception $e ) {
-            error_log( 'File Integrity Checker - Failed to delete scan: ' . $e->getMessage() );
+            $this->logger->error(
+                'Failed to delete scan: ' . $e->getMessage(),
+                LoggerService::CONTEXT_ADMIN,
+                [ 'scan_id' => $scan_id, 'exception' => $e->getMessage() ]
+            );
             wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
@@ -628,7 +693,11 @@ class AdminPages {
                     }
                 } catch ( \Exception $e ) {
                     $failed_count++;
-                    error_log( 'Failed to delete scan ' . $scan_id . ': ' . $e->getMessage() );
+                    $this->logger->error(
+                        'Failed to delete scan ' . $scan_id . ': ' . $e->getMessage(),
+                        LoggerService::CONTEXT_ADMIN,
+                        [ 'scan_id' => $scan_id, 'exception' => $e->getMessage() ]
+                    );
                 }
             }
         }
@@ -663,6 +732,13 @@ class AdminPages {
     }
 
     /**
+     * Render logs page
+     */
+    public function renderLogsPage(): void {
+        include plugin_dir_path( dirname( __DIR__ ) ) . 'views/admin/logs.php';
+    }
+
+    /**
      * AJAX handler for starting a scan
      */
     public function ajaxStartScan(): void {
@@ -694,7 +770,11 @@ class AdminPages {
                 wp_send_json_error( 'Failed to start scan' );
             }
         } catch ( \Exception $e ) {
-            error_log( 'File Integrity Checker - Error during operation: ' . $e->getMessage() );
+            $this->logger->error(
+                'Error starting scan: ' . $e->getMessage(),
+                LoggerService::CONTEXT_ADMIN,
+                [ 'exception' => $e->getMessage() ]
+            );
             wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
@@ -742,6 +822,17 @@ class AdminPages {
                     'new_files' => $scan->new_files,
                     'deleted_files' => $scan->deleted_files
                 ];
+                
+                // Store scan completion data in transient for fallback
+                $transient_key = 'file_integrity_scan_completed_' . get_current_user_id();
+                set_transient( $transient_key, [
+                    'scan_id' => $scan_id,
+                    'total_files' => $scan->total_files,
+                    'changed_files' => $scan->changed_files,
+                    'new_files' => $scan->new_files,
+                    'deleted_files' => $scan->deleted_files,
+                    'completed_at' => current_time( 'mysql' )
+                ], 60 ); // Expire after 60 seconds
             } elseif ( $scan->status === 'failed' ) {
                 $response['message'] = 'Scan failed: ' . ( $scan->notes ?: 'Unknown error' );
             } else {
@@ -752,7 +843,11 @@ class AdminPages {
             wp_send_json_success( $response );
             
         } catch ( \Exception $e ) {
-            error_log( 'File Integrity Checker - Error during operation: ' . $e->getMessage() );
+            $this->logger->error(
+                'Error checking scan progress: ' . $e->getMessage(),
+                LoggerService::CONTEXT_ADMIN,
+                [ 'scan_id' => $scan_id, 'exception' => $e->getMessage() ]
+            );
             wp_send_json_error( Security::sanitize_error_message( $e->getMessage() ) );
         }
     }
@@ -800,13 +895,16 @@ class AdminPages {
             wp_send_json_error( 'Email notifications are not enabled' );
         }
         
-        // Use the existing sendChangeNotification method
-        $sent = $this->integrityService->sendChangeNotification( $scan_id );
+        // Use NotificationService to resend notifications
+        $result = $this->notificationService->resendNotification( $scan_id );
         
-        if ( $sent ) {
+        if ( $result['success'] && isset( $result['channels']['email'] ) && $result['channels']['email']['success'] ) {
             wp_send_json_success( 'Email notification sent successfully' );
         } else {
-            wp_send_json_error( 'Failed to send email notification' );
+            $error_msg = isset( $result['channels']['email']['error'] ) 
+                ? $result['channels']['email']['error'] 
+                : 'Failed to send email notification';
+            wp_send_json_error( $error_msg );
         }
     }
 
@@ -854,13 +952,16 @@ class AdminPages {
             wp_send_json_error( 'Slack notifications are not configured' );
         }
         
-        // Use the existing sendChangeNotification method
-        $sent = $this->integrityService->sendChangeNotification( $scan_id );
+        // Use NotificationService to resend notifications
+        $result = $this->notificationService->resendNotification( $scan_id );
         
-        if ( $sent ) {
+        if ( $result['success'] && isset( $result['channels']['slack'] ) && $result['channels']['slack']['success'] ) {
             wp_send_json_success( 'Slack notification sent successfully' );
         } else {
-            wp_send_json_error( 'Failed to send Slack notification' );
+            $error_msg = isset( $result['channels']['slack']['error'] ) 
+                ? $result['channels']['slack']['error'] 
+                : 'Failed to send Slack notification';
+            wp_send_json_error( $error_msg );
         }
     }
 
