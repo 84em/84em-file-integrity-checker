@@ -9,6 +9,7 @@ namespace EightyFourEM\FileIntegrityChecker\Scanner;
 
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Database\FileContentRepository;
+use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 
 /**
  * Scans the filesystem for files to check integrity
@@ -306,75 +307,9 @@ class FileScanner {
      * @return string Unified diff
      */
     private function generateUnifiedDiff( string $old_content, string $new_content, string $file_path ): string {
-        $old_lines = explode( "\n", $old_content );
-        $new_lines = explode( "\n", $new_content );
-        
-        // Use PHP's built-in diff algorithm or external diff command
-        $temp_old = tempnam( sys_get_temp_dir(), 'diff_old_' );
-        $temp_new = tempnam( sys_get_temp_dir(), 'diff_new_' );
-        
-        file_put_contents( $temp_old, $old_content );
-        file_put_contents( $temp_new, $new_content );
-        
-        // Use system diff command if available
-        $diff_command = sprintf(
-            'diff -u %s %s 2>/dev/null',
-            escapeshellarg( $temp_old ),
-            escapeshellarg( $temp_new )
-        );
-        
-        $diff = shell_exec( $diff_command );
-        
-        // Clean up temp files
-        @unlink( $temp_old );
-        @unlink( $temp_new );
-        
-        if ( $diff === null ) {
-            // Fallback to simple line-by-line comparison
-            return $this->simpleLineDiff( $old_lines, $new_lines );
-        }
-        
-        // Replace temp file names with actual file path in diff output
-        $diff = preg_replace( '/^---.*$/m', '--- ' . $file_path . ' (previous)', $diff );
-        $diff = preg_replace( '/^\+\+\+.*$/m', '+++ ' . $file_path . ' (current)', $diff );
-        
-        return $diff;
-    }
-    
-    /**
-     * Generate a simple line-by-line diff
-     *
-     * @param array $old_lines Old content lines
-     * @param array $new_lines New content lines
-     * @return string Simple diff
-     */
-    private function simpleLineDiff( array $old_lines, array $new_lines ): string {
-        $diff = [];
-        $max_lines = max( count( $old_lines ), count( $new_lines ) );
-        
-        for ( $i = 0; $i < $max_lines; $i++ ) {
-            $old_line = $old_lines[$i] ?? null;
-            $new_line = $new_lines[$i] ?? null;
-            
-            if ( $old_line === $new_line ) {
-                // Unchanged line (show for context)
-                if ( $i < 3 || $i > $max_lines - 3 ) {
-                    $diff[] = ' ' . $old_line;
-                }
-            } elseif ( $old_line === null ) {
-                // Added line
-                $diff[] = '+ ' . $new_line;
-            } elseif ( $new_line === null ) {
-                // Removed line
-                $diff[] = '- ' . $old_line;
-            } else {
-                // Changed line
-                $diff[] = '- ' . $old_line;
-                $diff[] = '+ ' . $new_line;
-            }
-        }
-        
-        return implode( "\n", $diff );
+        // Use secure PHP-native diff generation instead of shell commands
+        $diff_generator = new DiffGenerator();
+        return $diff_generator->generateUnifiedDiff( $old_content, $new_content, $file_path );
     }
 
     /**
