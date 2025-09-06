@@ -341,6 +341,18 @@ $container->register( CustomService::class, function( $container ) {
 
 ## Changelog
 
+### Version 1.5.0 (Current)
+- Implement comprehensive database logging system
+- Add NotificationService with centralized notification handling
+- Create System Logs admin page with filtering and search
+- Add Slack notification support
+- Implement file security with blocked sensitive files
+- Dashboard auto-refresh after scan completion
+- Fix timezone handling for scheduled scans
+- Fix Action Scheduler argument unpacking issue
+- Add 92%+ test coverage with comprehensive test suite
+- Add build system for production distribution
+
 ### Version 1.0.0 (Initial Release)
 - Core file scanning functionality
 - SHA-256 checksum generation
@@ -350,7 +362,7 @@ $container->register( CustomService::class, function( $container ) {
 - WP-CLI command integration
 - Action Scheduler integration
 - Email notifications
-- Comprehensive test suite
+- Basic test framework
 
 ## Support
 
