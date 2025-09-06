@@ -182,7 +182,16 @@ class FileRecordRepository {
         $where_clause = "scan_result_id = %d";
         $params = [ $scan_result_id ];
 
+        // Whitelist validation for status parameter
+        $allowed_statuses = [ 'new', 'changed', 'deleted', 'unchanged' ];
         if ( ! empty( $status ) && $status !== 'all' ) {
+            if ( ! in_array( $status, $allowed_statuses, true ) ) {
+                // Invalid status, return empty results
+                return [
+                    'results' => [],
+                    'total_count' => 0,
+                ];
+            }
             $where_clause .= " AND status = %s";
             $params[] = $status;
         }
