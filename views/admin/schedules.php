@@ -390,12 +390,12 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <td>
                                 <?php
                                 if ( $schedule->last_run ) {
-                                    // Convert UTC to local for display
+                                    // Convert UTC to WordPress timezone for display
                                     $last_run_utc = new DateTime( $schedule->last_run, new DateTimeZone( 'UTC' ) );
-                                    $last_run_local = clone $last_run_utc;
-                                    $last_run_local->setTimezone( wp_timezone() );
+                                    $now_utc = new DateTime( 'now', new DateTimeZone( 'UTC' ) );
                                     
-                                    echo esc_html( human_time_diff( $last_run_local->getTimestamp(), current_time( 'timestamp' ) ) . ' ago' );
+                                    // Use UTC timestamps for consistent comparison
+                                    echo esc_html( human_time_diff( $last_run_utc->getTimestamp(), $now_utc->getTimestamp() ) . ' ago' );
                                 } else {
                                     echo '<em>Never</em>';
                                 }
@@ -404,12 +404,12 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <td>
                                 <?php
                                 if ( $schedule->next_run && $schedule->is_active ) {
-                                    // WordPress stores in UTC, convert to site timezone for display
+                                    // Convert UTC next_run to site timezone for display
                                     $next_utc = new DateTime( $schedule->next_run, new DateTimeZone( 'UTC' ) );
                                     $next_local = clone $next_utc;
                                     $next_local->setTimezone( wp_timezone() );
                                     
-                                    $now = current_datetime();
+                                    $now = current_datetime(); // Already in site timezone
                                     
                                     if ( $next_local > $now ) {
                                         $diff = $now->diff( $next_local );
@@ -436,7 +436,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                             );
                                         }
                                         
-                                        // Also show the exact time
+                                        // Also show the exact time in local timezone
                                         echo '<br><small>' . esc_html( $next_local->format( 'M j, g:i A' ) ) . '</small>';
                                     } else {
                                         echo '<em>Due now</em>';

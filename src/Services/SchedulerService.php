@@ -223,14 +223,17 @@ class SchedulerService {
         }
 
         // Schedule with Action Scheduler
+        // Wrap args in array so executeScan receives them as a single array parameter
         $action_id = as_schedule_single_action(
             $next_run,
             self::SCAN_ACTION_HOOK,
             [
-                'type' => 'scheduled',
-                'schedule_id' => $schedule->id,
-                'schedule_name' => $schedule->name,
-                'frequency' => $schedule->frequency,
+                [
+                    'type' => 'scheduled',
+                    'schedule_id' => $schedule->id,
+                    'schedule_name' => $schedule->name,
+                    'frequency' => $schedule->frequency,
+                ]
             ],
             self::ACTION_GROUP
         );
@@ -324,7 +327,7 @@ class SchedulerService {
         $action_id = as_schedule_single_action(
             $timestamp,
             self::SCAN_ACTION_HOOK,
-            [ 'type' => 'manual' ],
+            [ [ 'type' => 'manual' ] ],
             self::ACTION_GROUP
         );
 
