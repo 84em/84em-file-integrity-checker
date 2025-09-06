@@ -380,7 +380,7 @@ class IntegrityService {
             'elements' => [
                 [
                     'type' => 'mrkdwn',
-                    'text' => sprintf( 'Site: %s | Scan Duration: %ds', site_url(), $scan_summary['scan_duration'] )
+                    'text' => sprintf( 'Site: %s | Scan Duration: %ds', site_url(), $scan_summary['duration'] ?? 0 )
                 ]
             ]
         ];
