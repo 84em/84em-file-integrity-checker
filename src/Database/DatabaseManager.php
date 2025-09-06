@@ -146,7 +146,7 @@ class DatabaseManager {
         dbDelta( $logs_sql );
 
         // Set database version
-        update_option( 'eightyfourem_file_integrity_db_version', '1.5.0' );
+        update_option( 'eightyfourem_file_integrity_db_version', EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION );
     }
 
     /**
@@ -155,7 +155,7 @@ class DatabaseManager {
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
         
-        if ( version_compare( $installed_version, '1.5.0', '<' ) ) {
+        if ( version_compare( $installed_version, EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION, '<' ) ) {
             $this->createTables();
         }
     }
