@@ -23,6 +23,7 @@ use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
+use EightyFourEM\FileIntegrityChecker\Security\SecurityHeaders;
 
 /**
  * Main plugin bootstrap class
@@ -80,6 +81,10 @@ class Plugin {
      * Initialize plugin components
      */
     private function initializeComponents(): void {
+        // Initialize security headers and hardening
+        $securityHeaders = new SecurityHeaders();
+        $securityHeaders->init();
+        
         // Initialize database manager
         $databaseManager = $this->container->get( DatabaseManager::class );
         $databaseManager->init();
@@ -228,6 +233,9 @@ class Plugin {
         $instance  = self::getInstance();
         $activator = $instance->getContainer()->get( Activator::class );
         $activator->activate();
+        
+        // Apply security hardening measures
+        SecurityHeaders::applyHardening();
     }
 
     /**
