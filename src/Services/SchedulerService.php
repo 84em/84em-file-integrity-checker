@@ -133,7 +133,7 @@ class SchedulerService {
      */
     public function createSchedule( array $config ) {
         // Validate configuration
-        $valid_frequencies = [ 'hourly', 'daily', 'weekly', 'monthly' ];
+        $valid_frequencies = [ 'hourly', 'daily', 'weekly' ];
         if ( ! in_array( $config['frequency'], $valid_frequencies, true ) ) {
             return false;
         }

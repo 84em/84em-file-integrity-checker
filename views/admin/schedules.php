@@ -28,8 +28,8 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                 'name' => sanitize_text_field( $_POST['schedule_name'] ?? '' ),
                 'frequency' => sanitize_text_field( $_POST['frequency'] ?? 'daily' ),
                 'time' => sanitize_text_field( $_POST['time'] ?? '02:00' ),
-                'day_of_week' => isset( $_POST['day_of_week'] ) ? absint( $_POST['day_of_week'] ) : null,
-                'day_of_month' => isset( $_POST['day_of_month'] ) ? absint( $_POST['day_of_month'] ) : null,
+                'minute' => isset( $_POST['minute'] ) ? absint( $_POST['minute'] ) : null,
+                'days_of_week' => isset( $_POST['days_of_week'] ) ? array_map( 'absint', $_POST['days_of_week'] ) : null,
                 'is_active' => ! empty( $_POST['is_active'] ) ? 1 : 0,
             ];
             
@@ -85,8 +85,8 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     'name' => sanitize_text_field( $_POST['schedule_name'] ?? '' ),
                     'frequency' => sanitize_text_field( $_POST['frequency'] ?? 'daily' ),
                     'time' => sanitize_text_field( $_POST['time'] ?? '02:00' ),
-                    'day_of_week' => isset( $_POST['day_of_week'] ) ? absint( $_POST['day_of_week'] ) : null,
-                    'day_of_month' => isset( $_POST['day_of_month'] ) ? absint( $_POST['day_of_month'] ) : null,
+                    'minute' => isset( $_POST['minute'] ) ? absint( $_POST['minute'] ) : null,
+                    'days_of_week' => isset( $_POST['days_of_week'] ) ? array_map( 'absint', $_POST['days_of_week'] ) : null,
                     'is_active' => ! empty( $_POST['is_active'] ) ? 1 : 0,
                 ];
                 
@@ -163,9 +163,18 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <option value="hourly">Hourly</option>
                             <option value="daily" selected>Daily</option>
                             <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
                         </select>
                         <p class="description">How often the scan should run</p>
+                    </td>
+                </tr>
+                
+                <tr class="schedule-minute-row" style="display: none;">
+                    <th scope="row">
+                        <label for="minute">Minute</label>
+                    </th>
+                    <td>
+                        <input type="number" id="minute" name="minute" min="0" max="59" value="0">
+                        <p class="description">Run at this minute of every hour (0-59)</p>
                     </td>
                 </tr>
                 
@@ -181,31 +190,22 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                 
                 <tr class="schedule-day-of-week-row" style="display: none;">
                     <th scope="row">
-                        <label for="day_of_week">Day of Week</label>
+                        <label>Days of Week</label>
                     </th>
                     <td>
-                        <select id="day_of_week" name="day_of_week">
-                            <option value="0">Sunday</option>
-                            <option value="1" selected>Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                        </select>
-                        <p class="description">Day of the week to run the scan</p>
+                        <fieldset>
+                            <label><input type="checkbox" name="days_of_week[]" value="1" checked> Monday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="2"> Tuesday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="3"> Wednesday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="4"> Thursday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="5"> Friday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="6"> Saturday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="0"> Sunday</label>
+                        </fieldset>
+                        <p class="description">Select the days when the scan should run</p>
                     </td>
                 </tr>
                 
-                <tr class="schedule-day-of-month-row" style="display: none;">
-                    <th scope="row">
-                        <label for="day_of_month">Day of Month</label>
-                    </th>
-                    <td>
-                        <input type="number" id="day_of_month" name="day_of_month" min="1" max="31" value="1">
-                        <p class="description">Day of the month to run the scan (1-31)</p>
-                    </td>
-                </tr>
                 
                 <tr>
                     <th scope="row">
@@ -257,9 +257,18 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                             <option value="hourly">Hourly</option>
                             <option value="daily">Daily</option>
                             <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
                         </select>
                         <p class="description">How often the scan should run</p>
+                    </td>
+                </tr>
+                
+                <tr class="edit-schedule-minute-row" style="display: none;">
+                    <th scope="row">
+                        <label for="edit_minute">Minute</label>
+                    </th>
+                    <td>
+                        <input type="number" id="edit_minute" name="minute" min="0" max="59">
+                        <p class="description">Run at this minute of every hour (0-59)</p>
                     </td>
                 </tr>
                 
@@ -275,31 +284,22 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                 
                 <tr class="edit-schedule-day-of-week-row" style="display: none;">
                     <th scope="row">
-                        <label for="edit_day_of_week">Day of Week</label>
+                        <label>Days of Week</label>
                     </th>
                     <td>
-                        <select id="edit_day_of_week" name="day_of_week">
-                            <option value="0">Sunday</option>
-                            <option value="1">Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                        </select>
-                        <p class="description">Day of the week to run the scan</p>
+                        <fieldset>
+                            <label><input type="checkbox" name="days_of_week[]" value="1" class="edit-day-checkbox"> Monday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="2" class="edit-day-checkbox"> Tuesday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="3" class="edit-day-checkbox"> Wednesday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="4" class="edit-day-checkbox"> Thursday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="5" class="edit-day-checkbox"> Friday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="6" class="edit-day-checkbox"> Saturday</label><br>
+                            <label><input type="checkbox" name="days_of_week[]" value="0" class="edit-day-checkbox"> Sunday</label>
+                        </fieldset>
+                        <p class="description">Select the days when the scan should run</p>
                     </td>
                 </tr>
                 
-                <tr class="edit-schedule-day-of-month-row" style="display: none;">
-                    <th scope="row">
-                        <label for="edit_day_of_month">Day of Month</label>
-                    </th>
-                    <td>
-                        <input type="number" id="edit_day_of_month" name="day_of_month" min="1" max="31">
-                        <p class="description">Day of the month to run the scan (1-31)</p>
-                    </td>
-                </tr>
                 
                 <tr>
                     <th scope="row">
@@ -367,14 +367,19 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                         break;
                                     case 'weekly':
                                         $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                                        $day = $days[$schedule->day_of_week ?? 1];
+                                        $days_of_week = ! empty( $schedule->days_of_week ) ? json_decode( $schedule->days_of_week, true ) : [ $schedule->day_of_week ?? 1 ];
+                                        $selected_days = [];
+                                        foreach ( $days_of_week as $day_num ) {
+                                            if ( isset( $days[$day_num] ) ) {
+                                                $selected_days[] = $days[$day_num];
+                                            }
+                                        }
                                         $time = $schedule->time ?: sprintf( '%02d:%02d', $schedule->hour ?? 0, $schedule->minute ?? 0 );
-                                        $schedule_desc = "Every $day at " . esc_html( $time );
-                                        break;
-                                    case 'monthly':
-                                        $day = $schedule->day_of_month ?? 1;
-                                        $time = $schedule->time ?: sprintf( '%02d:%02d', $schedule->hour ?? 0, $schedule->minute ?? 0 );
-                                        $schedule_desc = "Day $day of each month at " . esc_html( $time );
+                                        if ( count( $selected_days ) > 1 ) {
+                                            $schedule_desc = 'Every ' . implode( ', ', $selected_days ) . ' at ' . esc_html( $time );
+                                        } else {
+                                            $schedule_desc = 'Every ' . ( $selected_days[0] ?? 'Monday' ) . ' at ' . esc_html( $time );
+                                        }
                                         break;
                                 }
                                 echo esc_html( $schedule_desc );
@@ -452,8 +457,8 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                         data-schedule-name="<?php echo esc_attr( $schedule->name ); ?>"
                                         data-frequency="<?php echo esc_attr( $schedule->frequency ); ?>"
                                         data-time="<?php echo esc_attr( $schedule->time ); ?>"
-                                        data-day-of-week="<?php echo esc_attr( $schedule->day_of_week ?? '' ); ?>"
-                                        data-day-of-month="<?php echo esc_attr( $schedule->day_of_month ?? '' ); ?>"
+                                        data-minute="<?php echo esc_attr( $schedule->minute ?? '' ); ?>"
+                                        data-days-of-week="<?php echo esc_attr( $schedule->days_of_week ?? '' ); ?>"
                                         data-is-active="<?php echo esc_attr( $schedule->is_active ); ?>">
                                     <span class="dashicons dashicons-edit"></span> Edit
                                 </button>
@@ -484,18 +489,18 @@ jQuery(document).ready(function($) {
             var form = $(this).closest('.file-integrity-card');
             
             // Hide all conditional rows first
-            form.find('.schedule-day-of-week-row, .schedule-day-of-month-row, .edit-schedule-day-of-week-row, .edit-schedule-day-of-month-row').hide();
+            form.find('.schedule-minute-row, .schedule-time-row, .schedule-day-of-week-row, .edit-schedule-minute-row, .edit-schedule-time-row, .edit-schedule-day-of-week-row').hide();
             
             // Show relevant fields - determine class prefix based on form
             var isEditForm = formSelector.indexOf('edit') > -1;
+            var minuteRowClass = isEditForm ? '.edit-schedule-minute-row' : '.schedule-minute-row';
             var timeRowClass = isEditForm ? '.edit-schedule-time-row' : '.schedule-time-row';
             var weekRowClass = isEditForm ? '.edit-schedule-day-of-week-row' : '.schedule-day-of-week-row';
-            var monthRowClass = isEditForm ? '.edit-schedule-day-of-month-row' : '.schedule-day-of-month-row';
             
             switch(frequency) {
                 case 'hourly':
-                    // Only show time (for minute selection)
-                    form.find(timeRowClass).show();
+                    // Only show minute selector for hourly
+                    form.find(minuteRowClass).show();
                     break;
                 case 'daily':
                     form.find(timeRowClass).show();
@@ -503,10 +508,6 @@ jQuery(document).ready(function($) {
                 case 'weekly':
                     form.find(timeRowClass).show();
                     form.find(weekRowClass).show();
-                    break;
-                case 'monthly':
-                    form.find(timeRowClass).show();
-                    form.find(monthRowClass).show();
                     break;
             }
         }).trigger('change');
@@ -525,8 +526,8 @@ jQuery(document).ready(function($) {
         var scheduleName = btn.data('schedule-name');
         var frequency = btn.data('frequency');
         var time = btn.data('time');
-        var dayOfWeek = btn.data('day-of-week');
-        var dayOfMonth = btn.data('day-of-month');
+        var minute = btn.data('minute');
+        var daysOfWeek = btn.data('days-of-week');
         var isActive = btn.data('is-active');
         
         // Populate the edit form (use underscores to match the form field IDs)
@@ -534,9 +535,26 @@ jQuery(document).ready(function($) {
         $('#edit_schedule_name').val(scheduleName);
         $('#edit_frequency').val(frequency);
         $('#edit_time').val(time);
-        $('#edit_day_of_week').val(dayOfWeek);
-        $('#edit_day_of_month').val(dayOfMonth);
+        $('#edit_minute').val(minute);
         $('#edit_is_active').prop('checked', isActive == 1);
+        
+        // Handle days of week for weekly schedules
+        $('.edit-day-checkbox').prop('checked', false);
+        if (daysOfWeek) {
+            try {
+                var days = JSON.parse(daysOfWeek);
+                if (Array.isArray(days)) {
+                    days.forEach(function(day) {
+                        $('.edit-day-checkbox[value="' + day + '"]').prop('checked', true);
+                    });
+                }
+            } catch (e) {
+                // Fallback for single day (legacy format)
+                if (daysOfWeek !== '') {
+                    $('.edit-day-checkbox[value="' + daysOfWeek + '"]').prop('checked', true);
+                }
+            }
+        }
         
         // Trigger frequency change to show/hide appropriate fields
         $('#edit_frequency').trigger('change');
@@ -552,10 +570,9 @@ jQuery(document).ready(function($) {
     });
     
     // Handle cancel edit button
-    $('#cancel-edit-btn').on('click', function() {
-        // Hide edit form and show create form
+    $('.cancel-edit-btn').on('click', function() {
+        // Hide edit form and show create form  
         $('#edit-schedule-form').hide();
-        $('#create-schedule-form').show();
         
         // Clear edit form
         $('#edit-schedule-form form')[0].reset();

@@ -38,12 +38,16 @@ class ScanSchedulesRepository {
 
         $table = $this->dbManager->getScanSchedulesTableName();
 
+        // Handle days_of_week array for weekly schedules
+        if ( isset( $data['days_of_week'] ) && is_array( $data['days_of_week'] ) ) {
+            $data['days_of_week'] = json_encode( array_values( $data['days_of_week'] ) );
+        }
+
         $defaults = [
             'name' => '',
             'frequency' => 'daily',
             'time' => null,
-            'day_of_week' => null,
-            'day_of_month' => null,
+            'days_of_week' => null,
             'hour' => null,
             'minute' => null,
             'timezone' => wp_timezone_string(),
@@ -53,15 +57,27 @@ class ScanSchedulesRepository {
 
         $data = wp_parse_args( $data, $defaults );
 
+        // Map the data to database columns
+        $db_data = [
+            'name' => $data['name'],
+            'frequency' => $data['frequency'],
+            'time' => $data['time'],
+            'day_of_week' => $data['days_of_week'], // Store JSON in day_of_week column
+            'hour' => $data['hour'],
+            'minute' => $data['minute'],
+            'timezone' => $data['timezone'],
+            'is_active' => $data['is_active'],
+            'next_run' => $data['next_run'],
+        ];
+
         $result = $wpdb->insert(
             $table,
-            $data,
+            $db_data,
             [
                 '%s', // name
                 '%s', // frequency
                 '%s', // time
-                '%d', // day_of_week
-                '%d', // day_of_month
+                '%s', // day_of_week (now stores JSON string)
                 '%d', // hour
                 '%d', // minute
                 '%s', // timezone
@@ -85,14 +101,28 @@ class ScanSchedulesRepository {
 
         $table = $this->dbManager->getScanSchedulesTableName();
 
+        // Handle days_of_week array for weekly schedules
+        if ( isset( $data['days_of_week'] ) ) {
+            if ( is_array( $data['days_of_week'] ) ) {
+                $data['day_of_week'] = json_encode( array_values( $data['days_of_week'] ) );
+            } else {
+                $data['day_of_week'] = $data['days_of_week'];
+            }
+            unset( $data['days_of_week'] );
+        }
+
         // Recalculate next run if schedule timing changed
         if ( isset( $data['frequency'] ) || isset( $data['time'] ) || 
-             isset( $data['day_of_week'] ) || isset( $data['day_of_month'] ) ||
+             isset( $data['day_of_week'] ) || isset( $data['days_of_week'] ) ||
              isset( $data['hour'] ) || isset( $data['minute'] ) ) {
             
             $existing = $this->get( $id );
             if ( $existing ) {
                 $merged = array_merge( (array) $existing, $data );
+                // Convert back for calculation
+                if ( isset( $merged['day_of_week'] ) && is_string( $merged['day_of_week'] ) && strpos( $merged['day_of_week'], '[' ) === 0 ) {
+                    $merged['days_of_week'] = json_decode( $merged['day_of_week'], true );
+                }
                 $data['next_run'] = $this->calculateNextRun( $merged );
             }
         }
@@ -119,12 +149,25 @@ class ScanSchedulesRepository {
 
         $table = $this->dbManager->getScanSchedulesTableName();
 
-        return $wpdb->get_row(
+        $schedule = $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT * FROM $table WHERE id = %d",
                 $id
             )
         );
+
+        // Process schedule to add days_of_week for backward compatibility
+        if ( $schedule && $schedule->frequency === 'weekly' && ! empty( $schedule->day_of_week ) ) {
+            // Check if it's JSON
+            if ( strpos( $schedule->day_of_week, '[' ) === 0 ) {
+                $schedule->days_of_week = $schedule->day_of_week;
+            } else {
+                // Legacy single day format
+                $schedule->days_of_week = json_encode( [ (int) $schedule->day_of_week ] );
+            }
+        }
+
+        return $schedule;
     }
 
     /**
@@ -171,9 +214,24 @@ class ScanSchedulesRepository {
         $where_values[] = $args['limit'];
         $where_values[] = $args['offset'];
 
-        return $wpdb->get_results(
+        $schedules = $wpdb->get_results(
             $wpdb->prepare( $query, $where_values )
         );
+
+        // Process schedules to add days_of_week for backward compatibility
+        foreach ( $schedules as &$schedule ) {
+            if ( $schedule->frequency === 'weekly' && ! empty( $schedule->day_of_week ) ) {
+                // Check if it's JSON
+                if ( strpos( $schedule->day_of_week, '[' ) === 0 ) {
+                    $schedule->days_of_week = $schedule->day_of_week;
+                } else {
+                    // Legacy single day format
+                    $schedule->days_of_week = json_encode( [ (int) $schedule->day_of_week ] );
+                }
+            }
+        }
+
+        return $schedules;
     }
 
     /**
@@ -286,7 +344,26 @@ class ScanSchedulesRepository {
                 break;
 
             case 'weekly':
-                $day_of_week = $schedule['day_of_week'] ?? 1; // Monday by default
+                // Handle multiple days of week
+                $days_of_week = [];
+                if ( isset( $schedule['days_of_week'] ) ) {
+                    if ( is_string( $schedule['days_of_week'] ) ) {
+                        $days_of_week = json_decode( $schedule['days_of_week'], true ) ?: [];
+                    } elseif ( is_array( $schedule['days_of_week'] ) ) {
+                        $days_of_week = $schedule['days_of_week'];
+                    }
+                } elseif ( isset( $schedule['day_of_week'] ) ) {
+                    if ( is_string( $schedule['day_of_week'] ) && strpos( $schedule['day_of_week'], '[' ) === 0 ) {
+                        $days_of_week = json_decode( $schedule['day_of_week'], true ) ?: [];
+                    } else {
+                        $days_of_week = [ $schedule['day_of_week'] ];
+                    }
+                }
+                
+                if ( empty( $days_of_week ) ) {
+                    $days_of_week = [ 1 ]; // Monday by default
+                }
+                
                 if ( ! empty( $schedule['time'] ) ) {
                     list( $hour, $minute ) = explode( ':', $schedule['time'] );
                 } else {
@@ -294,36 +371,49 @@ class ScanSchedulesRepository {
                     $minute = $schedule['minute'] ?? 0;
                 }
                 
-                // Set to the specified day of week
+                // Find the next occurrence among selected days
                 $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                $target_day = $days[$day_of_week];
-                $next->modify( "next $target_day" );
-                $next->setTime( (int) $hour, (int) $minute, 0 );
+                $next_dates = [];
                 
-                // If we're already past this week's scheduled time, move to next week
-                if ( $next <= $now ) {
-                    $next->modify( '+1 week' );
+                foreach ( $days_of_week as $day_num ) {
+                    if ( ! isset( $days[$day_num] ) ) {
+                        continue;
+                    }
+                    
+                    $temp = clone $now;
+                    $target_day = $days[$day_num];
+                    
+                    // Get next occurrence of this day
+                    $current_day = (int) $temp->format( 'w' );
+                    if ( $current_day === $day_num ) {
+                        // It's today, check if time has passed
+                        $temp->setTime( (int) $hour, (int) $minute, 0 );
+                        if ( $temp <= $now ) {
+                            // Time has passed, move to next week
+                            $temp->modify( '+1 week' );
+                        }
+                    } else {
+                        // Move to the next occurrence of this day
+                        $temp->modify( "next $target_day" );
+                        $temp->setTime( (int) $hour, (int) $minute, 0 );
+                    }
+                    
+                    $next_dates[] = $temp;
+                }
+                
+                // Get the earliest next date
+                if ( ! empty( $next_dates ) ) {
+                    usort( $next_dates, function( $a, $b ) {
+                        return $a <=> $b;
+                    });
+                    $next = $next_dates[0];
+                } else {
+                    // Fallback to next Monday if no days selected
+                    $next->modify( 'next Monday' );
+                    $next->setTime( (int) $hour, (int) $minute, 0 );
                 }
                 break;
 
-            case 'monthly':
-                $day_of_month = $schedule['day_of_month'] ?? 1;
-                if ( ! empty( $schedule['time'] ) ) {
-                    list( $hour, $minute ) = explode( ':', $schedule['time'] );
-                } else {
-                    $hour = $schedule['hour'] ?? 0;
-                    $minute = $schedule['minute'] ?? 0;
-                }
-                
-                // Set to the specified day of month
-                $next->setDate( (int) $next->format( 'Y' ), (int) $next->format( 'm' ), (int) $day_of_month );
-                $next->setTime( (int) $hour, (int) $minute, 0 );
-                
-                // If we're already past this month's scheduled time, move to next month
-                if ( $next <= $now ) {
-                    $next->modify( '+1 month' );
-                }
-                break;
 
             default:
                 // Default to daily at midnight
