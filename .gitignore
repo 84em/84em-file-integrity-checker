@@ -42,3 +42,4 @@ yarn.lock
 
 # build files
 /dist/
+/build/
