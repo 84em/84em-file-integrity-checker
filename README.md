@@ -17,7 +17,6 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
   - **Hourly**: Run at specific minutes past the hour
   - **Daily**: Run at any time of day
   - **Weekly**: Choose day and time
-  - **Monthly**: Select day of month and time
 - Timezone-aware scheduling
 - Action Scheduler integration (not WP Cron) for reliability
 - Enable/disable schedules without deletion
@@ -27,7 +26,7 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 - View scan history with complete audit trail
 - Compare checksums between scans
 - Dashboard widget for at-a-glance monitoring
-- Export results in multiple formats
+- System logging with detailed activity tracking
 
 ### 🛠️ Developer-Friendly Architecture
 - Modern PHP 8.0+ with type declarations
@@ -37,11 +36,16 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 - Service layer architecture
 - Comprehensive PHPUnit test suite
 
+### 🔔 Notification System
+- Email notifications for detected changes
+- Slack webhook integration
+- Customizable notification templates
+- Configure which changes trigger alerts
+
 ### 🎨 WordPress Integration
 - Native WordPress admin UI
 - Inherits WordPress admin color schemes
 - WP-CLI command support
-- Multisite compatible
 - Translation ready
 
 ## Requirements
@@ -87,6 +91,8 @@ Navigate to **File Integrity → Settings** to configure:
 - **Max File Size**: Skip files larger than this size
 - **Email Notifications**: Get alerts when changes are detected
 - **Retention Period**: How long to keep scan history
+- **Slack Integration**: Configure webhook for Slack notifications
+- **Logging**: Configure system log levels and retention
 
 ### Creating Scan Schedules
 
@@ -94,7 +100,7 @@ Navigate to **File Integrity → Settings** to configure:
 2. Click **Create New Schedule**
 3. Configure:
    - **Name**: Descriptive name for the schedule
-   - **Frequency**: Hourly, daily, weekly, or monthly
+   - **Frequency**: Hourly, daily, or weekly
    - **Time**: When to run the scan
    - **Active**: Enable immediately or keep disabled
 
@@ -141,9 +147,6 @@ wp 84em integrity results
 
 # View specific scan details
 wp 84em integrity results 123
-
-# Export results
-wp 84em integrity results --format=csv
 ```
 
 ### Managing Schedules
@@ -339,31 +342,6 @@ $container->register( CustomService::class, function( $container ) {
 });
 ```
 
-## Changelog
-
-### Version 1.5.0 (Current)
-- Implement comprehensive database logging system
-- Add NotificationService with centralized notification handling
-- Create System Logs admin page with filtering and search
-- Add Slack notification support
-- Implement file security with blocked sensitive files
-- Dashboard auto-refresh after scan completion
-- Fix timezone handling for scheduled scans
-- Fix Action Scheduler argument unpacking issue
-- Add 92%+ test coverage with comprehensive test suite
-- Add build system for production distribution
-
-### Version 1.0.0 (Initial Release)
-- Core file scanning functionality
-- SHA-256 checksum generation
-- Change detection and tracking
-- Multiple schedule support
-- Admin interface with dashboard
-- WP-CLI command integration
-- Action Scheduler integration
-- Email notifications
-- Basic test framework
-
 ## Support
 
 For bug reports and feature requests, please use the GitHub issues tracker.
@@ -382,21 +360,6 @@ Developed by [84EM](https://84em.com) - Remote WordPress Development Agency
 - **Composer** - Dependency management
 - **PHPUnit** - Testing framework
 - **WordPress** - Content management system
-
-## Roadmap
-
-### Planned Features
-
-- [ ] File content comparison (diff view)
-- [ ] Malware signature detection
-- [ ] REST API endpoints
-- [ ] File restoration capabilities
-- [ ] Integration with security plugins
-- [ ] Custom notification channels (Slack, Discord)
-- [ ] Scan performance analytics
-- [ ] Multi-site network support
-- [ ] Cloud backup integration
-- [ ] Advanced reporting with graphs
 
 ## Contributing
 
