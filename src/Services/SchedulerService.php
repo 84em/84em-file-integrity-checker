@@ -511,10 +511,8 @@ class SchedulerService {
                     ]
                 );
                 
-                // Send notification if there are changes
-                if ( $scan_result['changed_files'] > 0 || $scan_result['new_files'] > 0 || $scan_result['deleted_files'] > 0 ) {
-                    $this->notificationService->sendScanNotification( $scan_result['scan_id'] );
-                }
+                // Notifications are already sent by IntegrityService::runScan()
+                // No need to send them again here
 
                 // If this was a scheduled scan, update last run and schedule next
                 if ( $schedule_id ) {
