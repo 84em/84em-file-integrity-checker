@@ -255,11 +255,9 @@ if ( ! defined( 'ABSPATH' ) ) {
                                 Enter your Slack webhook URL. 
                                 <a href="https://api.slack.com/messaging/webhooks" target="_blank">Learn how to create a webhook</a>
                             </p>
-                            <?php if ( ! empty( $settings['slack_webhook_url'] ) ): ?>
                             <button type="button" class="button button-secondary" id="test-slack-notification" style="margin-top: 10px;">
                                 Test Slack Notification
                             </button>
-                            <?php endif; ?>
                         </td>
                     </tr>
                     <tr>
@@ -575,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
         testSlackBtn.addEventListener('click', function() {
             const webhookUrl = document.getElementById('slack_webhook_url').value;
             if (!webhookUrl) {
-                alert('Please enter a Slack webhook URL first.');
+                FICModal.warning('Please enter a Slack webhook URL first.', 'Webhook URL Required');
                 return;
             }
             
@@ -595,13 +593,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    alert('Test notification sent successfully! Check your Slack channel.');
+                    FICModal.success('Test notification sent successfully! Check your Slack channel.', 'Test Successful');
                 } else {
-                    alert('Failed to send test notification: ' + (result.data || 'Unknown error'));
+                    FICModal.error('Failed to send test notification: ' + (result.data || 'Unknown error'), 'Test Failed');
                 }
             })
             .catch(error => {
-                alert('Error sending test notification: ' + error.message);
+                FICModal.error('Error sending test notification: ' + error.message, 'Connection Error');
             })
             .finally(() => {
                 testSlackBtn.disabled = false;

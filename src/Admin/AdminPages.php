@@ -686,7 +686,7 @@ class AdminPages {
      */
     public function ajaxTestSlack(): void {
         // Check action-specific nonce and rate limiting
-        if ( ! Security::check_ajax_referer( 'ajax_test_slack', '_wpnonce', false ) ) {
+        if ( ! Security::check_ajax_referer( 'test_slack', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
         
