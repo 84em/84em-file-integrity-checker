@@ -531,6 +531,8 @@ class SettingsService {
             'max_file_size',
             'notification_enabled',
             'notification_email',
+            'slack_enabled',
+            'slack_webhook_url',
             'auto_schedule',
             'retention_period',
             'content_retention_limit',
@@ -538,6 +540,7 @@ class SettingsService {
             'log_retention_days',
             'auto_log_cleanup',
             'debug_mode',
+            'delete_data_on_uninstall',
         ];
 
         foreach ( $options as $option ) {

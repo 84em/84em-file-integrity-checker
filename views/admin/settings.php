@@ -422,35 +422,6 @@ if ( ! defined( 'ABSPATH' ) ) {
             </a>
         </p>
     </form>
-
-    <!-- Additional Actions -->
-    <div class="file-integrity-card">
-        <h3>Advanced Actions</h3>
-        <div class="card-content">
-            <p>These actions affect all plugin data and cannot be undone.</p>
-            
-            <div style="margin: 20px 0;">
-                <form method="post" style="display: inline;">
-                    <?php wp_nonce_field( 'file_integrity_admin_action_cleanup_old_scans' ); ?>
-                    <input type="hidden" name="action" value="cleanup_old_scans" />
-                    <button type="submit" class="button cleanup-old-scans" 
-                            onclick="event.preventDefault(); FICModal.confirm('This will delete scan results older than <?php echo $settings['retention_period']; ?> days. Continue?', 'Delete Old Scans', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.form.submit(); }); return false;">
-                        <span class="dashicons dashicons-trash"></span>
-                        Cleanup Old Scans Now
-                    </button>
-                </form>
-                <p class="description">Manually remove old scan results based on the retention period above.</p>
-            </div>
-            
-            <div style="margin: 20px 0;">
-                <button type="button" class="button" onclick="resetToDefaults()">
-                    <span class="dashicons dashicons-undo"></span>
-                    Reset to Defaults
-                </button>
-                <p class="description">Reset all settings to their default values.</p>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script>
@@ -469,42 +440,6 @@ function getCurrentMultiplier(value) {
     return 1; // Bytes
 }
 
-function resetToDefaults() {
-    FICModal.confirm(
-        'This will reset all settings to their default values. Continue?',
-        'Reset Settings',
-        'Yes, Reset',
-        'Cancel'
-    ).then(confirmed => {
-        if (confirmed) {
-            // Reset form fields to defaults
-            document.querySelector('select[name="scan_interval"]').value = 'daily';
-            document.querySelector('input[name="max_file_size"]').value = '10485760';
-            document.querySelector('input[name="notification_enabled"]').checked = true;
-            document.querySelector('input[name="auto_schedule"]').checked = true;
-            document.querySelector('input[name="retention_period"]').value = '90';
-            document.querySelector('input[name="notification_email"]').value = '';
-            
-            // Reset file type checkboxes
-            const defaultTypes = ['.js', '.css', '.html', '.php'];
-            document.querySelectorAll('.file-extension-checkbox').forEach(checkbox => {
-                checkbox.checked = defaultTypes.includes(checkbox.value);
-            });
-            
-            // Reset exclude patterns
-            const defaultPatterns = [
-                '*/cache/*',
-                '*/logs/*', 
-                '*/uploads/*',
-                '*/wp-content/cache/*',
-                '*/wp-content/backup*'
-            ].join('\n');
-            document.querySelector('textarea[name="exclude_patterns"]').value = defaultPatterns;
-            
-            FICModal.success('Settings reset to defaults. Click "Save Settings" to apply changes.');
-        }
-    });
-}
 
 // Toggle notification email field based on checkbox
 document.addEventListener('DOMContentLoaded', function() {
