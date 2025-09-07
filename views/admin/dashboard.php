@@ -95,13 +95,13 @@ if ( ! defined( 'ABSPATH' ) ) {
                         </tr>
                         <tr>
                             <td><strong>Files Scanned:</strong></td>
-                            <td><?php echo number_format( $stats['latest_scan']['total_files'] ); ?></td>
+                            <td><?php echo esc_html( number_format( $stats['latest_scan']['total_files'] ) ); ?></td>
                         </tr>
                         <tr>
                             <td><strong>Changes:</strong></td>
                             <td>
                                 <?php if ( $stats['latest_scan']['changed_files'] > 0 ): ?>
-                                    <span class="stat-number warning"><?php echo number_format( $stats['latest_scan']['changed_files'] ); ?></span>
+                                    <span class="stat-number warning"><?php echo esc_html( number_format( $stats['latest_scan']['changed_files'] ) ); ?></span>
                                 <?php else: ?>
                                     <span class="stat-number success">0</span>
                                 <?php endif; ?>
@@ -123,7 +123,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             
             <?php if ( $stats['latest_scan'] ): ?>
             <div class="card-actions">
-                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $stats['latest_scan']['id'] ); ?>" class="button">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $stats['latest_scan']['id'] ) ); ?>" class="button">
                     View Details
                 </a>
             </div>
@@ -136,29 +136,29 @@ if ( ! defined( 'ABSPATH' ) ) {
             <div class="card-content">
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-number"><?php echo number_format( $stats['total_scans'] ); ?></span>
+                        <span class="stat-number"><?php echo esc_html( number_format( $stats['total_scans'] ) ); ?></span>
                         <span class="stat-label">Total Scans</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number success"><?php echo number_format( $stats['completed_scans'] ); ?></span>
+                        <span class="stat-number success"><?php echo esc_html( number_format( $stats['completed_scans'] ) ); ?></span>
                         <span class="stat-label">Completed</span>
                     </div>
                     <?php if ( $stats['failed_scans'] > 0 ): ?>
                     <div class="stat-item">
-                        <span class="stat-number error"><?php echo number_format( $stats['failed_scans'] ); ?></span>
+                        <span class="stat-number error"><?php echo esc_html( number_format( $stats['failed_scans'] ) ); ?></span>
                         <span class="stat-label">Failed</span>
                     </div>
                     <?php endif; ?>
                     <div class="stat-item">
-                        <span class="stat-number <?php echo $stats['total_changed_files'] > 0 ? 'warning' : 'success'; ?>">
-                            <?php echo number_format( $stats['total_changed_files'] ); ?>
+                        <span class="stat-number <?php echo esc_attr( $stats['total_changed_files'] > 0 ? 'warning' : 'success' ); ?>">
+                            <?php echo esc_html( number_format( $stats['total_changed_files'] ) ); ?>
                         </span>
                         <span class="stat-label">Total Changes</span>
                     </div>
                 </div>
                 
                 <?php if ( $stats['avg_scan_duration'] > 0 ): ?>
-                <p><strong>Average scan time:</strong> <?php echo number_format( $stats['avg_scan_duration'], 1 ); ?> seconds</p>
+                <p><strong>Average scan time:</strong> <?php echo esc_html( number_format( $stats['avg_scan_duration'], 1 ) ); ?> seconds</p>
                 <?php endif; ?>
             </div>
         </div>
@@ -188,7 +188,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
             
             <div class="card-actions">
-                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-schedules' ); ?>" class="button button-primary">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-schedules' ) ); ?>" class="button button-primary">
                     <span class="dashicons dashicons-calendar-alt"></span>
                     Manage Schedules
                 </a>
@@ -215,12 +215,12 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
             
             <div class="card-actions">
-                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-results' ); ?>" class="button">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results' ) ); ?>" class="button">
                     <span class="dashicons dashicons-list-view"></span>
                     View All Results
                 </a>
                 <br><br>
-                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-settings' ); ?>" class="button">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-settings' ) ); ?>" class="button">
                     <span class="dashicons dashicons-admin-settings"></span>
                     Settings
                 </a>

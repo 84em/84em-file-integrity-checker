@@ -20,7 +20,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
     <?php if ( empty( $results['results'] ) ): ?>
         <div class="file-integrity-alert alert-info">
             <span class="dashicons dashicons-info"></span>
-            <span>No scan results found. <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker' ); ?>">Run your first scan</a> to get started.</span>
+            <span>No scan results found. <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>">Run your first scan</a> to get started.</span>
         </div>
     <?php else: ?>
         
@@ -28,7 +28,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
         <div class="file-integrity-card" style="margin-bottom: 20px;">
             <h3>Results Overview</h3>
             <div class="card-content">
-                <p>Showing <?php echo number_format( count( $results['results'] ) ); ?> of <?php echo number_format( $results['total_count'] ); ?> scan results.</p>
+                <p>Showing <?php echo esc_html( number_format( count( $results['results'] ) ) ); ?> of <?php echo esc_html( number_format( $results['total_count'] ) ); ?> scan results.</p>
             </div>
         </div>
 
@@ -81,7 +81,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                         <?php endif; ?>
                     </td>
                     <td class="column-files">
-                        <?php echo number_format( $scan->total_files ); ?>
+                        <?php echo esc_html( number_format( $scan->total_files ) ); ?>
                     </td>
                     <td class="column-changes">
                         <?php if ( $scan->status === 'completed' ): ?>
@@ -89,17 +89,17 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                             $total_changes = $scan->changed_files + $scan->new_files + $scan->deleted_files;
                             if ( $total_changes > 0 ):
                             ?>
-                                <span class="stat-number warning"><?php echo number_format( $total_changes ); ?></span>
+                                <span class="stat-number warning"><?php echo esc_html( number_format( $total_changes ) ); ?></span>
                                 <br>
                                 <small>
                                     <?php if ( $scan->changed_files > 0 ): ?>
-                                        <?php echo number_format( $scan->changed_files ); ?> changed
+                                        <?php echo esc_html( number_format( $scan->changed_files ) ); ?> changed
                                     <?php endif; ?>
                                     <?php if ( $scan->new_files > 0 ): ?>
-                                        <?php echo $scan->changed_files > 0 ? ', ' : ''; ?><?php echo number_format( $scan->new_files ); ?> new
+                                        <?php echo esc_html( $scan->changed_files > 0 ? ', ' : '' ); ?><?php echo esc_html( number_format( $scan->new_files ) ); ?> new
                                     <?php endif; ?>
                                     <?php if ( $scan->deleted_files > 0 ): ?>
-                                        <?php echo ( $scan->changed_files > 0 || $scan->new_files > 0 ) ? ', ' : ''; ?><?php echo number_format( $scan->deleted_files ); ?> deleted
+                                        <?php echo esc_html( ( $scan->changed_files > 0 || $scan->new_files > 0 ) ? ', ' : '' ); ?><?php echo esc_html( number_format( $scan->deleted_files ) ); ?> deleted
                                     <?php endif; ?>
                                 </small>
                             <?php else: ?>
@@ -175,8 +175,8 @@ $total_pages = ceil( $results['total_count'] / $per_page );
         <?php if ( $total_pages > 1 ): ?>
         <div class="file-integrity-pagination">
             <div class="pagination-info">
-                Showing page <?php echo $current_page; ?> of <?php echo $total_pages; ?>
-                (<?php echo number_format( $results['total_count'] ); ?> total results)
+                Showing page <?php echo esc_html( $current_page ); ?> of <?php echo esc_html( $total_pages ); ?>
+                (<?php echo esc_html( number_format( $results['total_count'] ) ); ?> total results)
             </div>
             
             <div class="pagination-links">
@@ -185,7 +185,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results&paged=' . ( $current_page - 1 ) ) ); ?>" class="button">Previous</a>
                 <?php endif; ?>
                 
-                <span class="button button-disabled">Page <?php echo $current_page; ?></span>
+                <span class="button button-disabled">Page <?php echo esc_html( $current_page ); ?></span>
                 
                 <?php if ( $current_page < $total_pages ): ?>
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results&paged=' . ( $current_page + 1 ) ) ); ?>" class="button">Next</a>
@@ -199,7 +199,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
         <div class="file-integrity-card" style="margin-top: 20px;">
             <h3>Actions</h3>
             <div class="card-actions">
-                <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker' ); ?>" class="button button-primary">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button button-primary">
                     <span class="dashicons dashicons-arrow-left-alt"></span>
                     Back to Dashboard
                 </a>

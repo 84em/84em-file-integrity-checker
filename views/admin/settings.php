@@ -61,7 +61,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                                            value="<?php echo esc_attr( $type ); ?>" 
                                            id="type_<?php echo esc_attr( str_replace( '.', '', $type ) ); ?>"
                                            class="file-extension-checkbox"
-                                           <?php echo $checked; ?> />
+                                           <?php echo esc_attr( $checked ); ?> />
                                     <label for="type_<?php echo esc_attr( str_replace( '.', '', $type ) ); ?>">
                                         <?php echo esc_html( $type ); ?>
                                     </label>
@@ -390,7 +390,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                                     Delete ALL plugin data when uninstalling
                                 </strong>
                             </label>
-                            <div id="uninstall-warning" style="display: <?php echo ($settings['delete_data_on_uninstall'] ?? false) ? 'block' : 'none'; ?>; margin-top: 10px; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">
+                            <div id="uninstall-warning" style="display: <?php echo esc_attr( ($settings['delete_data_on_uninstall'] ?? false) ? 'block' : 'none' ); ?>; margin-top: 10px; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">
                                 <strong style="color: #721c24;">⚠️ WARNING:</strong>
                                 <ul style="margin: 10px 0 0 20px; color: #721c24;">
                                     <li>All scan history will be permanently deleted</li>
@@ -417,7 +417,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <!-- Submit Button -->
         <p class="submit">
             <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings" />
-            <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker' ); ?>" class="button">
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button">
                 Cancel
             </a>
         </p>

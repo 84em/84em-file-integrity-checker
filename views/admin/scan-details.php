@@ -38,7 +38,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
 <div class="wrap">
     <h1>
         Scan Details #<?php echo esc_html( $scan_summary['scan_id'] ); ?>
-        <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-results' ); ?>" class="page-title-action">
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results' ) ); ?>" class="page-title-action">
             &larr; Back to Results
         </a>
     </h1>
@@ -99,23 +99,23 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
             <div class="card-content">
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-number"><?php echo number_format( $scan_summary['total_files'] ); ?></span>
+                        <span class="stat-number"><?php echo esc_html( number_format( $scan_summary['total_files'] ) ); ?></span>
                         <span class="stat-label">Total Files</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number success"><?php echo number_format( $scan_summary['total_files'] - $scan_summary['changed_files'] - $scan_summary['new_files'] - $scan_summary['deleted_files'] ); ?></span>
+                        <span class="stat-number success"><?php echo esc_html( number_format( $scan_summary['total_files'] - $scan_summary['changed_files'] - $scan_summary['new_files'] - $scan_summary['deleted_files'] ) ); ?></span>
                         <span class="stat-label">Unchanged</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number <?php echo $scan_summary['changed_files'] > 0 ? 'warning' : ''; ?>"><?php echo number_format( $scan_summary['changed_files'] ); ?></span>
+                        <span class="stat-number <?php echo esc_attr( $scan_summary['changed_files'] > 0 ? 'warning' : '' ); ?>"><?php echo esc_html( number_format( $scan_summary['changed_files'] ) ); ?></span>
                         <span class="stat-label">Changed</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number <?php echo $scan_summary['new_files'] > 0 ? 'warning' : ''; ?>"><?php echo number_format( $scan_summary['new_files'] ); ?></span>
+                        <span class="stat-number <?php echo esc_attr( $scan_summary['new_files'] > 0 ? 'warning' : '' ); ?>"><?php echo esc_html( number_format( $scan_summary['new_files'] ) ); ?></span>
                         <span class="stat-label">New Files</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-number <?php echo $scan_summary['deleted_files'] > 0 ? 'error' : ''; ?>"><?php echo number_format( $scan_summary['deleted_files'] ); ?></span>
+                        <span class="stat-number <?php echo esc_attr( $scan_summary['deleted_files'] > 0 ? 'error' : '' ); ?>"><?php echo esc_html( number_format( $scan_summary['deleted_files'] ) ); ?></span>
                         <span class="stat-label">Deleted</span>
                     </div>
                 </div>
@@ -183,7 +183,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
     <div class="file-integrity-alert alert-warning">
         <span class="dashicons dashicons-warning"></span>
         <span>
-            <strong><?php echo number_format( count( $changed_files ) ); ?> file(s) have changes.</strong>
+            <strong><?php echo esc_html( number_format( count( $changed_files ) ) ); ?> file(s) have changes.</strong>
             Review these files to ensure they are legitimate modifications.
         </span>
     </div>
@@ -205,7 +205,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                         <span class="status-badge status-<?php echo esc_attr( $status ); ?>">
                             <?php echo esc_html( ucfirst( $status ) ); ?>
                         </span>
-                        <?php echo number_format( $count ); ?> file(s)
+                        <?php echo esc_html( number_format( $count ) ); ?> file(s)
                     </li>
                 <?php endforeach; ?>
             </ul>
@@ -219,7 +219,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
             File Records
             <?php if ( $file_results['total_count'] > 0 ): ?>
                 <span style="font-weight: normal; font-size: 14px;">
-                    (<?php echo number_format( $file_results['total_count'] ); ?> total)
+                    (<?php echo esc_html( number_format( $file_results['total_count'] ) ); ?> total)
                 </span>
             <?php endif; ?>
         </h3>
@@ -241,7 +241,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
         
         <div class="card-content">
             <?php if ( empty( $file_results['results'] ) ): ?>
-                <p>No files found<?php echo $status_filter ? ' with status "' . esc_html( $status_filter ) . '"' : ''; ?>.</p>
+                <p>No files found<?php echo $status_filter ? esc_html( ' with status "' . $status_filter . '"' ) : ''; ?>.</p>
             <?php else: ?>
                 
                 <!-- Files Table -->
@@ -289,7 +289,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                         <button type="button" 
                                                 class="button button-small view-diff-btn" 
                                                 data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
-                                                data-diff="<?php echo htmlspecialchars( json_encode( $file->diff_content ), ENT_QUOTES, 'UTF-8' ); ?>"
+                                                data-diff="<?php echo esc_attr( json_encode( $file->diff_content ) ); ?>"
                                                 style="margin-top: 5px;">
                                             <span class="dashicons dashicons-visibility"></span> View Changes
                                         </button>
@@ -329,8 +329,8 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 <?php if ( $files_total_pages > 1 ): ?>
                 <div class="file-integrity-pagination">
                     <div class="pagination-info">
-                        Showing page <?php echo $files_page; ?> of <?php echo $files_total_pages; ?>
-                        (<?php echo number_format( $file_results['total_count'] ); ?> files)
+                        Showing page <?php echo esc_html( $files_page ); ?> of <?php echo esc_html( $files_total_pages ); ?>
+                        (<?php echo esc_html( number_format( $file_results['total_count'] ) ); ?> files)
                     </div>
                     
                     <div class="pagination-links">
@@ -346,7 +346,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                             <a href="<?php echo esc_url( $base_url . '&files_page=' . ( $files_page - 1 ) ); ?>" class="button">Previous</a>
                         <?php endif; ?>
                         
-                        <span class="button button-disabled">Page <?php echo $files_page; ?></span>
+                        <span class="button button-disabled">Page <?php echo esc_html( $files_page ); ?></span>
                         
                         <?php if ( $files_page < $files_total_pages ): ?>
                             <a href="<?php echo esc_url( $base_url . '&files_page=' . ( $files_page + 1 ) ); ?>" class="button">Next</a>
@@ -362,12 +362,12 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
 
     <!-- Action Buttons -->
     <div style="margin-top: 20px;">
-        <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-results' ); ?>" class="button button-primary">
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results' ) ); ?>" class="button button-primary">
             <span class="dashicons dashicons-arrow-left-alt"></span>
             Back to All Results
         </a>
         
-        <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker' ); ?>" class="button">
+        <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button">
             <span class="dashicons dashicons-dashboard"></span>
             Dashboard
         </a>
