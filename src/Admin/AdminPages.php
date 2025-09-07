@@ -231,9 +231,25 @@ class AdminPages {
             return;
         }
 
+        // Use minified versions in production (when they exist)
+        $css_file = 'assets/css/admin.css';
+        $modal_js_file = 'assets/js/modal.js';
+        $admin_js_file = 'assets/js/admin.js';
+        
+        // Check if minified versions exist and use them
+        if ( file_exists( EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH . 'assets/css/admin.min.css' ) ) {
+            $css_file = 'assets/css/admin.min.css';
+        }
+        if ( file_exists( EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH . 'assets/js/modal.min.js' ) ) {
+            $modal_js_file = 'assets/js/modal.min.js';
+        }
+        if ( file_exists( EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH . 'assets/js/admin.min.js' ) ) {
+            $admin_js_file = 'assets/js/admin.min.js';
+        }
+        
         wp_enqueue_style(
             'file-integrity-checker-admin',
-            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . 'assets/css/admin.css',
+            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . $css_file,
             [],
             EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION
         );
@@ -241,7 +257,7 @@ class AdminPages {
         // Enqueue modal system first
         wp_enqueue_script(
             'file-integrity-checker-modal',
-            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . 'assets/js/modal.js',
+            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . $modal_js_file,
             [],
             EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION,
             true
@@ -249,7 +265,7 @@ class AdminPages {
 
         wp_enqueue_script(
             'file-integrity-checker-admin',
-            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . 'assets/js/admin.js',
+            EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL . $admin_js_file,
             [ 'jquery', 'file-integrity-checker-modal' ],
             EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION,
             true
