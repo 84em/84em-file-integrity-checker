@@ -69,8 +69,8 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                         <input type="checkbox" class="scan-checkbox" value="<?php echo esc_attr( $scan->id ); ?>" />
                     </th>
                     <td class="column-date">
-                        <strong><?php echo esc_html( date( 'M j, Y', strtotime( $scan->scan_date ) ) ); ?></strong><br>
-                        <small><?php echo esc_html( date( 'H:i:s', strtotime( $scan->scan_date ) ) ); ?></small>
+                        <strong><?php echo esc_html( mysql2date( get_option( 'date_format' ), $scan->scan_date ) ); ?></strong><br>
+                        <small><?php echo esc_html( mysql2date( get_option( 'time_format' ), $scan->scan_date ) ); ?></small>
                     </td>
                     <td class="column-status">
                         <span class="status-badge status-<?php echo esc_attr( $scan->status ); ?>">

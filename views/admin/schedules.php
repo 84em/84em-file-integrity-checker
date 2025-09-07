@@ -437,7 +437,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                         }
                                         
                                         // Also show the exact time in local timezone
-                                        echo '<br><small>' . esc_html( $next_local->format( 'M j, g:i A' ) ) . '</small>';
+                                        echo '<br><small>' . esc_html( $next_local->format( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ) . '</small>';
                                     } else {
                                         echo '<em>Due now</em>';
                                     }

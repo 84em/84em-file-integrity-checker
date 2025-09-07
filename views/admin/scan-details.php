@@ -53,7 +53,10 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 <table class="widefat">
                     <tr>
                         <td><strong>Date:</strong></td>
-                        <td><?php echo esc_html( date( 'F j, Y g:i:s A', strtotime( $scan_summary['scan_date'] ) ) ); ?></td>
+                        <td><?php 
+                            // Use mysql2date for proper timezone handling
+                            echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $scan_summary['scan_date'] ) ); 
+                        ?></td>
                     </tr>
                     <tr>
                         <td><strong>Status:</strong></td>
@@ -315,8 +318,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <div><?php echo esc_html( date( 'M j, Y', strtotime( $file->last_modified ) ) ); ?></div>
-                                <small style="color: #666;"><?php echo esc_html( date( 'H:i:s', strtotime( $file->last_modified ) ) ); ?></small>
+                                <?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $file->last_modified ) ); ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>

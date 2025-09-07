@@ -211,7 +211,7 @@ class NotificationService {
             'site_name' => $site_name,
             'site_url' => $site_url,
             'admin_url' => $admin_url,
-            'scan_date' => $scan_data['summary']['scan_date'],
+            'scan_date' => mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $scan_data['summary']['scan_date'] ),
             'scan_type' => $scan_data['summary']['scan_type'],
             'statistics' => [
                 'total_files' => $scan_data['summary']['total_files'],

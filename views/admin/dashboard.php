@@ -83,7 +83,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <table class="widefat">
                         <tr>
                             <td><strong>Date:</strong></td>
-                            <td><?php echo esc_html( date( 'M j, Y H:i', strtotime( $stats['latest_scan']['date'] ) ) ); ?></td>
+                            <td><?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $stats['latest_scan']['date'] ) ); ?></td>
                         </tr>
                         <tr>
                             <td><strong>Status:</strong></td>

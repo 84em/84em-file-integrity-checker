@@ -143,7 +143,7 @@ $available_levels = $logger->getAvailableLevels();
                     ?>
                     <tr>
                         <td class="column-timestamp">
-                            <?php echo esc_html( wp_date( 'Y-m-d H:i:s', strtotime( $log['created_at'] ) ) ); ?>
+                            <?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $log['created_at'] ) ); ?>
                         </td>
                         <td class="column-level">
                             <span class="log-level-badge" style="

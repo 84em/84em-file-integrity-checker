@@ -694,7 +694,7 @@ class AdminPages {
                     'elements' => [
                         [
                             'type' => 'mrkdwn',
-                            'text' => 'Site: ' . site_url() . ' | Time: ' . current_time( 'mysql' )
+                            'text' => 'Site: ' . site_url() . ' | Time: ' . wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) )
                         ]
                     ]
                 ]
