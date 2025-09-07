@@ -318,7 +318,10 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $file->last_modified ) ); ?>
+                                <?php 
+                                // Convert UTC timestamp to local time using WordPress timezone settings
+                                echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $file->last_modified ) ) ); 
+                                ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
