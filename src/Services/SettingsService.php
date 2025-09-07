@@ -340,6 +340,26 @@ class SettingsService {
     }
 
     /**
+     * Check if data should be deleted on uninstall
+     *
+     * @return bool True if data should be deleted, false otherwise
+     */
+    public function shouldDeleteDataOnUninstall(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'delete_data_on_uninstall', false );
+    }
+    
+    /**
+     * Set whether data should be deleted on uninstall
+     *
+     * @param bool $delete Whether to delete data
+     * @return bool True on success
+     */
+    public function setDeleteDataOnUninstall( bool $delete ): bool {
+        update_option( self::OPTION_PREFIX . 'delete_data_on_uninstall', $delete );
+        return true;
+    }
+    
+    /**
      * Get enabled log levels
      *
      * @return array Array of enabled log levels
@@ -427,6 +447,7 @@ class SettingsService {
             'log_retention_days' => $this->getLogRetentionDays(),
             'auto_log_cleanup' => $this->isAutoLogCleanupEnabled(),
             'debug_mode' => $this->isDebugModeEnabled(),
+            'delete_data_on_uninstall' => $this->shouldDeleteDataOnUninstall(),
         ];
     }
 
@@ -485,6 +506,9 @@ class SettingsService {
                     break;
                 case 'debug_mode':
                     $results[ $key ] = $this->setDebugMode( $value );
+                    break;
+                case 'delete_data_on_uninstall':
+                    $results[ $key ] = $this->setDeleteDataOnUninstall( (bool) $value );
                     break;
                 default:
                     $results[ $key ] = false;

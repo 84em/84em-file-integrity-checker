@@ -365,6 +365,55 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
         </div>
 
+        <!-- Uninstall Settings -->
+        <div class="file-integrity-card" style="margin-bottom: 30px; border: 2px solid #dc3232;">
+            <h3 style="color: #dc3232;">⚠️ Uninstall Settings</h3>
+            <div class="card-content">
+                <div class="file-integrity-alert alert-warning" style="margin-bottom: 20px;">
+                    <span class="dashicons dashicons-warning"></span>
+                    <span><strong>DANGER ZONE:</strong> These settings control what happens when the plugin is uninstalled.</span>
+                </div>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label for="delete_data_on_uninstall">Delete Data on Uninstall</label>
+                        </th>
+                        <td>
+                            <label style="display: block; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
+                                <input type="checkbox" 
+                                       name="delete_data_on_uninstall" 
+                                       id="delete_data_on_uninstall" 
+                                       value="1" 
+                                       <?php checked( $settings['delete_data_on_uninstall'] ?? false ); ?>
+                                       onchange="toggleUninstallWarning(this)" />
+                                <strong style="color: #dc3232;">
+                                    Delete ALL plugin data when uninstalling
+                                </strong>
+                            </label>
+                            <div id="uninstall-warning" style="display: <?php echo ($settings['delete_data_on_uninstall'] ?? false) ? 'block' : 'none'; ?>; margin-top: 10px; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">
+                                <strong style="color: #721c24;">⚠️ WARNING:</strong>
+                                <ul style="margin: 10px 0 0 20px; color: #721c24;">
+                                    <li>All scan history will be permanently deleted</li>
+                                    <li>All schedules will be removed</li>
+                                    <li>All settings will be erased</li>
+                                    <li>All database tables will be dropped</li>
+                                    <li>All log entries will be deleted</li>
+                                    <li><strong>This action CANNOT be undone!</strong></li>
+                                </ul>
+                                <p style="margin-top: 10px; color: #721c24;">
+                                    <strong>Only check this box if you want to completely remove all traces of this plugin from your database.</strong>
+                                </p>
+                            </div>
+                            <p class="description" style="margin-top: 10px;">
+                                When <strong>UNCHECKED</strong> (recommended): Your data will be preserved if you uninstall the plugin, allowing you to reinstall later without losing your scan history and settings.<br>
+                                When <strong>CHECKED</strong>: All plugin data will be permanently deleted when you uninstall the plugin.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
         <!-- Submit Button -->
         <p class="submit">
             <input type="submit" name="submit" id="submit" class="button button-primary" value="Save Settings" />
@@ -469,4 +518,27 @@ document.addEventListener('DOMContentLoaded', function() {
     enabledCheckbox.addEventListener('change', toggleEmailField);
     toggleEmailField(); // Set initial state
 });
+
+// Toggle uninstall warning
+function toggleUninstallWarning(checkbox) {
+    const warning = document.getElementById('uninstall-warning');
+    if (checkbox.checked) {
+        // Use custom modal for confirmation
+        FICModal.confirm(
+            '<strong>⚠️ WARNING:</strong><br><br>Enabling this option means that ALL plugin data will be PERMANENTLY DELETED when you uninstall the plugin.<br><br>This includes:<br>• All scan history<br>• All schedules<br>• All settings<br>• All database tables<br>• All log entries<br><br><strong>This action cannot be undone!</strong><br><br>Are you absolutely sure you want to enable data deletion on uninstall?',
+            'Confirm Data Deletion Setting',
+            'Yes, Enable Data Deletion',
+            'Cancel'
+        ).then(confirmed => {
+            if (confirmed) {
+                warning.style.display = 'block';
+            } else {
+                checkbox.checked = false;
+                warning.style.display = 'none';
+            }
+        });
+    } else {
+        warning.style.display = 'none';
+    }
+}
 </script>

@@ -485,6 +485,9 @@ class AdminPages {
         
         $settings['auto_log_cleanup'] = isset( $_POST['auto_log_cleanup'] );
         $settings['debug_mode'] = isset( $_POST['debug_mode'] );
+        
+        // Uninstall settings
+        $settings['delete_data_on_uninstall'] = isset( $_POST['delete_data_on_uninstall'] );
 
         $results = $this->settingsService->updateSettings( $settings );
         
