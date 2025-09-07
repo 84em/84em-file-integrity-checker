@@ -278,7 +278,66 @@ class AdminPages {
      */
     public function renderDashboardPage(): void {
         $stats = $this->integrityService->getDashboardStats();
-        $next_scan = $this->schedulerService->getNextScheduledScan();
+        
+        // Get next scheduled scan from active schedules in database
+        $active_schedules = $this->schedulerService->getSchedules( [ 'is_active' => 1 ] );
+        $next_scan = null;
+        
+        if ( ! empty( $active_schedules ) ) {
+            // Find the schedule with the earliest next_run time
+            $earliest_schedule = null;
+            foreach ( $active_schedules as $schedule ) {
+                if ( ! empty( $schedule->next_run ) ) {
+                    if ( $earliest_schedule === null || $schedule->next_run < $earliest_schedule->next_run ) {
+                        $earliest_schedule = $schedule;
+                    }
+                }
+            }
+            
+            if ( $earliest_schedule && $earliest_schedule->next_run ) {
+                // Convert UTC next_run to site timezone for display
+                $next_utc = new \DateTime( $earliest_schedule->next_run, new \DateTimeZone( 'UTC' ) );
+                $next_local = clone $next_utc;
+                $next_local->setTimezone( wp_timezone() );
+                
+                $now = current_datetime(); // Already in site timezone
+                
+                // Format the time_until the same way as in schedules.php
+                $time_until = '';
+                if ( $next_local > $now ) {
+                    $diff = $now->diff( $next_local );
+                    $hours = $diff->h + ($diff->days * 24);
+                    
+                    if ( $diff->days > 0 ) {
+                        $time_until = sprintf( 'In %d day%s, %d hour%s', 
+                            $diff->days, 
+                            $diff->days > 1 ? 's' : '',
+                            $diff->h,
+                            $diff->h != 1 ? 's' : ''
+                        );
+                    } elseif ( $hours > 0 ) {
+                        $time_until = sprintf( 'In %d hour%s, %d minute%s', 
+                            $hours, 
+                            $hours > 1 ? 's' : '',
+                            $diff->i,
+                            $diff->i != 1 ? 's' : ''
+                        );
+                    } else {
+                        $time_until = sprintf( 'In %d minute%s', 
+                            $diff->i,
+                            $diff->i != 1 ? 's' : ''
+                        );
+                    }
+                }
+                
+                $next_scan = (object) [
+                    'datetime' => $next_local->format( 'Y-m-d H:i:s' ),
+                    'time_until' => $time_until,
+                    'schedule_name' => $earliest_schedule->name
+                ];
+            }
+        }
+        
         $scheduler_available = $this->schedulerService->isAvailable();
         $scheduler_service = $this->schedulerService;
         

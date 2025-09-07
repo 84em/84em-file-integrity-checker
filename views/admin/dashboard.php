@@ -60,8 +60,10 @@ if ( ! defined( 'ABSPATH' ) ) {
             <div class="scan-status">
                 <?php if ( $next_scan ): ?>
                     <span class="dashicons dashicons-clock"></span>
-                    Next scheduled scan: <strong><?php echo esc_html( $next_scan->datetime ); ?></strong>
-                    (<?php echo esc_html( $next_scan->time_until ); ?>)
+                    Next scheduled scan: <strong><?php echo esc_html( $next_scan->time_until ); ?></strong>
+                    <?php if ( isset( $next_scan->schedule_name ) ): ?>
+                        (<?php echo esc_html( $next_scan->schedule_name ); ?>)
+                    <?php endif; ?>
                 <?php else: ?>
                     <span class="dashicons dashicons-warning"></span>
                     No scans are currently scheduled
@@ -173,8 +175,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                 <?php if ( $schedule_stats['active'] > 0 ): ?>
                     <p><strong>Active Schedules:</strong> <span class="status-badge status-completed"><?php echo esc_html( $schedule_stats['active'] ); ?></span></p>
                     <?php if ( $next_scan ): ?>
-                        <p><strong>Next scan:</strong> <?php echo esc_html( $next_scan->datetime ); ?></p>
-                        <p><strong>Time until:</strong> <?php echo esc_html( $next_scan->time_until ); ?></p>
+                        <p><strong>Next scan:</strong> <?php echo esc_html( $next_scan->time_until ); ?></p>
                     <?php endif; ?>
                 <?php else: ?>
                     <p><strong>Status:</strong> <span class="status-badge status-failed">No Active Schedules</span></p>
