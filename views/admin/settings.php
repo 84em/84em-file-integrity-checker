@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     ?>
 
     <form method="post" action="">
-        <?php wp_nonce_field( 'file_integrity_action' ); ?>
+        <?php wp_nonce_field( 'file_integrity_admin_action_update_settings' ); ?>
         <input type="hidden" name="action" value="update_settings" />
 
         <!-- Scan Configuration -->
@@ -382,7 +382,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             
             <div style="margin: 20px 0;">
                 <form method="post" style="display: inline;">
-                    <?php wp_nonce_field( 'file_integrity_action' ); ?>
+                    <?php wp_nonce_field( 'file_integrity_admin_action_cleanup_old_scans' ); ?>
                     <input type="hidden" name="action" value="cleanup_old_scans" />
                     <button type="submit" class="button cleanup-old-scans" 
                             onclick="event.preventDefault(); FICModal.confirm('This will delete scan results older than <?php echo $settings['retention_period']; ?> days. Continue?', 'Delete Old Scans', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.form.submit(); }); return false;">
