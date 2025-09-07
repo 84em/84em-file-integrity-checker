@@ -647,3 +647,93 @@ a .dashicons {
         max-height: 50vh;
     }
 }
+
+/* Notification Settings Cards Enhancement */
+.email-settings-card,
+.slack-settings-card {
+    border: 1px solid #c3c4c7;
+    background: #fff;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.email-settings-card h3 {
+    background: linear-gradient(90deg, #2271b1 0%, #135e96 100%);
+    color: white;
+    margin: -1px -1px 0 -1px;
+    padding: 15px 20px;
+    border-radius: 3px 3px 0 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.slack-settings-card h3 {
+    background: linear-gradient(90deg, #4a154b 0%, #611f69 100%);
+    color: white;
+    margin: -1px -1px 0 -1px;
+    padding: 15px 20px;
+    border-radius: 3px 3px 0 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.email-settings-card .card-content,
+.slack-settings-card .card-content {
+    padding: 20px;
+}
+
+.email-settings-card:hover,
+.slack-settings-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Notification checkboxes styling */
+.file-integrity-card input[type="checkbox"][name="notification_enabled"],
+.file-integrity-card input[type="checkbox"][name="slack_enabled"] {
+    margin-right: 8px;
+}
+
+.file-integrity-card label[for="notification_enabled"],
+.file-integrity-card label[for="slack_enabled"] {
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Test button enhancement */
+#test-slack-notification {
+    background: #4a154b;
+    border-color: #4a154b;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+#test-slack-notification:hover {
+    background: #611f69;
+    border-color: #611f69;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#test-slack-notification:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Placeholder text styling for customization fields */
+.email-settings-card input::placeholder,
+.slack-settings-card input::placeholder {
+    color: #8c8f94;
+    font-style: italic;
+}
+
+/* Variable code tags styling */
+.email-settings-card code,
+.slack-settings-card code {
+    background: #f0f0f1;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #2271b1;
+    font-family: Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}

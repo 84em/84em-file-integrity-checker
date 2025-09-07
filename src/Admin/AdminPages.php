@@ -468,11 +468,29 @@ class AdminPages {
             }
         }
         
+        // Email customization settings
+        if ( isset( $_POST['email_subject'] ) ) {
+            $settings['email_subject'] = sanitize_text_field( $_POST['email_subject'] );
+        }
+        
+        if ( isset( $_POST['email_from_address'] ) && ! empty( $_POST['email_from_address'] ) ) {
+            $settings['email_from_address'] = sanitize_email( $_POST['email_from_address'] );
+        }
+        
         // Slack settings
         $settings['slack_enabled'] = isset( $_POST['slack_enabled'] );
         
         if ( isset( $_POST['slack_webhook_url'] ) ) {
             $settings['slack_webhook_url'] = sanitize_url( $_POST['slack_webhook_url'] );
+        }
+        
+        // Slack customization settings
+        if ( isset( $_POST['slack_header'] ) ) {
+            $settings['slack_header'] = sanitize_text_field( $_POST['slack_header'] );
+        }
+        
+        if ( isset( $_POST['slack_message_template'] ) ) {
+            $settings['slack_message_template'] = sanitize_text_field( $_POST['slack_message_template'] );
         }
 
         // Retention period

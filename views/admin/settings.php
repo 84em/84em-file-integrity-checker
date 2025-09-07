@@ -175,7 +175,16 @@ if ( ! defined( 'ABSPATH' ) ) {
                             <p class="description">Choose how you want to be notified when file changes are detected.</p>
                         </td>
                     </tr>
-                    <tr class="email-notification-row" <?php echo $settings['notification_enabled'] ? '' : 'style="display:none;"'; ?>>
+                </table>
+            </div>
+        </div>
+
+        <!-- Email Notification Settings (shown when email is enabled) -->
+        <div class="file-integrity-card email-settings-card" style="margin-bottom: 30px; <?php echo $settings['notification_enabled'] ? '' : 'display:none;'; ?>">
+            <h3>Email Notification Settings</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
                         <th scope="row">
                             <label for="notification_email">Email Address</label>
                         </th>
@@ -188,7 +197,50 @@ if ( ! defined( 'ABSPATH' ) ) {
                             <p class="description">Email address to receive notifications. Leave empty to use the admin email.</p>
                         </td>
                     </tr>
-                    <tr class="slack-notification-row" <?php echo $settings['slack_enabled'] ? '' : 'style="display:none;"'; ?>>
+                    <tr>
+                        <th scope="row">
+                            <label for="email_subject">Email Subject Line</label>
+                        </th>
+                        <td>
+                            <input type="text" 
+                                   name="email_subject" 
+                                   id="email_subject" 
+                                   value="<?php echo esc_attr( $settings['email_subject'] ); ?>" 
+                                   class="large-text"
+                                   placeholder="[%site_name%] File Integrity Scan - Changes Detected" />
+                            <p class="description">
+                                Customize the email subject line. Available variables: 
+                                <code>%site_name%</code>, <code>%site_url%</code>, <code>%scan_date%</code>, 
+                                <code>%changed_files%</code>, <code>%new_files%</code>, <code>%deleted_files%</code>
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="email_from_address">From Email Address</label>
+                        </th>
+                        <td>
+                            <input type="email" 
+                                   name="email_from_address" 
+                                   id="email_from_address" 
+                                   value="<?php echo esc_attr( $settings['email_from_address'] ); ?>" 
+                                   class="regular-text"
+                                   placeholder="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>" />
+                            <p class="description">
+                                Email address to send notifications from. Leave empty to use the admin email.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Slack Notification Settings (shown when Slack is enabled) -->
+        <div class="file-integrity-card slack-settings-card" style="margin-bottom: 30px; <?php echo $settings['slack_enabled'] ? '' : 'display:none;'; ?>">
+            <h3>Slack Notification Settings</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
                         <th scope="row">
                             <label for="slack_webhook_url">Slack Webhook URL</label>
                         </th>
@@ -203,11 +255,45 @@ if ( ! defined( 'ABSPATH' ) ) {
                                 Enter your Slack webhook URL. 
                                 <a href="https://api.slack.com/messaging/webhooks" target="_blank">Learn how to create a webhook</a>
                             </p>
-                            <?php if ( $settings['slack_enabled'] && ! empty( $settings['slack_webhook_url'] ) ): ?>
+                            <?php if ( ! empty( $settings['slack_webhook_url'] ) ): ?>
                             <button type="button" class="button button-secondary" id="test-slack-notification" style="margin-top: 10px;">
-                                Test Slack Connection
+                                Test Slack Notification
                             </button>
                             <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="slack_header">Notification Title/Header</label>
+                        </th>
+                        <td>
+                            <input type="text" 
+                                   name="slack_header" 
+                                   id="slack_header" 
+                                   value="<?php echo esc_attr( $settings['slack_header'] ); ?>" 
+                                   class="regular-text"
+                                   placeholder="File Integrity Alert" />
+                            <p class="description">
+                                Customize the header/title shown at the top of Slack notifications.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="slack_message_template">First Line of Message</label>
+                        </th>
+                        <td>
+                            <input type="text" 
+                                   name="slack_message_template" 
+                                   id="slack_message_template" 
+                                   value="<?php echo esc_attr( $settings['slack_message_template'] ); ?>" 
+                                   class="large-text"
+                                   placeholder="Changes detected on %site_name%" />
+                            <p class="description">
+                                Customize the first line of the Slack message. Available variables: 
+                                <code>%site_name%</code>, <code>%site_url%</code>, <code>%scan_date%</code>, 
+                                <code>%changed_files%</code>, <code>%new_files%</code>, <code>%deleted_files%</code>
+                            </p>
                         </td>
                     </tr>
                 </table>
@@ -426,18 +512,103 @@ function getCurrentMultiplier(value) {
     return 1; // Bytes
 }
 
-
-// Toggle notification email field based on checkbox
+// Toggle notification settings cards based on checkboxes
 document.addEventListener('DOMContentLoaded', function() {
-    const enabledCheckbox = document.getElementById('notification_enabled');
-    const emailField = document.getElementById('notification_email');
+    const emailCheckbox = document.getElementById('notification_enabled');
+    const slackCheckbox = document.getElementById('slack_enabled');
+    const emailSettingsCard = document.querySelector('.email-settings-card');
+    const slackSettingsCard = document.querySelector('.slack-settings-card');
     
-    function toggleEmailField() {
-        emailField.disabled = !enabledCheckbox.checked;
+    // Function to toggle email settings card
+    function toggleEmailSettings() {
+        if (emailCheckbox.checked) {
+            emailSettingsCard.style.display = '';
+            // Smooth scroll animation
+            emailSettingsCard.style.opacity = '0';
+            emailSettingsCard.style.transition = 'opacity 0.3s ease-in-out';
+            setTimeout(() => {
+                emailSettingsCard.style.opacity = '1';
+            }, 10);
+        } else {
+            emailSettingsCard.style.transition = 'opacity 0.3s ease-in-out';
+            emailSettingsCard.style.opacity = '0';
+            setTimeout(() => {
+                emailSettingsCard.style.display = 'none';
+            }, 300);
+        }
     }
     
-    enabledCheckbox.addEventListener('change', toggleEmailField);
-    toggleEmailField(); // Set initial state
+    // Function to toggle Slack settings card
+    function toggleSlackSettings() {
+        if (slackCheckbox.checked) {
+            slackSettingsCard.style.display = '';
+            // Smooth scroll animation
+            slackSettingsCard.style.opacity = '0';
+            slackSettingsCard.style.transition = 'opacity 0.3s ease-in-out';
+            setTimeout(() => {
+                slackSettingsCard.style.opacity = '1';
+            }, 10);
+        } else {
+            slackSettingsCard.style.transition = 'opacity 0.3s ease-in-out';
+            slackSettingsCard.style.opacity = '0';
+            setTimeout(() => {
+                slackSettingsCard.style.display = 'none';
+            }, 300);
+        }
+    }
+    
+    // Add event listeners
+    emailCheckbox.addEventListener('change', toggleEmailSettings);
+    slackCheckbox.addEventListener('change', toggleSlackSettings);
+    
+    // Set initial opacity to 1 for visible cards
+    if (emailCheckbox.checked) {
+        emailSettingsCard.style.opacity = '1';
+    }
+    if (slackCheckbox.checked) {
+        slackSettingsCard.style.opacity = '1';
+    }
+    
+    // Handle Test Slack Notification button
+    const testSlackBtn = document.getElementById('test-slack-notification');
+    if (testSlackBtn) {
+        testSlackBtn.addEventListener('click', function() {
+            const webhookUrl = document.getElementById('slack_webhook_url').value;
+            if (!webhookUrl) {
+                alert('Please enter a Slack webhook URL first.');
+                return;
+            }
+            
+            // Send test notification via AJAX
+            const data = new FormData();
+            data.append('action', 'file_integrity_test_slack');
+            data.append('webhook_url', webhookUrl);
+            data.append('_wpnonce', '<?php echo wp_create_nonce('file_integrity_test_slack'); ?>');
+            
+            testSlackBtn.disabled = true;
+            testSlackBtn.textContent = 'Testing...';
+            
+            fetch(ajaxurl, {
+                method: 'POST',
+                body: data
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Test notification sent successfully! Check your Slack channel.');
+                } else {
+                    alert('Failed to send test notification: ' + (result.data || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error sending test notification: ' + error.message);
+            })
+            .finally(() => {
+                testSlackBtn.disabled = false;
+                testSlackBtn.textContent = 'Test Slack Notification';
+            });
+        });
+    }
 });
 
 // Toggle uninstall warning
