@@ -136,7 +136,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
     </div>
 
     <!-- Create New Schedule Form -->
-    <div class="file-integrity-card">
+    <div class="file-integrity-card" id="create-schedule-form">
         <h3>Create New Schedule</h3>
         <form method="post" class="schedule-form">
             <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
@@ -367,7 +367,18 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                         break;
                                     case 'weekly':
                                         $days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                                        $days_of_week = ! empty( $schedule->days_of_week ) ? json_decode( $schedule->days_of_week, true ) : [ $schedule->day_of_week ?? 1 ];
+                                        // Handle both JSON arrays and single values
+                                        if ( ! empty( $schedule->day_of_week ) ) {
+                                            if ( strpos( $schedule->day_of_week, '[' ) === 0 ) {
+                                                // It's a JSON array
+                                                $days_of_week = json_decode( $schedule->day_of_week, true ) ?: [1];
+                                            } else {
+                                                // It's a single value
+                                                $days_of_week = [ (int) $schedule->day_of_week ];
+                                            }
+                                        } else {
+                                            $days_of_week = [1]; // Default to Monday
+                                        }
                                         $selected_days = [];
                                         foreach ( $days_of_week as $day_num ) {
                                             if ( isset( $days[$day_num] ) ) {
@@ -516,6 +527,9 @@ jQuery(document).ready(function($) {
     // Setup frequency handlers for create form
     setupFrequencyHandlers('#create-schedule-form');
     setupFrequencyHandlers('#edit-schedule-form');
+    
+    // Trigger change on page load to set initial state
+    $('#create-schedule-form select[name="frequency"]').trigger('change');
     
     // Handle edit button clicks
     $('.edit-schedule-btn').on('click', function() {
