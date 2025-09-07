@@ -97,7 +97,8 @@ class Security {
         switch ( $service ) {
             case 'slack':
                 // Slack webhook pattern: https://hooks.slack.com/services/[TOKEN]
-                if ( ! preg_match( '#^https://hooks\.slack\.com/services/[A-Z0-9/]+$#', $url ) ) {
+                // Token format: T[ID]/B[ID]/[SECRET] where IDs are alphanumeric and SECRET can contain various characters
+                if ( ! preg_match( '#^https://hooks\.slack\.com/services/[A-Za-z0-9/_-]+$#', $url ) ) {
                     return false;
                 }
                 break;
