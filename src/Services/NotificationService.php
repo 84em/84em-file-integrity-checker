@@ -252,16 +252,17 @@ class NotificationService {
             ];
         }
 
-        $subject = sprintf( 
-            '[%s] File Integrity Scan - Changes Detected', 
-            $formatted_data['site_name']
-        );
+        // Get customizable subject and replace variables
+        $subject_template = $this->settingsService->getEmailNotificationSubject();
+        $subject = $this->replaceTemplateVariables( $subject_template, $formatted_data );
 
         $message = $this->buildEmailMessage( $formatted_data );
 
+        // Get customizable from address
+        $from_email = $this->settingsService->getEmailFromAddress();
         $headers = [
             'Content-Type: text/html; charset=UTF-8',
-            'From: File Integrity Checker <' . get_option( 'admin_email' ) . '>',
+            'From: File Integrity Checker <' . $from_email . '>',
         ];
 
         $sent = $this->sendEmail( $email_to, $subject, $message, $headers );
@@ -459,13 +460,18 @@ class NotificationService {
     private function buildSlackMessage( array $formatted_data ): array {
         $stats = $formatted_data['statistics'];
         
+        // Get customizable header and message template
+        $header = $this->settingsService->getSlackNotificationHeader();
+        $message_template = $this->settingsService->getSlackMessageTemplate();
+        $message_text = $this->replaceTemplateVariables( $message_template, $formatted_data );
+        
         // Build Slack blocks
         $blocks = [
             [
                 'type' => 'header',
                 'text' => [
                     'type' => 'plain_text',
-                    'text' => '🚨 File Integrity Alert',
+                    'text' => $header,
                     'emoji' => true
                 ]
             ],
@@ -474,12 +480,12 @@ class NotificationService {
                 'text' => [
                     'type' => 'mrkdwn',
                     'text' => sprintf(
-                        "*Changes detected on %s*\n\n" .
+                        "*%s*\n\n" .
                         "• *Changed Files:* %d\n" .
                         "• *New Files:* %d\n" .
                         "• *Deleted Files:* %d\n" .
                         "• *Total Files Scanned:* %d",
-                        $formatted_data['site_name'],
+                        $message_text,
                         $stats['changed_files'],
                         $stats['new_files'],
                         $stats['deleted_files'],
@@ -551,10 +557,36 @@ class NotificationService {
             ]
         ];
         
+        // Use customized header for fallback text too
+        $fallback_text = sprintf( '%s: %s', $header, $message_text );
+        
         return [
-            'text' => sprintf( '🚨 File changes detected on %s', $formatted_data['site_name'] ),
+            'text' => $fallback_text,
             'blocks' => $blocks
         ];
+    }
+
+    /**
+     * Replace template variables with actual values
+     *
+     * @param string $template Template string with variables
+     * @param array $data Data to replace variables with
+     * @return string Processed string with variables replaced
+     */
+    private function replaceTemplateVariables( string $template, array $data ): string {
+        $replacements = [
+            '%site_name%' => $data['site_name'],
+            '%site_url%' => $data['site_url'],
+            '%scan_date%' => $data['scan_date'],
+            '%scan_type%' => ucfirst( $data['scan_type'] ),
+            '%total_files%' => number_format( $data['statistics']['total_files'] ),
+            '%changed_files%' => number_format( $data['statistics']['changed_files'] ),
+            '%new_files%' => number_format( $data['statistics']['new_files'] ),
+            '%deleted_files%' => number_format( $data['statistics']['deleted_files'] ),
+            '%scan_duration%' => $data['statistics']['scan_duration'],
+        ];
+        
+        return str_replace( array_keys( $replacements ), array_values( $replacements ), $template );
     }
 
     /**

@@ -406,6 +406,116 @@ class SettingsService {
     }
 
     /**
+     * Get email notification subject
+     *
+     * @return string Email subject template
+     */
+    public function getEmailNotificationSubject(): string {
+        return get_option( 
+            self::OPTION_PREFIX . 'email_subject',
+            '[%site_name%] File Integrity Scan - Changes Detected'
+        );
+    }
+
+    /**
+     * Set email notification subject
+     *
+     * @param string $subject Email subject template
+     * @return bool True on success
+     */
+    public function setEmailNotificationSubject( string $subject ): bool {
+        $subject = trim( $subject );
+        if ( empty( $subject ) ) {
+            $subject = '[%site_name%] File Integrity Scan - Changes Detected';
+        }
+        update_option( self::OPTION_PREFIX . 'email_subject', $subject );
+        return true;
+    }
+
+    /**
+     * Get email from address
+     *
+     * @return string Email from address
+     */
+    public function getEmailFromAddress(): string {
+        return get_option( 
+            self::OPTION_PREFIX . 'email_from_address',
+            get_option( 'admin_email' )
+        );
+    }
+
+    /**
+     * Set email from address
+     *
+     * @param string $email Email from address
+     * @return bool True on success
+     */
+    public function setEmailFromAddress( string $email ): bool {
+        if ( ! empty( $email ) && ! is_email( $email ) ) {
+            return false;
+        }
+        if ( empty( $email ) ) {
+            $email = get_option( 'admin_email' );
+        }
+        update_option( self::OPTION_PREFIX . 'email_from_address', sanitize_email( $email ) );
+        return true;
+    }
+
+    /**
+     * Get Slack notification header
+     *
+     * @return string Slack notification header
+     */
+    public function getSlackNotificationHeader(): string {
+        return get_option( 
+            self::OPTION_PREFIX . 'slack_header',
+            '🚨 File Integrity Alert'
+        );
+    }
+
+    /**
+     * Set Slack notification header
+     *
+     * @param string $header Slack notification header
+     * @return bool True on success
+     */
+    public function setSlackNotificationHeader( string $header ): bool {
+        $header = trim( $header );
+        if ( empty( $header ) ) {
+            $header = '🚨 File Integrity Alert';
+        }
+        update_option( self::OPTION_PREFIX . 'slack_header', $header );
+        return true;
+    }
+
+    /**
+     * Get Slack notification message template
+     *
+     * @return string Slack message template
+     */
+    public function getSlackMessageTemplate(): string {
+        return get_option( 
+            self::OPTION_PREFIX . 'slack_message_template',
+            'Changes detected on %site_name%'
+        );
+    }
+
+    /**
+     * Set Slack notification message template
+     *
+     * @param string $template Slack message template
+     * @return bool True on success
+     */
+    public function setSlackMessageTemplate( string $template ): bool {
+        $template = trim( $template );
+        if ( empty( $template ) ) {
+            $template = 'Changes detected on %site_name%';
+        }
+        update_option( self::OPTION_PREFIX . 'slack_message_template', $template );
+        return true;
+    }
+
+    /**
      * Get all settings as an array
      *
      * @return array All plugin settings
@@ -418,8 +528,12 @@ class SettingsService {
             'max_file_size' => $this->getMaxFileSize(),
             'notification_enabled' => $this->isNotificationEnabled(),
             'notification_email' => $this->getNotificationEmail(),
+            'email_subject' => $this->getEmailNotificationSubject(),
+            'email_from_address' => $this->getEmailFromAddress(),
             'slack_enabled' => $this->isSlackEnabled(),
             'slack_webhook_url' => $this->getSlackWebhookUrl(),
+            'slack_header' => $this->getSlackNotificationHeader(),
+            'slack_message_template' => $this->getSlackMessageTemplate(),
             'retention_period' => $this->getRetentionPeriod(),
             'content_retention_limit' => $this->getContentRetentionLimit(),
             'log_levels' => $this->getEnabledLogLevels(),
@@ -465,6 +579,18 @@ class SettingsService {
                 case 'slack_webhook_url':
                     $results[ $key ] = $this->setSlackWebhookUrl( $value );
                     break;
+                case 'email_subject':
+                    $results[ $key ] = $this->setEmailNotificationSubject( $value );
+                    break;
+                case 'email_from_address':
+                    $results[ $key ] = $this->setEmailFromAddress( $value );
+                    break;
+                case 'slack_header':
+                    $results[ $key ] = $this->setSlackNotificationHeader( $value );
+                    break;
+                case 'slack_message_template':
+                    $results[ $key ] = $this->setSlackMessageTemplate( $value );
+                    break;
                 case 'retention_period':
                     $results[ $key ] = $this->setRetentionPeriod( $value );
                     break;
@@ -509,6 +635,10 @@ class SettingsService {
             'notification_email',
             'slack_enabled',
             'slack_webhook_url',
+            'email_subject',
+            'email_from_address',
+            'slack_header',
+            'slack_message_template',
             'retention_period',
             'content_retention_limit',
             'log_levels',
