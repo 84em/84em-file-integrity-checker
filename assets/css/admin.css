@@ -648,43 +648,36 @@ a .dashicons {
     }
 }
 
-/* Notification Settings Cards Enhancement */
-.email-settings-card,
-.slack-settings-card {
-    border: 1px solid #c3c4c7;
-    background: #fff;
-    position: relative;
+/* Notification Settings Enhancement */
+.email-notification-settings,
+.slack-notification-settings {
     transition: all 0.3s ease;
 }
 
-.email-settings-card h3 {
+.email-settings-header {
     background: linear-gradient(90deg, #2271b1 0%, #135e96 100%);
     color: white;
-    margin: -1px -1px 0 -1px;
+    margin: 20px 0 10px 0;
     padding: 15px 20px;
-    border-radius: 3px 3px 0 0;
+    border-radius: 4px;
     font-size: 14px;
     font-weight: 600;
 }
 
-.slack-settings-card h3 {
+.slack-settings-header {
     background: linear-gradient(90deg, #4a154b 0%, #611f69 100%);
     color: white;
-    margin: -1px -1px 0 -1px;
+    margin: 20px 0 10px 0;
     padding: 15px 20px;
-    border-radius: 3px 3px 0 0;
+    border-radius: 4px;
     font-size: 14px;
     font-weight: 600;
 }
 
-.email-settings-card .card-content,
-.slack-settings-card .card-content {
-    padding: 20px;
-}
-
-.email-settings-card:hover,
-.slack-settings-card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+/* Hide notification settings tbody elements initially */
+.email-notification-settings.hidden,
+.slack-notification-settings.hidden {
+    display: none;
 }
 
 /* Notification checkboxes styling */
@@ -721,15 +714,15 @@ a .dashicons {
 }
 
 /* Placeholder text styling for customization fields */
-.email-settings-card input::placeholder,
-.slack-settings-card input::placeholder {
+.email-notification-settings input::placeholder,
+.slack-notification-settings input::placeholder {
     color: #8c8f94;
     font-style: italic;
 }
 
 /* Variable code tags styling */
-.email-settings-card code,
-.slack-settings-card code {
+.email-notification-settings code,
+.slack-notification-settings code {
     background: #f0f0f1;
     padding: 2px 6px;
     border-radius: 3px;
