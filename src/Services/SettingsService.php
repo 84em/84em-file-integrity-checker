@@ -247,26 +247,6 @@ class SettingsService {
     }
 
     /**
-     * Check if auto-scheduling is enabled
-     *
-     * @return bool True if auto-scheduling is enabled, false otherwise
-     */
-    public function isAutoScheduleEnabled(): bool {
-        return (bool) get_option( self::OPTION_PREFIX . 'auto_schedule', true );
-    }
-
-    /**
-     * Set auto-schedule status
-     *
-     * @param bool $enabled Whether auto-scheduling is enabled
-     * @return bool True on success, false on failure
-     */
-    public function setAutoScheduleEnabled( bool $enabled ): bool {
-        update_option( self::OPTION_PREFIX . 'auto_schedule', $enabled );
-        return true;
-    }
-
-    /**
      * Get retention period for old scans
      *
      * @return int Number of days to keep old scans
@@ -440,7 +420,6 @@ class SettingsService {
             'notification_email' => $this->getNotificationEmail(),
             'slack_enabled' => $this->isSlackEnabled(),
             'slack_webhook_url' => $this->getSlackWebhookUrl(),
-            'auto_schedule' => $this->isAutoScheduleEnabled(),
             'retention_period' => $this->getRetentionPeriod(),
             'content_retention_limit' => $this->getContentRetentionLimit(),
             'log_levels' => $this->getEnabledLogLevels(),
@@ -486,9 +465,6 @@ class SettingsService {
                 case 'slack_webhook_url':
                     $results[ $key ] = $this->setSlackWebhookUrl( $value );
                     break;
-                case 'auto_schedule':
-                    $results[ $key ] = $this->setAutoScheduleEnabled( $value );
-                    break;
                 case 'retention_period':
                     $results[ $key ] = $this->setRetentionPeriod( $value );
                     break;
@@ -533,7 +509,6 @@ class SettingsService {
             'notification_email',
             'slack_enabled',
             'slack_webhook_url',
-            'auto_schedule',
             'retention_period',
             'content_retention_limit',
             'log_levels',

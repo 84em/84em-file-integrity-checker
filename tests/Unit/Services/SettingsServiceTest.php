@@ -30,7 +30,6 @@ class SettingsServiceTest extends TestCase {
             'eightyfourem_file_integrity_max_file_size',
             'eightyfourem_file_integrity_notification_enabled',
             'eightyfourem_file_integrity_notification_email',
-            'eightyfourem_file_integrity_auto_schedule',
             'eightyfourem_file_integrity_retention_period',
         ];
 
@@ -217,7 +216,6 @@ class SettingsServiceTest extends TestCase {
         $this->assertArrayHasKey( 'max_file_size', $settings );
         $this->assertArrayHasKey( 'notification_enabled', $settings );
         $this->assertArrayHasKey( 'notification_email', $settings );
-        $this->assertArrayHasKey( 'auto_schedule', $settings );
         $this->assertArrayHasKey( 'retention_period', $settings );
     }
 

@@ -129,20 +129,6 @@ if ( ! defined( 'ABSPATH' ) ) {
                             <p class="description">Default interval for scheduled scans. You can override this when scheduling.</p>
                         </td>
                     </tr>
-                    <tr>
-                        <th scope="row">
-                            <label for="auto_schedule">Auto-Schedule on Activation</label>
-                        </th>
-                        <td>
-                            <input type="checkbox" 
-                                   name="auto_schedule" 
-                                   id="auto_schedule" 
-                                   value="1" 
-                                   <?php checked( $settings['auto_schedule'] ); ?> />
-                            <label for="auto_schedule">Automatically schedule scans when the plugin is activated</label>
-                            <p class="description">When enabled, scans will be automatically scheduled using the default interval.</p>
-                        </td>
-                    </tr>
                 </table>
             </div>
         </div>

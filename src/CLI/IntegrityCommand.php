@@ -623,9 +623,6 @@ class IntegrityCommand {
             case 'notification_enabled':
                 $result = $this->settingsService->setNotificationEnabled( $value === 'true' );
                 break;
-            case 'auto_schedule':
-                $result = $this->settingsService->setAutoScheduleEnabled( $value === 'true' );
-                break;
             default:
                 \WP_CLI::error( "Setting '$setting' cannot be modified via CLI." );
                 return;

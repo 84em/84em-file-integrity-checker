@@ -484,9 +484,6 @@ class AdminPages {
         if ( isset( $_POST['content_retention_limit'] ) ) {
             $settings['content_retention_limit'] = (int) $_POST['content_retention_limit'];
         }
-
-        // Auto schedule
-        $settings['auto_schedule'] = isset( $_POST['auto_schedule'] );
         
         // Log settings
         if ( isset( $_POST['log_levels'] ) && is_array( $_POST['log_levels'] ) ) {

@@ -50,7 +50,6 @@ $options_to_delete = [
     'eightyfourem_file_integrity_notification_email',
     'eightyfourem_file_integrity_slack_enabled',
     'eightyfourem_file_integrity_slack_webhook_url',
-    'eightyfourem_file_integrity_auto_schedule',
     'eightyfourem_file_integrity_retention_period',
     'eightyfourem_file_integrity_content_retention_limit',
     'eightyfourem_file_integrity_log_levels',

@@ -53,11 +53,6 @@ class Activator {
 
         // Set default options
         $this->setDefaultOptions();
-
-        // Schedule initial scan if configured
-        if ( get_option( 'eightyfourem_file_integrity_auto_schedule', true ) ) {
-            $this->scheduleInitialScan();
-        }
     }
 
     /**
@@ -77,7 +72,6 @@ class Activator {
             'eightyfourem_file_integrity_max_file_size' => 10485760, // 10MB
             'eightyfourem_file_integrity_notification_enabled' => true,
             'eightyfourem_file_integrity_notification_email' => get_option( 'admin_email' ),
-            'eightyfourem_file_integrity_auto_schedule' => true,
         ];
 
         foreach ( $default_options as $option_name => $default_value ) {
@@ -87,11 +81,4 @@ class Activator {
         }
     }
 
-    /**
-     * Schedule initial scan
-     */
-    private function scheduleInitialScan(): void {
-        // Use SchedulerService to schedule the initial scan
-        $this->schedulerService->scheduleOnetimeScan( time() + 300 ); // Schedule 5 minutes from activation
-    }
 }
