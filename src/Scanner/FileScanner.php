@@ -150,17 +150,18 @@ class FileScanner {
                     $file_data['status'] = 'changed';
                     $file_data['previous_checksum'] = $previous_record->checksum;
                     
+                    // Store content for changed files for future comparisons
+                    $this->storeFileContentIfNeeded( $file_path, $file_data['checksum'] );
+                    
                     // Generate diff for text files
                     $file_data['diff_content'] = $this->generateFileDiff( 
                         $file_path, 
                         $previous_record->checksum 
                     );
                 } else {
-                    // File is unchanged
+                    // File is unchanged - don't store content to save space
                     $file_data['status'] = 'unchanged';
-                    
-                    // Store content if we don't have it yet
-                    $this->storeFileContentIfNeeded( $file_path, $file_data['checksum'] );
+                    // Note: We're NOT storing unchanged file content anymore
                 }
             } else {
                 // New file - store its content for future diffs
@@ -257,16 +258,11 @@ class FileScanner {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
             
-            // Store current content for next time
-            $current_checksum = hash( 'sha256', $current_content );
-            $this->fileContentRepository->store( $current_checksum, $current_content );
+            // Note: Content should already be stored by the caller (compareFiles method)
+            // We don't need to store it again here
             
             return $diff;
         }
-        
-        // If we can't get the previous content, store current content for next time
-        $current_checksum = hash( 'sha256', $current_content );
-        $this->fileContentRepository->store( $current_checksum, $current_content );
         
         // Return a summary since we don't have previous content
         $diff_summary = [

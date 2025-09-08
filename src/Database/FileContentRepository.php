@@ -11,6 +11,12 @@ use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 
 /**
  * Repository for managing file content storage
+ * 
+ * Storage Strategy:
+ * - Only stores content for NEW and CHANGED files
+ * - Unchanged files are NOT stored to save database space
+ * - Content is stored compressed (gzcompress) for ~70-80% space savings
+ * - Files are indexed by checksum for deduplication
  */
 class FileContentRepository {
     /**

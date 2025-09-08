@@ -183,8 +183,12 @@ class FileRecordRepository {
         $params = [ $scan_result_id ];
 
         // Whitelist validation for status parameter
-        $allowed_statuses = [ 'new', 'changed', 'deleted', 'unchanged' ];
-        if ( ! empty( $status ) && $status !== 'all' ) {
+        $allowed_statuses = [ 'new', 'changed', 'deleted' ];
+        
+        if ( $status === 'all' ) {
+            // "All Changes" - exclude unchanged files
+            $where_clause .= " AND status != 'unchanged'";
+        } elseif ( ! empty( $status ) ) {
             if ( ! in_array( $status, $allowed_statuses, true ) ) {
                 // Invalid status, return empty results
                 return [

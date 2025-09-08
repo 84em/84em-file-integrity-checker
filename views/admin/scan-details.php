@@ -230,11 +230,10 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 <input type="hidden" name="page" value="file-integrity-checker-results" />
                 <input type="hidden" name="scan_id" value="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>" />
                 <select name="status_filter" onchange="this.form.submit()">
-                    <option value="all" <?php selected( $status_filter, 'all' ); ?>>All Files</option>
                     <option value="changed" <?php selected( $status_filter, 'changed' ); ?>>Changed Files</option>
                     <option value="new" <?php selected( $status_filter, 'new' ); ?>>New Files</option>
                     <option value="deleted" <?php selected( $status_filter, 'deleted' ); ?>>Deleted Files</option>
-                    <option value="unchanged" <?php selected( $status_filter, 'unchanged' ); ?>>Unchanged Files</option>
+                    <option value="all" <?php selected( $status_filter, 'all' ); ?>>All Changes</option>
                 </select>
             </form>
         </div>
