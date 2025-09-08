@@ -2,7 +2,7 @@
 /**
  * Plugin Name: 84EM File Integrity Checker
  * Description: Scans WordPress installation to generate and track file checksums, detecting file changes with Action Scheduler support.
- * Version: 1.1.0
+ * Version: 1.0.0
  * Author: 84EM
  * Requires at least: 6.8
  * Requires PHP: 8.0
@@ -12,7 +12,7 @@
 defined( 'ABSPATH' ) or die;
 
 // Define plugin constants
-const EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION = '1.1.0';
+const EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION = '1.0.0';
 define( 'EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH', plugin_dir_path( __FILE__ ) );
 define( 'EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL', plugin_dir_url( __FILE__ ) );
 

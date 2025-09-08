@@ -141,7 +141,7 @@ fi
 cp ${PLUGIN_SLUG}.php ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy documentation files
-cp LICENSE.txt ${BUILD_DIR}/${PLUGIN_SLUG}/
+cp LICENSE ${BUILD_DIR}/${PLUGIN_SLUG}/
 cp changelog.txt ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy composer.json for dependency installation
@@ -278,7 +278,7 @@ REQUIRED_FILES=(
     "${PLUGIN_SLUG}/src/Plugin.php"
     "${PLUGIN_SLUG}/vendor/autoload.php"
     "${PLUGIN_SLUG}/vendor/composer/autoload_real.php"
-    "${PLUGIN_SLUG}/LICENSE.txt"
+    "${PLUGIN_SLUG}/LICENSE"
     "${PLUGIN_SLUG}/changelog.txt"
 )
 
