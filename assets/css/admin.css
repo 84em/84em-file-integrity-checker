@@ -730,3 +730,54 @@ a .dashicons {
     color: #2271b1;
     font-family: Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
+
+/* Changes breakdown display */
+.changes-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 4px 0;
+}
+
+.changes-breakdown > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.changes-new {
+    background: #d4edda;
+    color: #155724;
+}
+
+.changes-modified {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.changes-deleted {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.changes-breakdown .dashicons {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+}
+
+/* Changes status indicators */
+.changes-detected {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.no-changes {
+    color: #28a745;
+    font-weight: 500;
+}

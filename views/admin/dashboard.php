@@ -100,19 +100,41 @@ if ( ! defined( 'ABSPATH' ) ) {
                         <tr>
                             <td><strong>Changes:</strong></td>
                             <td>
-                                <?php if ( $stats['latest_scan']['changed_files'] > 0 ): ?>
-                                    <span class="stat-number warning"><?php echo esc_html( number_format( $stats['latest_scan']['changed_files'] ) ); ?></span>
+                                <?php 
+                                $total_changes = $stats['latest_scan']['changed_files'] + $stats['latest_scan']['new_files'] + $stats['latest_scan']['deleted_files'];
+                                if ( $total_changes > 0 ): 
+                                ?>
+                                    <div class="changes-breakdown">
+                                        <?php if ( $stats['latest_scan']['new_files'] > 0 ): ?>
+                                            <span class="changes-new" title="New files">
+                                                <span class="dashicons dashicons-plus-alt"></span>
+                                                <?php echo number_format( $stats['latest_scan']['new_files'] ); ?> added
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ( $stats['latest_scan']['changed_files'] > 0 ): ?>
+                                            <span class="changes-modified" title="Modified files">
+                                                <span class="dashicons dashicons-warning"></span>
+                                                <?php echo number_format( $stats['latest_scan']['changed_files'] ); ?> changed
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ( $stats['latest_scan']['deleted_files'] > 0 ): ?>
+                                            <span class="changes-deleted" title="Deleted files">
+                                                <span class="dashicons dashicons-trash"></span>
+                                                <?php echo number_format( $stats['latest_scan']['deleted_files'] ); ?> deleted
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php else: ?>
-                                    <span class="stat-number success">0</span>
+                                    <span class="stat-number success">No changes</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
                     </table>
                     
-                    <?php if ( $stats['latest_scan']['changed_files'] > 0 ): ?>
+                    <?php if ( $total_changes > 0 ): ?>
                         <div class="file-integrity-alert alert-warning">
                             <span class="dashicons dashicons-warning"></span>
-                            <span>Changes detected in your files!</span>
+                            <span>File system changes detected!</span>
                         </div>
                     <?php endif; ?>
                 <?php else: ?>

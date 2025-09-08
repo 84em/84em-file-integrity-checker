@@ -91,21 +91,43 @@ class DashboardWidget {
                             <td><?php echo number_format( $latest_scan['total_files'] ); ?></td>
                         </tr>
                         <tr>
-                            <td><strong>Changes Detected:</strong></td>
+                            <td><strong>Changes:</strong></td>
                             <td>
-                                <?php if ( $latest_scan['changed_files'] > 0 ): ?>
-                                    <span class="changes-detected"><?php echo number_format( $latest_scan['changed_files'] ); ?></span>
+                                <?php 
+                                $total_changes = $latest_scan['changed_files'] + $latest_scan['new_files'] + $latest_scan['deleted_files'];
+                                if ( $total_changes > 0 ): 
+                                ?>
+                                    <div class="changes-breakdown">
+                                        <?php if ( $latest_scan['new_files'] > 0 ): ?>
+                                            <span class="changes-new" title="New files">
+                                                <span class="dashicons dashicons-plus-alt"></span>
+                                                <?php echo number_format( $latest_scan['new_files'] ); ?> added
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ( $latest_scan['changed_files'] > 0 ): ?>
+                                            <span class="changes-modified" title="Modified files">
+                                                <span class="dashicons dashicons-warning"></span>
+                                                <?php echo number_format( $latest_scan['changed_files'] ); ?> changed
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ( $latest_scan['deleted_files'] > 0 ): ?>
+                                            <span class="changes-deleted" title="Deleted files">
+                                                <span class="dashicons dashicons-trash"></span>
+                                                <?php echo number_format( $latest_scan['deleted_files'] ); ?> deleted
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php else: ?>
-                                    <span class="no-changes">None</span>
+                                    <span class="no-changes">No changes</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
                     </table>
                     
-                    <?php if ( $latest_scan['changed_files'] > 0 ): ?>
+                    <?php if ( $total_changes > 0 ): ?>
                         <p class="widget-alert">
                             <span class="dashicons dashicons-warning"></span>
-                            Changes detected in your files! 
+                            File system changes detected! 
                             <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $latest_scan['id'] ); ?>">
                                 View Details
                             </a>
@@ -207,6 +229,43 @@ class DashboardWidget {
         
         .file-integrity-widget .no-changes {
             color: #28a745;
+        }
+        
+        .file-integrity-widget .changes-breakdown {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .file-integrity-widget .changes-breakdown > span {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        .file-integrity-widget .changes-new {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .file-integrity-widget .changes-modified {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .file-integrity-widget .changes-deleted {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .file-integrity-widget .changes-breakdown .dashicons {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+            line-height: 14px;
         }
         
         .file-integrity-widget .widget-alert {

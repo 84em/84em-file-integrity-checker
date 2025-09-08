@@ -299,6 +299,8 @@ class IntegrityService {
                 'date' => $latest_scan->scan_date,
                 'total_files' => $latest_scan->total_files,
                 'changed_files' => $latest_scan->changed_files,
+                'new_files' => $latest_scan->new_files,
+                'deleted_files' => $latest_scan->deleted_files,
                 'status' => $latest_scan->status,
             ] : null,
             'total_scans' => $repository_stats['total_scans'],
