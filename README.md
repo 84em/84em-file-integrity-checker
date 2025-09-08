@@ -372,7 +372,7 @@ For bug reports and feature requests, please use the GitHub issues tracker.
 
 ## License
 
-This plugin is proprietary software owned by 84EM.
+This plugin is licensed under the MIT License.
 
 ## Credits
 
@@ -387,7 +387,7 @@ Developed by [84EM](https://84em.com) - Remote WordPress Development Agency
 
 ## Contributing
 
-While this is proprietary software, we welcome feedback and suggestions. Please submit issues through the appropriate channels.
+We welcome contributions! Please feel free to submit pull requests, report bugs, and suggest features through the GitHub repository.
 
 ---
 
