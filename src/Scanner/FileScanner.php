@@ -132,6 +132,12 @@ class FileScanner {
         // Build lookup array for previous files that match current scan criteria
         $previous_lookup = [];
         foreach ( $previous_files as $file_record ) {
+            // Skip files that were already marked as deleted in the previous scan
+            // This prevents deleted files from showing up as deleted again in subsequent scans
+            if ( isset( $file_record->status ) && $file_record->status === 'deleted' ) {
+                continue;
+            }
+            
             // Only include previous files that would be scanned with current settings
             if ( $this->shouldIncludeFileInComparison( $file_record->file_path, $current_file_types ) ) {
                 $previous_lookup[ $file_record->file_path ] = $file_record;
