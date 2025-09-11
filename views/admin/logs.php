@@ -109,14 +109,17 @@ $available_levels = $logger->getAvailableLevels();
                     </a>
                 <?php endif; ?>
             </div>
-
-            <div class="alignright">
-                <form method="post" action="" style="display: inline;" onsubmit="return confirm('<?php esc_attr_e( 'Are you sure you want to clear all logs? This action cannot be undone.', '84em-file-integrity-checker' ); ?>');">
-                    <?php wp_nonce_field( 'clear_logs' ); ?>
-                    <input type="submit" name="clear_logs" class="button button-secondary" value="<?php esc_attr_e( 'Clear All Logs', '84em-file-integrity-checker' ); ?>">
-                </form>
-            </div>
         </form>
+
+        <div class="alignright">
+            <form method="post" action="" id="clear-logs-form" style="display: inline;">
+                <?php wp_nonce_field( 'clear_logs' ); ?>
+                <input type="hidden" name="clear_logs" value="1">
+                <button type="button" id="clear-logs-btn" class="button button-secondary">
+                    <?php esc_html_e( 'Clear All Logs', '84em-file-integrity-checker' ); ?>
+                </button>
+            </form>
+        </div>
     </div>
 
     <?php if ( empty( $logs ) ) : ?>
@@ -273,6 +276,30 @@ jQuery(document).ready(function($) {
     $(document).on('keydown', function(e) {
         if (e.key === 'Escape') {
             $('#log-details-modal').hide();
+        }
+    });
+
+    // Handle clear logs button with FICModal
+    $('#clear-logs-btn').on('click', function(e) {
+        e.preventDefault();
+        
+        // Use FICModal for confirmation
+        if (typeof FICModal !== 'undefined') {
+            FICModal.confirm(
+                '<?php echo esc_js( __( 'Are you sure you want to clear all logs? This action cannot be undone.', '84em-file-integrity-checker' ) ); ?>',
+                '<?php echo esc_js( __( 'Clear All Logs', '84em-file-integrity-checker' ) ); ?>',
+                '<?php echo esc_js( __( 'Yes, Clear Logs', '84em-file-integrity-checker' ) ); ?>',
+                '<?php echo esc_js( __( 'Cancel', '84em-file-integrity-checker' ) ); ?>'
+            ).then(function(confirmed) {
+                if (confirmed) {
+                    $('#clear-logs-form').submit();
+                }
+            });
+        } else {
+            // Fallback to native confirm if FICModal is not available
+            if (confirm('<?php echo esc_js( __( 'Are you sure you want to clear all logs? This action cannot be undone.', '84em-file-integrity-checker' ) ); ?>')) {
+                $('#clear-logs-form').submit();
+            }
         }
     });
 });
