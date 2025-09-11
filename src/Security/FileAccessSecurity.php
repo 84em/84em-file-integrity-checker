@@ -275,7 +275,7 @@ class FileAccessSecurity {
         $file_path = $this->normalizePath( $file_path );
         
         // Handle both absolute and relative paths securely
-        if ( strpos( $file_path, $wp_root ) === 0 ) {
+        if ( str_starts_with( $file_path, $wp_root ) ) {
             // Path appears to be absolute
             $full_path = $file_path;
         } else {
@@ -295,7 +295,7 @@ class FileAccessSecurity {
         
         // Use realpath on wp_root too for accurate comparison
         $real_wp_root = realpath( $wp_root );
-        if ( strpos( $real_path, $real_wp_root ) !== 0 ) {
+        if ( ! str_starts_with( $real_path, $real_wp_root ) ) {
             return [
                 'valid' => false,
                 'reason' => 'File path is outside WordPress installation'
@@ -407,14 +407,29 @@ class FileAccessSecurity {
      * @return string Normalized path
      */
     private function normalizePath( string $file_path ): string {
-        // Remove any directory traversal attempts
-        $file_path = str_replace( '..', '', $file_path );
-        $file_path = str_replace( '//', '/', $file_path );
+        // First, decode any URL-encoded characters to prevent bypasses
+        $file_path = urldecode( $file_path );
+        
+        // Remove null bytes which can be used to bypass extension checks
+        $file_path = str_replace( chr(0), '', $file_path );
+        
+        // Remove any backslashes and convert to forward slashes for consistency
+        $file_path = str_replace( '\\', '/', $file_path );
+        
+        // Collapse multiple slashes into single slashes
+        $file_path = preg_replace( '#/+#', '/', $file_path );
+        
+        // Remove any protocol handlers that could be used for remote file inclusion
+        $file_path = preg_replace( '#^[a-z]+://#i', '', $file_path );
         
         // Only trim ./ if it's at the beginning of a relative path (not for files starting with .)
-        if ( strpos( $file_path, './' ) === 0 && strlen( $file_path ) > 2 ) {
+        if ( str_starts_with( $file_path, './' ) && strlen( $file_path ) > 2 ) {
             $file_path = substr( $file_path, 2 );
         }
+        
+        // The actual directory traversal protection is handled by realpath() in validateFilePath()
+        // We don't strip '..' here as it would break legitimate paths and create false security
+        // Instead, we rely on realpath() to resolve the path and then verify it's within bounds
         
         return $file_path;
     }
