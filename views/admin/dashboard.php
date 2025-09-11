@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <?php
     // Note: Scan completion messages are handled by JavaScript to avoid duplication
     // The JS checkScanCompletion() method in admin.js displays the success notice
-    
+
     // Show other messages
     if ( isset( $_GET['message'] ) ) {
         switch ( $_GET['message'] ) {
@@ -55,7 +55,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                 Run Scan Now
             </button>
         </form>
-        
+
         <?php if ( $scheduler_available ): ?>
             <div class="scan-status">
                 <?php if ( $next_scan ): ?>
@@ -74,7 +74,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     <!-- Dashboard Cards -->
     <div class="file-integrity-dashboard">
-        
+
         <!-- Latest Scan Card -->
         <div class="file-integrity-card">
             <h3>Latest Scan</h3>
@@ -100,9 +100,9 @@ if ( ! defined( 'ABSPATH' ) ) {
                         <tr>
                             <td><strong>Changes:</strong></td>
                             <td>
-                                <?php 
+                                <?php
                                 $total_changes = $stats['latest_scan']['changed_files'] + $stats['latest_scan']['new_files'] + $stats['latest_scan']['deleted_files'];
-                                if ( $total_changes > 0 ): 
+                                if ( $total_changes > 0 ):
                                 ?>
                                     <div class="changes-breakdown">
                                         <?php if ( $stats['latest_scan']['new_files'] > 0 ): ?>
@@ -125,12 +125,12 @@ if ( ! defined( 'ABSPATH' ) ) {
                                         <?php endif; ?>
                                     </div>
                                 <?php else: ?>
-                                    <span class="stat-number success">No changes</span>
+                                    <span class="no-changes">No changes</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
                     </table>
-                    
+
                     <?php if ( $total_changes > 0 ): ?>
                         <div class="file-integrity-alert alert-warning">
                             <span class="dashicons dashicons-warning"></span>
@@ -142,7 +142,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <p><em>Run your first scan to establish a baseline.</em></p>
                 <?php endif; ?>
             </div>
-            
+
             <?php if ( $stats['latest_scan'] ): ?>
             <div class="card-actions">
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $stats['latest_scan']['id'] ) ); ?>" class="button">
@@ -178,7 +178,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                         <span class="stat-label">Total Changes</span>
                     </div>
                 </div>
-                
+
                 <?php if ( $stats['avg_scan_duration'] > 0 ): ?>
                 <p><strong>Average scan time:</strong> <?php echo esc_html( number_format( $stats['avg_scan_duration'], 1 ) ); ?> seconds</p>
                 <?php endif; ?>
@@ -190,7 +190,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <div class="file-integrity-card">
             <h3>Scheduled Scans</h3>
             <div class="card-content">
-                <?php 
+                <?php
                 // Get schedule statistics
                 $schedule_stats = $scheduler_service->getScheduleStats();
                 ?>
@@ -203,12 +203,12 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <p><strong>Status:</strong> <span class="status-badge status-failed">No Active Schedules</span></p>
                     <p>Set up automatic scanning to monitor your files regularly.</p>
                 <?php endif; ?>
-                
+
                 <?php if ( $schedule_stats['total'] > 0 ): ?>
                     <p><strong>Total schedules:</strong> <?php echo esc_html( $schedule_stats['total'] ); ?></p>
                 <?php endif; ?>
             </div>
-            
+
             <div class="card-actions">
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-schedules' ) ); ?>" class="button button-primary">
                     <span class="dashicons dashicons-calendar-alt"></span>
@@ -235,7 +235,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             <div class="card-content">
                 <p>Manage your file integrity monitoring.</p>
             </div>
-            
+
             <div class="card-actions">
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results' ) ); ?>" class="button">
                     <span class="dashicons dashicons-list-view"></span>
@@ -257,7 +257,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                 </form>
             </div>
         </div>
-        
+
     </div>
 
     <!-- Quick Start Guide -->
