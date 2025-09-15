@@ -10,7 +10,8 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 - Smart exclusion patterns for cache and temporary directories
 - Memory-efficient scanning with real-time progress tracking
 - Batch processing for large installations
-- File content storage for diff generation between scans
+- Pre-generated diffs for better performance
+- Sensitive file protection (wp-config.php, .env, etc.)
 
 ### ⏰ Advanced Scheduling System
 - Multiple independent scan schedules
@@ -28,7 +29,6 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 - Compare checksums between scans with diff viewing
 - Dashboard widget for at-a-glance monitoring
 - Comprehensive system logging with levels and contexts
-- Secure file viewer with access controls
 - Bulk operations for scan management
 
 ### 🛠️ Developer-Friendly Architecture
@@ -97,7 +97,6 @@ Navigate to **File Integrity → Settings** to configure:
 - **Retention Period**: How long to keep scan history
 - **Slack Integration**: Configure webhook for Slack notifications with test button
 - **Logging**: Configure system log levels (debug, info, warning, error) and retention
-- **Diff Storage**: Enable/disable file content storage for diff generation
 
 ### Creating Scan Schedules
 
@@ -206,7 +205,7 @@ wp 84em integrity config set max_file_size 10485760
 
 1. **Dashboard Overview**: Check the dashboard widget for quick status
 2. **Review Changes**: When changes are detected, review the scan details
-3. **View Diffs**: Use the file viewer to see actual changes in modified files
+3. **View Diffs**: See the pre-generated diffs for modified files
 4. **Investigate**: Determine if changes are authorized
 5. **Take Action**: Address any unauthorized modifications
 6. **Document**: Keep notes on legitimate changes
@@ -229,13 +228,13 @@ The plugin creates five custom tables:
 Stores scan metadata and statistics including scan duration, memory usage, and type
 
 ### eightyfourem_integrity_file_records
-Contains individual file checksums, change tracking, and diff content for modified files
+Contains individual file checksums, change tracking, pre-generated diff content, and sensitive file flags
 
 ### eightyfourem_integrity_scan_schedules
 Manages multiple scan schedules with configurations and Action Scheduler integration
 
-### eightyfourem_integrity_file_content
-Stores file content indexed by checksum for efficient diff generation between scans
+### eightyfourem_integrity_checksum_cache
+Temporary cache for file content (48-hour TTL) used during diff generation at scan time
 
 ### eightyfourem_integrity_logs
 System activity logging with levels (debug, info, warning, error), contexts, and user tracking
@@ -247,8 +246,7 @@ System activity logging with levels (debug, info, warning, error), contexts, and
 - **Data Sanitization**: Input validation and output escaping
 - **SQL Injection Prevention**: Prepared statements for all queries
 - **File Access Validation**: Path traversal prevention and sensitive file protection
-- **Security Headers**: CSP and security headers on admin pages
-- **Secure File Viewing**: Access control checks before displaying file contents
+- **Sensitive File Protection**: No content storage or diffs for wp-config.php, .env, keys, etc.
 
 ## Performance
 
@@ -257,7 +255,8 @@ System activity logging with levels (debug, info, warning, error), contexts, and
 - **Database Indexing**: Optimized queries for fast retrieval
 - **Progress Tracking**: Real-time feedback during scans via AJAX
 - **Configurable Limits**: Set max file size to skip large files
-- **Efficient Diff Storage**: Content stored by checksum to avoid duplicates
+- **Efficient Diff Generation**: Diffs generated at scan time, not on-demand
+- **Temporary Cache**: 48-hour content cache with automatic cleanup
 - **Background Processing**: Uses Action Scheduler for non-blocking operations
 
 ## Troubleshooting

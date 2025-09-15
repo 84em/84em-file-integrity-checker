@@ -9,7 +9,7 @@ namespace EightyFourEM\FileIntegrityChecker\Scanner;
 
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
-use EightyFourEM\FileIntegrityChecker\Database\FileContentRepository;
+use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
 use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 
 /**
@@ -31,11 +31,11 @@ class FileScanner {
     private SettingsService $settingsService;
 
     /**
-     * File content repository
+     * Checksum cache repository
      *
-     * @var FileContentRepository
+     * @var ChecksumCacheRepository
      */
-    private FileContentRepository $fileContentRepository;
+    private ChecksumCacheRepository $cacheRepository;
     
     /**
      * File access security service
@@ -55,7 +55,7 @@ class FileScanner {
         $this->checksumGenerator = $checksumGenerator;
         $this->settingsService   = $settingsService;
         $this->fileAccessSecurity = $fileAccessSecurity;
-        $this->fileContentRepository = new FileContentRepository();
+        $this->cacheRepository = new ChecksumCacheRepository();
     }
 
     /**
@@ -148,33 +148,48 @@ class FileScanner {
         foreach ( $current_files as $file_data ) {
             $file_path = $file_data['file_path'];
 
+            // Check if file is sensitive
+            $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
+            $is_sensitive = ! $security_check['allowed'];
+
             if ( isset( $previous_lookup[ $file_path ] ) ) {
                 $previous_record = $previous_lookup[ $file_path ];
-                
+
                 if ( $file_data['checksum'] !== $previous_record->checksum ) {
                     // File has changed
                     $file_data['status'] = 'changed';
                     $file_data['previous_checksum'] = $previous_record->checksum;
-                    
-                    // Store content for changed files for future comparisons
-                    $this->storeFileContentIfNeeded( $file_path, $file_data['checksum'] );
-                    
-                    // Generate diff for text files
-                    $file_data['diff_content'] = $this->generateFileDiff( 
-                        $file_path, 
-                        $previous_record->checksum 
-                    );
+                    $file_data['is_sensitive'] = $is_sensitive ? 1 : 0;
+
+                    if ( $is_sensitive ) {
+                        // Sensitive file - no diff generation
+                        $file_data['diff_content'] = 'Content redacted: ' . $security_check['reason'];
+                    } else {
+                        // Generate diff immediately during scan
+                        $file_data['diff_content'] = $this->generateFileDiffAtScanTime(
+                            $file_path,
+                            $file_data['checksum'],
+                            $previous_record->checksum
+                        );
+                    }
                 } else {
-                    // File is unchanged - don't store content to save space
+                    // File is unchanged
                     $file_data['status'] = 'unchanged';
-                    // Note: We're NOT storing unchanged file content anymore
+                    $file_data['is_sensitive'] = $is_sensitive ? 1 : 0;
                 }
             } else {
-                // New file - store its content for future diffs
+                // New file
                 $file_data['status'] = 'new';
-                
-                // Store content for future comparisons
-                $this->storeFileContentIfNeeded( $file_path, $file_data['checksum'] );
+                $file_data['is_sensitive'] = $is_sensitive ? 1 : 0;
+
+                if ( ! $is_sensitive ) {
+                    // Cache content for future comparisons (non-sensitive files only)
+                    $this->cacheFileContent( $file_path, $file_data['checksum'] );
+                }
+
+                $file_data['diff_content'] = $is_sensitive
+                    ? 'Content redacted: ' . $security_check['reason']
+                    : 'New file added';
             }
 
             $updated_files[] = $file_data;
@@ -194,6 +209,8 @@ class FileScanner {
                         'last_modified' => $previous_record->last_modified,
                         'status' => 'deleted',
                         'previous_checksum' => $previous_record->checksum,
+                        'is_sensitive' => 0, // Deleted files don't need sensitivity check
+                        'diff_content' => 'File deleted',
                     ];
                 }
                 // If file exists but wasn't in current scan, it's likely excluded by filters
@@ -223,98 +240,89 @@ class FileScanner {
     }
 
     /**
-     * Generate diff content for a changed file
+     * Generate diff content at scan time for better performance
      *
      * @param string $file_path Path to the file
+     * @param string $current_checksum Current file checksum
      * @param string $previous_checksum Previous checksum to compare
      * @return string|null Diff content or null if unable to generate
      */
-    private function generateFileDiff( string $file_path, string $previous_checksum ): ?string {
-        // First check if this file is allowed to have diffs generated
-        $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
-        if ( ! $security_check['allowed'] ) {
-            // Return null for blocked files - no diff will be generated
-            // The UI will handle showing the security message
-            return null;
-        }
-        
+    private function generateFileDiffAtScanTime( string $file_path, string $current_checksum, string $previous_checksum ): ?string {
         // Only generate diffs for text files
         $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
         $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
-        
+
         if ( ! in_array( $extension, $text_extensions, true ) ) {
-            return null;
+            return 'Binary file changed';
         }
-        
+
         // Check if file is too large for diff (limit to 1MB)
         if ( filesize( $file_path ) > 1048576 ) {
             return 'File too large for diff generation';
         }
-        
+
         // Get current content
         $current_content = file_get_contents( $file_path );
         if ( $current_content === false ) {
-            return null;
+            return 'Unable to read current file content';
         }
-        
-        // Get the previous content from database
-        $previous_content = $this->fileContentRepository->get( $previous_checksum );
-        
+
+        // Try to get previous content from cache
+        $previous_content = $this->cacheRepository->getContent( $file_path, $previous_checksum );
+
         if ( $previous_content !== null ) {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
-            
-            // Note: Content should already be stored by the caller (compareFiles method)
-            // We don't need to store it again here
-            
+
+            // Cache current content for next scan (48 hours TTL)
+            $this->cacheRepository->storeTemporary( $file_path, $current_checksum, $current_content, 48 );
+
             return $diff;
         }
-        
+
+        // No previous content available, cache current for next time
+        $this->cacheRepository->storeTemporary( $file_path, $current_checksum, $current_content, 48 );
+
         // Return a summary since we don't have previous content
         $diff_summary = [
             'type' => 'summary',
             'timestamp' => current_time( 'mysql' ),
             'checksum_changed' => [
                 'from' => $previous_checksum,
-                'to' => hash_file( 'sha256', $file_path )
+                'to' => $current_checksum
             ],
             'file_size' => filesize( $file_path ),
             'lines_count' => substr_count( $current_content, "\n" ) + 1,
             'message' => 'Previous version not available. Full diff will be available on next change.'
         ];
-        
+
         return json_encode( $diff_summary );
     }
     
     /**
-     * Store file content if needed for future diffs
+     * Cache file content for future diff generation
      *
      * @param string $file_path Path to the file
      * @param string $checksum File checksum
      * @return void
      */
-    private function storeFileContentIfNeeded( string $file_path, string $checksum ): void {
-        // Only store text files under 1MB
+    private function cacheFileContent( string $file_path, string $checksum ): void {
+        // Only cache text files under 1MB
         $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
         $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
-        
+
         if ( ! in_array( $extension, $text_extensions, true ) ) {
             return;
         }
-        
+
         if ( ! file_exists( $file_path ) || filesize( $file_path ) > 1048576 ) {
             return;
         }
-        
-        // Check if we already have this content stored
-        if ( $this->fileContentRepository->exists( $checksum ) ) {
-            return;
-        }
-        
-        // Read and store the content
+
+        // Read and cache the content temporarily (48 hours)
         $content = file_get_contents( $file_path );
         if ( $content !== false ) {
-            $this->fileContentRepository->store( $checksum, $content );
+            $this->cacheRepository->storeTemporary( $file_path, $checksum, $content, 48 );
         }
     }
     

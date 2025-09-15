@@ -17,7 +17,7 @@ class DatabaseManager {
     private const TABLE_SCAN_RESULTS = 'eightyfourem_integrity_scan_results';
     private const TABLE_FILE_RECORDS = 'eightyfourem_integrity_file_records';
     private const TABLE_SCAN_SCHEDULES = 'eightyfourem_integrity_scan_schedules';
-    private const TABLE_FILE_CONTENT = 'eightyfourem_integrity_file_content';
+    private const TABLE_CHECKSUM_CACHE = 'eightyfourem_integrity_checksum_cache';
     private const TABLE_LOGS = 'eightyfourem_integrity_logs';
 
     /**
@@ -71,6 +71,7 @@ class DatabaseManager {
             status varchar(20) NOT NULL DEFAULT 'unchanged',
             previous_checksum varchar(64) DEFAULT NULL,
             diff_content LONGTEXT DEFAULT NULL,
+            is_sensitive tinyint(1) NOT NULL DEFAULT 0,
             last_modified datetime NOT NULL,
             created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -104,15 +105,19 @@ class DatabaseManager {
             KEY next_run (next_run)
         ) $charset_collate;";
 
-        // Table for storing file content for diff generation
-        $file_content_sql = "CREATE TABLE {$wpdb->prefix}" . self::TABLE_FILE_CONTENT . " (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        // Checksum cache table for temporary content storage
+        $checksum_cache_table = $wpdb->prefix . self::TABLE_CHECKSUM_CACHE;
+        $checksum_cache_sql = "CREATE TABLE $checksum_cache_table (
+            id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            file_path varchar(500) NOT NULL,
             checksum varchar(64) NOT NULL,
-            content longblob NOT NULL,
-            file_size int unsigned NOT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            file_content longblob NOT NULL,
+            is_sensitive tinyint(1) NOT NULL DEFAULT 0,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at datetime NOT NULL,
             PRIMARY KEY (id),
-            UNIQUE KEY checksum (checksum),
+            UNIQUE KEY file_checksum (file_path(191), checksum),
+            KEY expires_at (expires_at),
             KEY created_at (created_at)
         ) $charset_collate;";
 
@@ -137,11 +142,11 @@ class DatabaseManager {
         ) $charset_collate;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        
+
         dbDelta( $scan_results_sql );
         dbDelta( $file_records_sql );
         dbDelta( $scan_schedules_sql );
-        dbDelta( $file_content_sql );
+        dbDelta( $checksum_cache_sql );
         dbDelta( $logs_sql );
 
         // Set database version
@@ -153,7 +158,7 @@ class DatabaseManager {
      */
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
-        
+
         if ( version_compare( $installed_version, EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION, '<' ) ) {
             $this->createTables();
         }
@@ -168,12 +173,12 @@ class DatabaseManager {
         $file_records_table = $wpdb->prefix . self::TABLE_FILE_RECORDS;
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
         $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
-        $file_content_table = $wpdb->prefix . self::TABLE_FILE_CONTENT;
+        $checksum_cache_table = $wpdb->prefix . self::TABLE_CHECKSUM_CACHE;
         $logs_table = $wpdb->prefix . self::TABLE_LOGS;
 
         // Drop tables in reverse order due to foreign key constraints
         $wpdb->query( "DROP TABLE IF EXISTS $file_records_table" );
-        $wpdb->query( "DROP TABLE IF EXISTS $file_content_table" );
+        $wpdb->query( "DROP TABLE IF EXISTS $checksum_cache_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_schedules_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_results_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $logs_table" );
