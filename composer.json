@@ -1,12 +1,13 @@
 {
   "name": "84em/file-integrity-checker",
   "description": "WordPress plugin for scanning and tracking file checksums to detect changes",
+  "version": "2.0.0",
   "type": "wordpress-plugin",
-  "license": "proprietary",
+  "license": "MIT",
   "authors": [
     {
-      "name": "84EM",
-      "email": "dev@84em.com"
+      "name": "Andrew Miller",
+      "email": "andrew@84em.com"
     }
   ],
   "require": {
