@@ -9,7 +9,7 @@ namespace EightyFourEM\FileIntegrityChecker\Security;
 
 /**
  * Centralized security service for file access control
- * Used by both FileViewerService and FileScanner to ensure consistent security
+ * Used by FileScanner to ensure consistent security and prevent sensitive file exposure
  */
 class FileAccessSecurity {
     
