@@ -115,7 +115,6 @@ WordPress admin integration (`src/Admin/`):
 ### Security Layer
 
 Security implementations (`src/Security/`):
-- `SecurityHeaders`: CSP and security headers for admin pages
 - `FileAccessSecurity`: File access validation, path traversal prevention, and sensitive file protection
 
 ### Utility Classes

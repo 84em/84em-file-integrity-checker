@@ -27,7 +27,6 @@ use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
-use EightyFourEM\FileIntegrityChecker\Security\SecurityHeaders;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 
 /**
@@ -86,10 +85,6 @@ class Plugin {
      * Initialize plugin components
      */
     private function initializeComponents(): void {
-        // Initialize security headers and hardening
-        $securityHeaders = new SecurityHeaders();
-        $securityHeaders->init();
-
         // Initialize database manager
         $databaseManager = $this->container->get( DatabaseManager::class );
         $databaseManager->init();
