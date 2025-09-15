@@ -17,7 +17,6 @@ class DatabaseManager {
     private const TABLE_SCAN_RESULTS = 'eightyfourem_integrity_scan_results';
     private const TABLE_FILE_RECORDS = 'eightyfourem_integrity_file_records';
     private const TABLE_SCAN_SCHEDULES = 'eightyfourem_integrity_scan_schedules';
-    private const TABLE_FILE_CONTENT = 'eightyfourem_integrity_file_content'; // To be removed after migration
     private const TABLE_CHECKSUM_CACHE = 'eightyfourem_integrity_checksum_cache';
     private const TABLE_LOGS = 'eightyfourem_integrity_logs';
 
@@ -36,6 +35,9 @@ class DatabaseManager {
         global $wpdb;
 
         $charset_collate = $wpdb->get_charset_collate();
+
+        // Clean up any legacy tables from old versions (private beta cleanup)
+        $this->dropLegacyTables();
 
         // Scan results table
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
@@ -106,19 +108,7 @@ class DatabaseManager {
             KEY next_run (next_run)
         ) $charset_collate;";
 
-        // Legacy table for file content - to be removed after migration
-        $file_content_sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}" . self::TABLE_FILE_CONTENT . " (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            checksum varchar(64) NOT NULL,
-            content longblob NOT NULL,
-            file_size int unsigned NOT NULL,
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            UNIQUE KEY checksum (checksum),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
-        // New checksum cache table for temporary content storage
+        // Checksum cache table for temporary content storage
         $checksum_cache_table = $wpdb->prefix . self::TABLE_CHECKSUM_CACHE;
         $checksum_cache_sql = "CREATE TABLE $checksum_cache_table (
             id bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -159,12 +149,8 @@ class DatabaseManager {
         dbDelta( $scan_results_sql );
         dbDelta( $file_records_sql );
         dbDelta( $scan_schedules_sql );
-        dbDelta( $file_content_sql ); // Legacy table
         dbDelta( $checksum_cache_sql );
         dbDelta( $logs_sql );
-
-        // Run migration if needed
-        $this->migrateExistingData();
 
         // Set database version
         update_option( 'eightyfourem_file_integrity_db_version', EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION );
@@ -190,13 +176,11 @@ class DatabaseManager {
         $file_records_table = $wpdb->prefix . self::TABLE_FILE_RECORDS;
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
         $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
-        $file_content_table = $wpdb->prefix . self::TABLE_FILE_CONTENT;
         $checksum_cache_table = $wpdb->prefix . self::TABLE_CHECKSUM_CACHE;
         $logs_table = $wpdb->prefix . self::TABLE_LOGS;
 
         // Drop tables in reverse order due to foreign key constraints
         $wpdb->query( "DROP TABLE IF EXISTS $file_records_table" );
-        $wpdb->query( "DROP TABLE IF EXISTS $file_content_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $checksum_cache_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_schedules_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_results_table" );
@@ -237,106 +221,17 @@ class DatabaseManager {
     }
 
     /**
-     * Migrate existing data from old structure to new
+     * Drop legacy tables from old versions
+     * Called during table creation for clean slate in private beta
      */
-    private function migrateExistingData(): void {
+    private function dropLegacyTables(): void {
         global $wpdb;
 
-        // Check if migration has already been done
-        $migration_done = get_option( 'eightyfourem_file_integrity_diff_migration_complete', false );
-        if ( $migration_done ) {
-            return;
-        }
+        // Drop old file_content table if it exists
+        $legacy_content_table = $wpdb->prefix . 'eightyfourem_integrity_file_content';
+        $wpdb->query( "DROP TABLE IF EXISTS $legacy_content_table" );
 
-        // Check if old file_content table exists and has data
-        $file_content_table = $wpdb->prefix . self::TABLE_FILE_CONTENT;
-        $has_content = $wpdb->get_var( "SELECT COUNT(*) FROM $file_content_table" );
-
-        if ( $has_content > 0 ) {
-            // Generate diffs for existing records that don't have them
-            $file_records_table = $wpdb->prefix . self::TABLE_FILE_RECORDS;
-
-            // Get records that need diff generation
-            $records_needing_diffs = $wpdb->get_results(
-                "SELECT fr.id, fr.file_path, fr.checksum, fr.previous_checksum, fr.status
-                FROM $file_records_table fr
-                WHERE fr.status = 'changed'
-                AND fr.diff_content IS NULL
-                AND fr.previous_checksum IS NOT NULL
-                LIMIT 100"
-            );
-
-            // Process records in batches
-            foreach ( $records_needing_diffs as $record ) {
-                $this->generateAndStoreDiff( $record );
-            }
-
-            // Schedule cleanup of old file_content table after 30 days
-            if ( function_exists( 'as_schedule_single_action' ) ) {
-                as_schedule_single_action(
-                    time() + ( 30 * DAY_IN_SECONDS ),
-                    'file_integrity_cleanup_legacy_content_table',
-                    [],
-                    'file-integrity-checker'
-                );
-            }
-        }
-
-        // Mark migration as complete
-        update_option( 'eightyfourem_file_integrity_diff_migration_complete', true );
-    }
-
-    /**
-     * Generate and store diff for a single record during migration
-     *
-     * @param object $record File record needing diff
-     */
-    private function generateAndStoreDiff( $record ): void {
-        global $wpdb;
-
-        // Skip if we can't generate a diff
-        if ( ! file_exists( $record->file_path ) ) {
-            return;
-        }
-
-        $file_content_table = $wpdb->prefix . self::TABLE_FILE_CONTENT;
-        $file_records_table = $wpdb->prefix . self::TABLE_FILE_RECORDS;
-
-        // Get previous content from old table
-        $previous_content = $wpdb->get_var(
-            $wpdb->prepare(
-                "SELECT content FROM $file_content_table WHERE checksum = %s",
-                $record->previous_checksum
-            )
-        );
-
-        if ( $previous_content ) {
-            // Decompress content
-            $previous_content = gzuncompress( $previous_content );
-
-            if ( $previous_content !== false ) {
-                // Get current content
-                $current_content = file_get_contents( $record->file_path );
-
-                if ( $current_content !== false ) {
-                    // Generate diff
-                    $diff_generator = new \EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator();
-                    $diff = $diff_generator->generateUnifiedDiff(
-                        $previous_content,
-                        $current_content,
-                        $record->file_path
-                    );
-
-                    // Store diff
-                    $wpdb->update(
-                        $file_records_table,
-                        [ 'diff_content' => $diff ],
-                        [ 'id' => $record->id ],
-                        [ '%s' ],
-                        [ '%d' ]
-                    );
-                }
-            }
-        }
+        // Clean up any migration options
+        delete_option( 'eightyfourem_file_integrity_diff_migration_complete' );
     }
 }
