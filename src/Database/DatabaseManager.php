@@ -36,9 +36,6 @@ class DatabaseManager {
 
         $charset_collate = $wpdb->get_charset_collate();
 
-        // Clean up any legacy tables from old versions (private beta cleanup)
-        $this->dropLegacyTables();
-
         // Scan results table
         $scan_results_table = $wpdb->prefix . self::TABLE_SCAN_RESULTS;
         $scan_results_sql = "CREATE TABLE $scan_results_table (
@@ -145,7 +142,7 @@ class DatabaseManager {
         ) $charset_collate;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        
+
         dbDelta( $scan_results_sql );
         dbDelta( $file_records_sql );
         dbDelta( $scan_schedules_sql );
@@ -161,7 +158,7 @@ class DatabaseManager {
      */
     public function checkDatabaseVersion(): void {
         $installed_version = get_option( 'eightyfourem_file_integrity_db_version', '0.0.0' );
-        
+
         if ( version_compare( $installed_version, EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION, '<' ) ) {
             $this->createTables();
         }
@@ -218,20 +215,5 @@ class DatabaseManager {
     public function getScanSchedulesTableName(): string {
         global $wpdb;
         return $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
-    }
-
-    /**
-     * Drop legacy tables from old versions
-     * Called during table creation for clean slate in private beta
-     */
-    private function dropLegacyTables(): void {
-        global $wpdb;
-
-        // Drop old file_content table if it exists
-        $legacy_content_table = $wpdb->prefix . 'eightyfourem_integrity_file_content';
-        $wpdb->query( "DROP TABLE IF EXISTS $legacy_content_table" );
-
-        // Clean up any migration options
-        delete_option( 'eightyfourem_file_integrity_diff_migration_complete' );
     }
 }

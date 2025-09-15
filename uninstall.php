@@ -28,7 +28,7 @@ if ( ! $delete_data_option ) {
     if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
         error_log( '84EM File Integrity Checker: Uninstall called but data preserved (delete_data_on_uninstall = false)' );
     }
-    
+
     // Exit without deleting anything
     return;
 }
@@ -39,6 +39,15 @@ if ( ! $delete_data_option ) {
  */
 
 global $wpdb;
+
+// Load the plugin's autoloader to access DatabaseManager
+require_once plugin_dir_path( __FILE__ ) . 'vendor/autoload.php';
+
+// Use DatabaseManager to drop tables properly
+if ( class_exists( 'EightyFourEM\FileIntegrityChecker\Database\DatabaseManager' ) ) {
+    $database_manager = new \EightyFourEM\FileIntegrityChecker\Database\DatabaseManager();
+    $database_manager->dropTables();
+}
 
 // Delete all plugin options
 $options_to_delete = [
@@ -65,27 +74,13 @@ foreach ( $options_to_delete as $option ) {
 }
 
 // Delete transients
-$wpdb->query( 
-    $wpdb->prepare( 
+$wpdb->query(
+    $wpdb->prepare(
         "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
         '_transient_file_integrity_%',
         '_transient_timeout_file_integrity_%'
     )
 );
-
-// Drop custom database tables
-$table_prefix = $wpdb->prefix . 'file_integrity_';
-$tables_to_drop = [
-    $table_prefix . 'scan_results',
-    $table_prefix . 'file_records',
-    $table_prefix . 'file_contents',
-    $table_prefix . 'scan_schedules',
-    $table_prefix . 'logs',
-];
-
-foreach ( $tables_to_drop as $table ) {
-    $wpdb->query( "DROP TABLE IF EXISTS {$table}" );
-}
 
 // Cancel all scheduled actions (if Action Scheduler is available)
 if ( function_exists( 'as_unschedule_all_actions' ) ) {
@@ -93,22 +88,26 @@ if ( function_exists( 'as_unschedule_all_actions' ) ) {
     as_unschedule_all_actions( 'eightyfourem_file_integrity_scan' );
     as_unschedule_all_actions( 'eightyfourem_check_scan_schedules' );
     as_unschedule_all_actions( 'eightyfourem_file_integrity_log_cleanup' );
-    
+    as_unschedule_all_actions( 'file_integrity_cleanup_cache' ); // Cache cleanup action
+    as_unschedule_all_actions( 'file_integrity_cleanup_legacy_content_table' ); // Legacy cleanup
+
     // Remove all actions in our group
-    $wpdb->query( 
-        $wpdb->prepare(
-            "DELETE FROM {$wpdb->prefix}actionscheduler_actions 
-             WHERE group_id IN (
-                SELECT group_id FROM {$wpdb->prefix}actionscheduler_groups 
-                WHERE slug = %s
-             )",
-            'file-integrity-checker'
-        )
-    );
+    if ( $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}actionscheduler_actions'" ) ) {
+        $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->prefix}actionscheduler_actions
+                 WHERE group_id IN (
+                    SELECT group_id FROM {$wpdb->prefix}actionscheduler_groups
+                    WHERE slug = %s
+                 )",
+                'file-integrity-checker'
+            )
+        );
+    }
 }
 
 // Clear any user meta related to the plugin
-$wpdb->query( 
+$wpdb->query(
     $wpdb->prepare(
         "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE %s",
         'file_integrity_%'
@@ -116,7 +115,7 @@ $wpdb->query(
 );
 
 // Clear rate limiting transients
-$wpdb->query( 
+$wpdb->query(
     $wpdb->prepare(
         "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
         '_transient_rate_limit_%'
