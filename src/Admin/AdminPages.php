@@ -272,7 +272,6 @@ class AdminPages {
                 'test_slack' => Security::create_nonce( 'ajax_test_slack' ),
                 'resend_email' => Security::create_nonce( 'ajax_resend_email' ),
                 'resend_slack' => Security::create_nonce( 'ajax_resend_slack' ),
-                'view_file' => Security::create_nonce( 'ajax_view_file' ),
             ],
         ] );
     }

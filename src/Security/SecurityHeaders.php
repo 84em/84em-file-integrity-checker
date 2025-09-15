@@ -29,7 +29,6 @@ class SecurityHeaders {
         add_action( 'wp_ajax_file_integrity_test_slack', [ $this, 'addAjaxSecurityHeaders' ], 1 );
         add_action( 'wp_ajax_file_integrity_resend_email', [ $this, 'addAjaxSecurityHeaders' ], 1 );
         add_action( 'wp_ajax_file_integrity_resend_slack', [ $this, 'addAjaxSecurityHeaders' ], 1 );
-        add_action( 'wp_ajax_file_integrity_view_file', [ $this, 'addAjaxSecurityHeaders' ], 1 );
         
         // Disable XML-RPC if not needed
         add_filter( 'xmlrpc_enabled', '__return_false' );

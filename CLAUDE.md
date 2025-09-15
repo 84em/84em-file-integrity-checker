@@ -111,7 +111,6 @@ WordPress admin integration (`src/Admin/`):
   - `file_integrity_bulk_delete_scans`: Delete multiple scans
   - `file_integrity_resend_email`: Resend email notification
   - `file_integrity_resend_slack`: Resend Slack notification
-  - `file_integrity_view_file`: Secure file viewer
 
 ### Security Layer
 
