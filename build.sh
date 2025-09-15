@@ -3,7 +3,7 @@
 # Build script for 84EM File Integrity Checker WordPress Plugin
 # Creates a production-ready ZIP file for distribution
 #
-# Usage: 
+# Usage:
 #   ./build.sh                    # Standard build with locked dependencies
 #   UPDATE_DEPS=true ./build.sh  # Build with updated dependencies
 #
@@ -77,13 +77,13 @@ if command -v npm &> /dev/null; then
         echo -e "${YELLOW}  Installing npm dependencies...${NC}"
         npm install --silent
     fi
-    
+
     # Run minification using npx to ensure tools are available
     echo -e "${YELLOW}  Running minification...${NC}"
     npx terser assets/js/admin.js -o assets/js/admin.min.js -c -m --source-map
     npx terser assets/js/modal.js -o assets/js/modal.min.js -c -m --source-map
     npx clean-css-cli -o assets/css/admin.min.css assets/css/admin.css --source-map
-    
+
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}  ✅ Assets minified successfully${NC}"
     else
@@ -107,7 +107,7 @@ if [ -d "assets" ]; then
     mkdir -p ${BUILD_DIR}/${PLUGIN_SLUG}/assets/css
     mkdir -p ${BUILD_DIR}/${PLUGIN_SLUG}/assets/js
     mkdir -p ${BUILD_DIR}/${PLUGIN_SLUG}/assets/images
-    
+
     # Copy minified CSS files (or original if minified doesn't exist)
     if [ -f "assets/css/admin.min.css" ]; then
         cp assets/css/admin.min.css ${BUILD_DIR}/${PLUGIN_SLUG}/assets/css/
@@ -115,7 +115,7 @@ if [ -d "assets" ]; then
     else
         cp assets/css/admin.css ${BUILD_DIR}/${PLUGIN_SLUG}/assets/css/
     fi
-    
+
     # Copy minified JS files (or original if minified doesn't exist)
     if [ -f "assets/js/admin.min.js" ]; then
         cp assets/js/admin.min.js ${BUILD_DIR}/${PLUGIN_SLUG}/assets/js/
@@ -123,14 +123,14 @@ if [ -d "assets" ]; then
     else
         cp assets/js/admin.js ${BUILD_DIR}/${PLUGIN_SLUG}/assets/js/
     fi
-    
+
     if [ -f "assets/js/modal.min.js" ]; then
         cp assets/js/modal.min.js ${BUILD_DIR}/${PLUGIN_SLUG}/assets/js/
         cp assets/js/modal.min.js.map ${BUILD_DIR}/${PLUGIN_SLUG}/assets/js/ 2>/dev/null || true
     else
         cp assets/js/modal.js ${BUILD_DIR}/${PLUGIN_SLUG}/assets/js/
     fi
-    
+
     # Copy images if they exist
     if [ -d "assets/images" ]; then
         cp -r assets/images/* ${BUILD_DIR}/${PLUGIN_SLUG}/assets/images/ 2>/dev/null || true
@@ -140,9 +140,13 @@ fi
 # Copy main plugin file
 cp ${PLUGIN_SLUG}.php ${BUILD_DIR}/${PLUGIN_SLUG}/
 
+# Copy the uninstall file
+cp uninstall.php ${BUILD_DIR}/${PLUGIN_SLUG}/
+
 # Copy documentation files
 cp LICENSE ${BUILD_DIR}/${PLUGIN_SLUG}/
 cp changelog.txt ${BUILD_DIR}/${PLUGIN_SLUG}/
+cp README.md ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy composer.json for dependency installation
 cp composer.json ${BUILD_DIR}/${PLUGIN_SLUG}/
@@ -180,7 +184,7 @@ if [ ! -d "vendor/woocommerce/action-scheduler" ]; then
     echo -e "${RED}Error: Action Scheduler was not installed!${NC}"
     echo -e "${YELLOW}Attempting to install Action Scheduler directly...${NC}"
     composer require woocommerce/action-scheduler:^3.7 --no-dev --optimize-autoloader --no-interaction --no-scripts
-    
+
     # Check again
     if [ ! -d "vendor/woocommerce/action-scheduler" ]; then
         echo -e "${RED}Fatal: Failed to install Action Scheduler. Build cannot continue.${NC}"
