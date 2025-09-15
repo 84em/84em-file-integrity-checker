@@ -168,8 +168,154 @@ class NotificationService {
             LoggerService::CONTEXT_NOTIFICATIONS,
             [ 'scan_id' => $scan_id ]
         );
-        
+
         return $this->sendScanNotification( $scan_id );
+    }
+
+    /**
+     * Resend only email notification for a scan
+     *
+     * @param int $scan_id Scan result ID
+     * @return array Status array with results for email channel
+     */
+    public function resendEmailNotification( int $scan_id ): array {
+        $scan_data = $this->getScanData( $scan_id );
+
+        if ( ! $scan_data ) {
+            $this->logger->error(
+                'Failed to send email notification: Scan not found',
+                LoggerService::CONTEXT_NOTIFICATIONS,
+                [ 'scan_id' => $scan_id ]
+            );
+            return [
+                'success' => false,
+                'error' => 'Scan not found',
+                'channels' => []
+            ];
+        }
+
+        // Check if notifications should be sent
+        if ( ! $this->shouldSendNotifications( $scan_data ) ) {
+            $this->logger->info(
+                'No email notification sent: No changes detected',
+                LoggerService::CONTEXT_NOTIFICATIONS,
+                [ 'scan_id' => $scan_id ]
+            );
+            return [
+                'success' => false,
+                'error' => 'No changes to notify about',
+                'channels' => []
+            ];
+        }
+
+        // Format the scan results
+        $formatted_data = $this->formatScanResults( $scan_data );
+
+        $results = [
+            'success' => false,
+            'channels' => []
+        ];
+
+        // Send email notification only
+        if ( $this->settingsService->isNotificationEnabled() ) {
+            $email_result = $this->sendEmailNotification( $formatted_data );
+            $results['channels']['email'] = $email_result;
+            $results['success'] = $email_result['success'];
+
+            if ( $email_result['success'] ) {
+                $this->logger->info(
+                    'Email notification resent successfully',
+                    LoggerService::CONTEXT_NOTIFICATIONS,
+                    [ 'scan_id' => $scan_id ]
+                );
+            } else {
+                $this->logger->error(
+                    'Failed to resend email notification',
+                    LoggerService::CONTEXT_NOTIFICATIONS,
+                    [
+                        'scan_id' => $scan_id,
+                        'error' => $email_result['error'] ?? 'Unknown error'
+                    ]
+                );
+            }
+        } else {
+            $results['error'] = 'Email notifications are not enabled';
+        }
+
+        return $results;
+    }
+
+    /**
+     * Resend only Slack notification for a scan
+     *
+     * @param int $scan_id Scan result ID
+     * @return array Status array with results for Slack channel
+     */
+    public function resendSlackNotification( int $scan_id ): array {
+        $scan_data = $this->getScanData( $scan_id );
+
+        if ( ! $scan_data ) {
+            $this->logger->error(
+                'Failed to send Slack notification: Scan not found',
+                LoggerService::CONTEXT_NOTIFICATIONS,
+                [ 'scan_id' => $scan_id ]
+            );
+            return [
+                'success' => false,
+                'error' => 'Scan not found',
+                'channels' => []
+            ];
+        }
+
+        // Check if notifications should be sent
+        if ( ! $this->shouldSendNotifications( $scan_data ) ) {
+            $this->logger->info(
+                'No Slack notification sent: No changes detected',
+                LoggerService::CONTEXT_NOTIFICATIONS,
+                [ 'scan_id' => $scan_id ]
+            );
+            return [
+                'success' => false,
+                'error' => 'No changes to notify about',
+                'channels' => []
+            ];
+        }
+
+        // Format the scan results
+        $formatted_data = $this->formatScanResults( $scan_data );
+
+        $results = [
+            'success' => false,
+            'channels' => []
+        ];
+
+        // Send Slack notification only
+        if ( $this->settingsService->isSlackEnabled() ) {
+            $slack_result = $this->sendSlackNotification( $formatted_data );
+            $results['channels']['slack'] = $slack_result;
+            $results['success'] = $slack_result['success'];
+
+            if ( $slack_result['success'] ) {
+                $this->logger->info(
+                    'Slack notification resent successfully',
+                    LoggerService::CONTEXT_NOTIFICATIONS,
+                    [ 'scan_id' => $scan_id ]
+                );
+            } else {
+                $this->logger->error(
+                    'Failed to resend Slack notification',
+                    LoggerService::CONTEXT_NOTIFICATIONS,
+                    [
+                        'scan_id' => $scan_id,
+                        'error' => $slack_result['error'] ?? 'Unknown error'
+                    ]
+                );
+            }
+        } else {
+            $results['error'] = 'Slack notifications are not enabled or configured';
+        }
+
+        return $results;
     }
 
     /**
