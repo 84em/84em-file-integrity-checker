@@ -10,7 +10,6 @@ namespace EightyFourEM\FileIntegrityChecker\Admin;
 use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
-use EightyFourEM\FileIntegrityChecker\Services\FileViewerService;
 use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
@@ -49,13 +48,6 @@ class AdminPages {
     private ScanResultsRepository $scanResultsRepository;
 
     /**
-     * File viewer service
-     *
-     * @var FileViewerService
-     */
-    private FileViewerService $fileViewerService;
-
-    /**
      * Logger service
      *
      * @var LoggerService
@@ -76,7 +68,6 @@ class AdminPages {
      * @param SettingsService       $settingsService       Settings service
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
-     * @param FileViewerService     $fileViewerService     File viewer service
      * @param LoggerService         $logger                Logger service
      * @param NotificationService   $notificationService   Notification service
      */
@@ -85,7 +76,6 @@ class AdminPages {
         SettingsService $settingsService,
         SchedulerService $schedulerService,
         ScanResultsRepository $scanResultsRepository,
-        FileViewerService $fileViewerService,
         LoggerService $logger,
         NotificationService $notificationService
     ) {
@@ -93,7 +83,6 @@ class AdminPages {
         $this->settingsService  = $settingsService;
         $this->schedulerService = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
-        $this->fileViewerService = $fileViewerService;
         $this->logger = $logger;
         $this->notificationService = $notificationService;
     }
@@ -116,7 +105,6 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_bulk_delete_scans', [ $this, 'ajaxBulkDeleteScans' ] );
         add_action( 'wp_ajax_file_integrity_resend_email', [ $this, 'ajaxResendEmailNotification' ] );
         add_action( 'wp_ajax_file_integrity_resend_slack', [ $this, 'ajaxResendSlackNotification' ] );
-        add_action( 'wp_ajax_file_integrity_view_file', [ $this, 'ajaxViewFile' ] );
     }
 
     /**
@@ -1058,34 +1046,4 @@ class AdminPages {
         }
     }
 
-    /**
-     * AJAX handler for viewing file content
-     */
-    public function ajaxViewFile(): void {
-        // Check action-specific nonce
-        if ( ! Security::check_ajax_referer( 'ajax_view_file', '_wpnonce', false ) ) {
-            wp_send_json_error( 'Invalid security token' );
-        }
-        
-        // Check permissions - require admin access
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error( 'Insufficient permissions' );
-        }
-        
-        $file_path = isset( $_POST['file_path'] ) ? Security::sanitize_file_path( $_POST['file_path'] ) : false;
-        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
-        
-        if ( ! $file_path || $scan_id === false ) {
-            wp_send_json_error( 'Invalid parameters' );
-        }
-        
-        // Get file content using the secure FileViewerService
-        $result = $this->fileViewerService->getFileContent( $file_path, $scan_id );
-        
-        if ( $result['success'] ) {
-            wp_send_json_success( $result );
-        } else {
-            wp_send_json_error( $result['error'] );
-        }
-    }
 }
