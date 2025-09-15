@@ -975,15 +975,15 @@ class AdminPages {
             wp_send_json_error( 'Email notifications are not enabled' );
         }
         
-        // Use NotificationService to resend notifications
-        $result = $this->notificationService->resendNotification( $scan_id );
-        
+        // Use NotificationService to resend only email notification
+        $result = $this->notificationService->resendEmailNotification( $scan_id );
+
         if ( $result['success'] && isset( $result['channels']['email'] ) && $result['channels']['email']['success'] ) {
             wp_send_json_success( 'Email notification sent successfully' );
         } else {
-            $error_msg = isset( $result['channels']['email']['error'] ) 
-                ? $result['channels']['email']['error'] 
-                : 'Failed to send email notification';
+            $error_msg = isset( $result['channels']['email']['error'] )
+                ? $result['channels']['email']['error']
+                : ( $result['error'] ?? 'Failed to send email notification' );
             wp_send_json_error( $error_msg );
         }
     }
@@ -1032,15 +1032,15 @@ class AdminPages {
             wp_send_json_error( 'Slack notifications are not configured' );
         }
         
-        // Use NotificationService to resend notifications
-        $result = $this->notificationService->resendNotification( $scan_id );
-        
+        // Use NotificationService to resend only Slack notification
+        $result = $this->notificationService->resendSlackNotification( $scan_id );
+
         if ( $result['success'] && isset( $result['channels']['slack'] ) && $result['channels']['slack']['success'] ) {
             wp_send_json_success( 'Slack notification sent successfully' );
         } else {
-            $error_msg = isset( $result['channels']['slack']['error'] ) 
-                ? $result['channels']['slack']['error'] 
-                : 'Failed to send Slack notification';
+            $error_msg = isset( $result['channels']['slack']['error'] )
+                ? $result['channels']['slack']['error']
+                : ( $result['error'] ?? 'Failed to send Slack notification' );
             wp_send_json_error( $error_msg );
         }
     }

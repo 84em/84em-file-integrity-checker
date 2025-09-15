@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php" tests="2" assertions="0" errors="2" warnings="0" failures="0" skipped="0" time="0.023315">
+    <testcase name="testResendEmailNotificationOnlySendsEmail" class="EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Unit.Services.NotificationServiceTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php" line="43" assertions="0" time="0.023080">
+      <error type="Error">EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest::testResendEmailNotificationOnlySendsEmail
+Error: Call to undefined function EightyFourEM\FileIntegrityChecker\Services\get_bloginfo()
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:346
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:212
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php:120</error>
+    </testcase>
+    <testcase name="testResendSlackNotificationOnlySendsSlack" class="EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Unit.Services.NotificationServiceTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php" line="131" assertions="0" time="0.000235">
+      <error type="Error">EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest::testResendSlackNotificationOnlySendsSlack
+Error: Call to undefined function EightyFourEM\FileIntegrityChecker\Services\get_bloginfo()
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:346
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:285
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php:208</error>
+    </testcase>
+  </testsuite>
+</testsuites>

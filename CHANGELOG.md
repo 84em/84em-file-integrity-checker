@@ -5,6 +5,12 @@ All notable changes to the 84EM File Integrity Checker plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-09-15
+
+### Fixed
+- Fixed bug where resending email notifications would also trigger Slack notifications
+- Added separate methods for resending individual notification channels (email/Slack)
+
 ## [2.0.0] - 2025-09-15
 
 ### Changed
