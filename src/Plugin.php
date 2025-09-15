@@ -89,7 +89,7 @@ class Plugin {
         // Initialize security headers and hardening
         $securityHeaders = new SecurityHeaders();
         $securityHeaders->init();
-        
+
         // Initialize database manager
         $databaseManager = $this->container->get( DatabaseManager::class );
         $databaseManager->init();
@@ -282,9 +282,6 @@ class Plugin {
         $instance  = self::getInstance();
         $activator = $instance->getContainer()->get( Activator::class );
         $activator->activate();
-        
-        // Apply security hardening measures
-        SecurityHeaders::applyHardening();
     }
 
     /**
