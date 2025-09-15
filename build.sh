@@ -145,7 +145,7 @@ cp uninstall.php ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy documentation files
 cp LICENSE ${BUILD_DIR}/${PLUGIN_SLUG}/
-cp changelog.txt ${BUILD_DIR}/${PLUGIN_SLUG}/
+cp CHANGELOG.md ${BUILD_DIR}/${PLUGIN_SLUG}/
 cp README.md ${BUILD_DIR}/${PLUGIN_SLUG}/
 
 # Copy composer.json for dependency installation
@@ -283,7 +283,8 @@ REQUIRED_FILES=(
     "${PLUGIN_SLUG}/vendor/autoload.php"
     "${PLUGIN_SLUG}/vendor/composer/autoload_real.php"
     "${PLUGIN_SLUG}/LICENSE"
-    "${PLUGIN_SLUG}/changelog.txt"
+    "${PLUGIN_SLUG}/CHANGELOG.md"
+    "${PLUGIN_SLUG}/README.md"
 )
 
 MISSING_FILES=0
