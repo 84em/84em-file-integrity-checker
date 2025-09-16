@@ -22,9 +22,9 @@ class SettingsService {
      * @return array Array of file extensions to scan
      */
     public function getScanFileTypes(): array {
-        return get_option( 
-            self::OPTION_PREFIX . 'scan_types', 
-            [ '.js', '.css', '.html', '.php' ] 
+        return get_option(
+            self::OPTION_PREFIX . 'scan_types',
+            [ '.js', '.css', '.html', '.php', '.htaccess', '.htm' ]
         );
     }
 
@@ -65,7 +65,7 @@ class SettingsService {
      */
     public function setScanInterval( string $interval ): bool {
         $allowed_intervals = [ 'hourly', 'daily', 'weekly', 'monthly' ];
-        
+
         if ( ! in_array( $interval, $allowed_intervals, true ) ) {
             return false;
         }
@@ -80,14 +80,17 @@ class SettingsService {
      * @return array Array of glob patterns to exclude
      */
     public function getExcludePatterns(): array {
-        return get_option( 
-            self::OPTION_PREFIX . 'exclude_patterns', 
+        return get_option(
+            self::OPTION_PREFIX . 'exclude_patterns',
             [
                 '*/cache/*',
                 '*/logs/*',
                 '*/uploads/*',
                 '*/wp-content/cache/*',
                 '*/wp-content/backup*',
+                '*/node_modules/*',
+                '*/.git/*',
+                '*/.svn/*',
             ]
         );
     }
@@ -113,7 +116,7 @@ class SettingsService {
      * @return int Maximum file size in bytes
      */
     public function getMaxFileSize(): int {
-        return (int) get_option( self::OPTION_PREFIX . 'max_file_size', 10485760 ); // 10MB default
+        return (int) get_option( self::OPTION_PREFIX . 'max_file_size', 1048576 ); // 1MB default
     }
 
     /**
@@ -123,7 +126,7 @@ class SettingsService {
      * @return bool True on success, false on failure
      */
     public function setMaxFileSize( int $size ): bool {
-        if ( $size <= 0 || $size > 104857600 ) { // Max 100MB
+        if ( $size <= 0 || $size > 1048576 ) { // Max 1MB
             return false;
         }
 
@@ -216,12 +219,12 @@ class SettingsService {
         if ( ! empty( $url ) && ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
             return false;
         }
-        
+
         // Slack webhooks should start with https://hooks.slack.com/
         if ( ! empty( $url ) && strpos( $url, 'https://hooks.slack.com/' ) !== 0 ) {
             return false;
         }
-        
+
         update_option( self::OPTION_PREFIX . 'slack_webhook_url', sanitize_url( $url ) );
         return true;
     }
@@ -290,7 +293,7 @@ class SettingsService {
         if ( $limit < 1000 || $limit > 500000 ) {
             return false;
         }
-        
+
         update_option( self::OPTION_PREFIX . 'content_retention_limit', $limit );
         return true;
     }
@@ -314,7 +317,7 @@ class SettingsService {
         if ( $days < 1 || $days > 365 ) {
             return false;
         }
-        
+
         update_option( self::OPTION_PREFIX . 'log_retention_days', $days );
         return true;
     }
@@ -327,7 +330,7 @@ class SettingsService {
     public function shouldDeleteDataOnUninstall(): bool {
         return (bool) get_option( self::OPTION_PREFIX . 'delete_data_on_uninstall', false );
     }
-    
+
     /**
      * Set whether data should be deleted on uninstall
      *
@@ -338,14 +341,14 @@ class SettingsService {
         update_option( self::OPTION_PREFIX . 'delete_data_on_uninstall', $delete );
         return true;
     }
-    
+
     /**
      * Get enabled log levels
      *
      * @return array Array of enabled log levels
      */
     public function getEnabledLogLevels(): array {
-        return get_option( 
+        return get_option(
             self::OPTION_PREFIX . 'log_levels',
             [ 'success', 'error', 'warning', 'info' ]
         );
@@ -360,7 +363,7 @@ class SettingsService {
     public function setEnabledLogLevels( array $levels ): bool {
         $valid_levels = [ 'success', 'error', 'warning', 'info', 'debug' ];
         $levels = array_intersect( $levels, $valid_levels );
-        
+
         update_option( self::OPTION_PREFIX . 'log_levels', $levels );
         return true;
     }
@@ -411,7 +414,7 @@ class SettingsService {
      * @return string Email subject template
      */
     public function getEmailNotificationSubject(): string {
-        return get_option( 
+        return get_option(
             self::OPTION_PREFIX . 'email_subject',
             '[%site_name%] File Integrity Scan - Changes Detected'
         );
@@ -438,9 +441,9 @@ class SettingsService {
      * @return string Email from address
      */
     public function getEmailFromAddress(): string {
-        return get_option( 
+        return get_option(
             self::OPTION_PREFIX . 'email_from_address',
-            get_option( 'admin_email' )
+            sanitize_email( get_option( 'admin_email' ) )
         );
     }
 
@@ -467,7 +470,7 @@ class SettingsService {
      * @return string Slack notification header
      */
     public function getSlackNotificationHeader(): string {
-        return get_option( 
+        return get_option(
             self::OPTION_PREFIX . 'slack_header',
             '🚨 File Integrity Alert'
         );
@@ -494,7 +497,7 @@ class SettingsService {
      * @return string Slack message template
      */
     public function getSlackMessageTemplate(): string {
-        return get_option( 
+        return get_option(
             self::OPTION_PREFIX . 'slack_message_template',
             'Changes detected on %site_name%'
         );

@@ -17,7 +17,7 @@ class SchedulerService {
      * Action hook name for scheduled scans
      */
     private const SCAN_ACTION_HOOK = 'eightyfourem_file_integrity_scan';
-    
+
     /**
      * Action hook name for log cleanup
      */
@@ -50,30 +50,20 @@ class SchedulerService {
     private LoggerService $logger;
 
     /**
-     * Notification service
-     *
-     * @var NotificationService
-     */
-    private NotificationService $notificationService;
-
-    /**
      * Constructor
      *
      * @param IntegrityService        $integrityService    Integrity service
      * @param ScanSchedulesRepository $schedulesRepository Schedules repository
      * @param LoggerService           $logger              Logger service
-     * @param NotificationService     $notificationService Notification service
      */
-    public function __construct( 
-        IntegrityService $integrityService, 
-        ScanSchedulesRepository $schedulesRepository, 
+    public function __construct(
+        IntegrityService $integrityService,
+        ScanSchedulesRepository $schedulesRepository,
         LoggerService $logger,
-        NotificationService $notificationService
     ) {
         $this->integrityService = $integrityService;
         $this->schedulesRepository = $schedulesRepository;
         $this->logger = $logger;
-        $this->notificationService = $notificationService;
     }
 
     /**
@@ -83,10 +73,10 @@ class SchedulerService {
         // Hook into Action Scheduler
         add_action( self::SCAN_ACTION_HOOK, [ $this, 'executeScan' ] );
         add_action( self::LOG_CLEANUP_HOOK, [ $this, 'executeLogCleanup' ] );
-        
+
         // Check for due schedules every hour
         add_action( 'init', [ $this, 'registerScheduleChecker' ] );
-        
+
         // Schedule daily log cleanup if enabled
         add_action( 'init', [ $this, 'scheduleLogCleanup' ] );
     }
@@ -152,7 +142,7 @@ class SchedulerService {
                     'is_active' => $config['is_active'] ?? true,
                 ]
             );
-            
+
             if ( ! empty( $config['is_active'] ) ) {
                 // Get the created schedule
                 $schedule = $this->schedulesRepository->get( $schedule_id );
@@ -203,7 +193,7 @@ class SchedulerService {
                     'config' => $config,
                 ]
             );
-            
+
             // Reschedule if active
             $updated = $this->schedulesRepository->get( $id );
             if ( $updated && $updated->is_active ) {
@@ -237,7 +227,7 @@ class SchedulerService {
         }
 
         $result = $this->schedulesRepository->delete( $id );
-        
+
         if ( $result ) {
             $this->logger->info(
                 sprintf( 'Deleted scan schedule #%d', $id ),
@@ -251,7 +241,7 @@ class SchedulerService {
                 [ 'schedule_id' => $id ]
             );
         }
-        
+
         return $result;
     }
 
@@ -282,7 +272,7 @@ class SchedulerService {
      */
     public function disableSchedule( int $id ): bool {
         $schedule = $this->schedulesRepository->get( $id );
-        
+
         if ( $schedule && $schedule->action_scheduler_id ) {
             $this->cancelScheduledAction( $schedule->action_scheduler_id );
         }
@@ -489,11 +479,11 @@ class SchedulerService {
     public function executeScan( array $args = [] ): void {
         $scan_type = $args['type'] ?? 'manual';
         $schedule_id = $args['schedule_id'] ?? null;
-        
+
         try {
             // Run the integrity scan, passing schedule_id if available
             $scan_result = $this->integrityService->runScan( $scan_type, null, $schedule_id );
-            
+
             if ( $scan_result && $scan_result['status'] === 'completed' ) {
                 // Log successful scan
                 $this->logger->success(
@@ -510,9 +500,6 @@ class SchedulerService {
                         ],
                     ]
                 );
-                
-                // Notifications are already sent by IntegrityService::runScan()
-                // No need to send them again here
 
                 // If this was a scheduled scan, update last run and schedule next
                 if ( $schedule_id ) {
@@ -553,19 +540,19 @@ class SchedulerService {
         if ( ! function_exists( 'as_next_scheduled_action' ) ) {
             return;
         }
-        
+
         // Get settings service to check if auto cleanup is enabled
         $settings = new SettingsService();
-        
+
         if ( ! $settings->isAutoLogCleanupEnabled() ) {
             // Cancel any existing cleanup schedule
             as_unschedule_all_actions( self::LOG_CLEANUP_HOOK, [], self::ACTION_GROUP );
             return;
         }
-        
+
         // Check if already scheduled
         $next_cleanup = as_next_scheduled_action( self::LOG_CLEANUP_HOOK, [], self::ACTION_GROUP );
-        
+
         if ( false === $next_cleanup ) {
             // Schedule daily cleanup at 3 AM
             $timestamp = strtotime( 'tomorrow 3:00 AM' );
@@ -576,7 +563,7 @@ class SchedulerService {
                 [],
                 self::ACTION_GROUP
             );
-            
+
             $this->logger->info(
                 'Scheduled daily log cleanup task',
                 LoggerService::CONTEXT_SCHEDULER
@@ -590,7 +577,7 @@ class SchedulerService {
     public function executeLogCleanup(): void {
         try {
             $deleted_count = $this->logger->cleanupOldLogs();
-            
+
             if ( $deleted_count > 0 ) {
                 $this->logger->info(
                     sprintf( 'Log cleanup completed. Deleted %d old log entries.', $deleted_count ),

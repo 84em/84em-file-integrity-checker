@@ -36,7 +36,7 @@ class FileScanner {
      * @var ChecksumCacheRepository
      */
     private ChecksumCacheRepository $cacheRepository;
-    
+
     /**
      * File access security service
      *
@@ -78,7 +78,7 @@ class FileScanner {
 
         foreach ( $iterator as $file_info ) {
             $file_path = $file_info->getPathname();
-            
+
             // Skip if file is too large
             if ( $file_info->getSize() > $max_file_size ) {
                 continue;
@@ -126,8 +126,6 @@ class FileScanner {
 
         // Get current scan settings to filter previous files
         $current_file_types = $this->settingsService->getScanFileTypes();
-        $exclude_patterns = $this->settingsService->getExcludePatterns();
-        $max_file_size = $this->settingsService->getMaxFileSize();
 
         // Build lookup array for previous files that match current scan criteria
         $previous_lookup = [];
@@ -137,7 +135,7 @@ class FileScanner {
             if ( isset( $file_record->status ) && $file_record->status === 'deleted' ) {
                 continue;
             }
-            
+
             // Only include previous files that would be scanned with current settings
             if ( $this->shouldIncludeFileInComparison( $file_record->file_path, $current_file_types ) ) {
                 $previous_lookup[ $file_record->file_path ] = $file_record;
@@ -220,7 +218,7 @@ class FileScanner {
 
         return $updated_files;
     }
-    
+
     /**
      * Check if a file should be included in comparison based on current scan settings
      *
@@ -233,7 +231,7 @@ class FileScanner {
         if ( empty( $file_types ) ) {
             return true;
         }
-        
+
         // Check file extension
         $extension = '.' . strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
         return in_array( $extension, $file_types, true );
@@ -248,16 +246,20 @@ class FileScanner {
      * @return string|null Diff content or null if unable to generate
      */
     private function generateFileDiffAtScanTime( string $file_path, string $current_checksum, string $previous_checksum ): ?string {
-        // Only generate diffs for text files
-        $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
+        // Only generate diffs for text files (using configured file types)
+        $text_extensions = $this->getTextFileExtensions();
+        // Convert to extension without dot for comparison
+        $text_extensions_no_dot = array_map( function( $ext ) {
+            return ltrim( $ext, '.' );
+        }, $text_extensions );
         $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
 
-        if ( ! in_array( $extension, $text_extensions, true ) ) {
+        if ( ! in_array( $extension, $text_extensions_no_dot, true ) ) {
             return 'Binary file changed';
         }
 
-        // Check if file is too large for diff (limit to 1MB)
-        if ( filesize( $file_path ) > 1048576 ) {
+        // Check if file is too large for diff (using configured max file size)
+        if ( filesize( $file_path ) > $this->settingsService->getMaxFileSize() ) {
             return 'File too large for diff generation';
         }
 
@@ -298,7 +300,7 @@ class FileScanner {
 
         return json_encode( $diff_summary );
     }
-    
+
     /**
      * Cache file content for future diff generation
      *
@@ -307,15 +309,19 @@ class FileScanner {
      * @return void
      */
     private function cacheFileContent( string $file_path, string $checksum ): void {
-        // Only cache text files under 1MB
-        $text_extensions = [ 'php', 'js', 'css', 'html', 'htm', 'txt', 'json', 'xml', 'ini', 'htaccess', 'sql', 'md' ];
+        // Only cache text files under configured max file size
+        $text_extensions = $this->getTextFileExtensions();
+        // Convert to extension without dot for comparison
+        $text_extensions_no_dot = array_map( function( $ext ) {
+            return ltrim( $ext, '.' );
+        }, $text_extensions );
         $extension = strtolower( pathinfo( $file_path, PATHINFO_EXTENSION ) );
 
-        if ( ! in_array( $extension, $text_extensions, true ) ) {
+        if ( ! in_array( $extension, $text_extensions_no_dot, true ) ) {
             return;
         }
 
-        if ( ! file_exists( $file_path ) || filesize( $file_path ) > 1048576 ) {
+        if ( ! file_exists( $file_path ) || filesize( $file_path ) > $this->settingsService->getMaxFileSize() ) {
             return;
         }
 
@@ -325,7 +331,7 @@ class FileScanner {
             $this->cacheRepository->storeTemporary( $file_path, $checksum, $content, 48 );
         }
     }
-    
+
     /**
      * Generate a unified diff between two strings
      *
@@ -382,12 +388,6 @@ class FileScanner {
         if ( ! empty( $file_extensions ) && ! in_array( $file_extension, $file_extensions, true ) ) {
             return false;
         }
-        
-        // Additional MIME type validation for executable files
-        // This helps prevent scanning of renamed malicious files
-        if ( $this->isPotentiallyDangerousFile( $file_path, $file_extension ) ) {
-            return false;
-        }
 
         // Check exclude patterns
         foreach ( $exclude_patterns as $pattern ) {
@@ -398,21 +398,10 @@ class FileScanner {
             }
         }
 
-        // Additional WordPress-specific exclusions
-        $wp_exclusions = [
-            '/wp-content/cache/',
-            '/wp-content/backups/',
-            '/wp-content/upgrade/',
-            '/.git/',
-            '/.svn/',
-            '/node_modules/',
-            '/vendor/',
-        ];
-
-        foreach ( $wp_exclusions as $exclusion ) {
-            if ( strpos( $file_path, $exclusion ) !== false ) {
-                return false;
-            }
+        // Security check: Detect PHP code in non-PHP files
+        // This is important to catch malicious PHP code hidden in files with different extensions
+        if ( $this->containsPhpCodeInNonPhpFile( $file_path, $file_extension ) ) {
+            return false;
         }
 
         return true;
@@ -428,58 +417,101 @@ class FileScanner {
         $pattern = preg_quote( $pattern, '/' );
         $pattern = str_replace( '\*', '.*', $pattern );
         $pattern = str_replace( '\?', '.', $pattern );
-        
+
         return '/^' . $pattern . '$/';
     }
-    
+
     /**
-     * Check if a file is potentially dangerous based on MIME type
+     * Check if a non-PHP file contains PHP code
+     *
+     * This security check helps detect malicious PHP code hidden in files
+     * with non-PHP extensions (e.g., backdoors disguised as .txt or .jpg files)
      *
      * @param string $file_path Path to the file
      * @param string $file_extension File extension with dot
-     * @return bool True if file is potentially dangerous
+     * @return bool True if non-PHP file contains PHP code
      */
-    private function isPotentiallyDangerousFile( string $file_path, string $file_extension ): bool {
-        // Whitelist of safe text-based extensions that don't need MIME checking
-        $safe_text_extensions = [
-            '.php', '.js', '.css', '.html', '.htm', '.txt', '.json', 
-            '.xml', '.ini', '.htaccess', '.sql', '.md', '.yml', '.yaml',
-            '.scss', '.less', '.ts', '.tsx', '.jsx', '.vue'
-        ];
-        
-        // If it's a known safe text file, allow it
-        if ( in_array( $file_extension, $safe_text_extensions, true ) ) {
+    private function containsPhpCodeInNonPhpFile( string $file_path, string $file_extension ): bool {
+        // Only check non-PHP files
+        if ( $file_extension === '.php' ) {
             return false;
         }
-        
-        // Check MIME type for other files
-        if ( function_exists( 'finfo_open' ) && file_exists( $file_path ) ) {
-            $finfo = finfo_open( FILEINFO_MIME_TYPE );
-            $mime_type = finfo_file( $finfo, $file_path );
-            finfo_close( $finfo );
-            
-            // Block executable MIME types even if renamed
-            $dangerous_mime_types = [
-                'application/x-executable',
-                'application/x-sharedlib',
-                'application/x-elf',
-                'application/x-mach-binary',
-                'application/x-msdownload',
-                'application/x-msdos-program',
-                'application/x-dosexec'
-            ];
-            
-            if ( in_array( $mime_type, $dangerous_mime_types, true ) ) {
-                return true;
-            }
-            
-            // Check for PHP code in files with non-PHP extensions
-            if ( $file_extension !== '.php' && strpos( $mime_type, 'php' ) !== false ) {
+
+        // Only check files that exist and are readable
+        if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
+            return false;
+        }
+
+        // Skip large files for performance (using configured max file size)
+        if ( filesize( $file_path ) > $this->settingsService->getMaxFileSize() ) {
+            return false;
+        }
+
+        // Read first 8KB of file to check for PHP code patterns
+        $handle = fopen( $file_path, 'r' );
+        if ( $handle === false ) {
+            return false;
+        }
+
+        $content = fread( $handle, 8192 );
+        fclose( $handle );
+
+        if ( $content === false ) {
+            return false;
+        }
+
+        // Check for PHP opening tags and common PHP patterns
+        $php_patterns = [
+            '<?php',
+            '<?=',
+            '<script language="php"',
+            'eval(',
+            'base64_decode(',
+            'system(',
+            'exec(',
+            'shell_exec(',
+            'passthru(',
+            'assert(',
+            'preg_replace(.*\/e',  // PREG_REPLACE_EVAL flag
+            'create_function(',
+        ];
+
+        foreach ( $php_patterns as $pattern ) {
+            if ( stripos( $content, $pattern ) !== false ) {
+                // Log this security concern
+                error_log( sprintf(
+                    'File Integrity Checker: Potential PHP code detected in non-PHP file: %s',
+                    $file_path
+                ) );
                 return true;
             }
         }
-        
+
         return false;
+    }
+
+    /**
+     * Get text file extensions from configured scan types
+     *
+     * Since all configurable file types are text-based (from the preset list),
+     * we can simply return the configured types. These are used for:
+     * - Determining which files can have diffs generated
+     * - Determining which files should have content cached
+     * - MIME type validation whitelist
+     *
+     * @return array Array of text file extensions with dots (e.g., ['.php', '.js'])
+     */
+    private function getTextFileExtensions(): array {
+        $configured_types = $this->settingsService->getScanFileTypes();
+
+        // If no types configured, return empty array to be safe
+        if ( empty( $configured_types ) ) {
+            return [];
+        }
+
+        // All configured types from settings are text-based by design
+        // The preset list only includes: .php, .js, .css, .html, .htm, .txt, .json, .xml, .ini, .htaccess
+        return $configured_types;
     }
 
     /**
@@ -500,7 +532,7 @@ class FileScanner {
 
         foreach ( $files as $file_data ) {
             $stats['total_size'] += $file_data['file_size'];
-            
+
             switch ( $file_data['status'] ) {
                 case 'new':
                     $stats['new_files']++;
