@@ -1,21 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testsuite name="EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php" tests="2" assertions="0" errors="2" warnings="0" failures="0" skipped="0" time="0.023315">
-    <testcase name="testResendEmailNotificationOnlySendsEmail" class="EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Unit.Services.NotificationServiceTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php" line="43" assertions="0" time="0.023080">
-      <error type="Error">EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest::testResendEmailNotificationOnlySendsEmail
-Error: Call to undefined function EightyFourEM\FileIntegrityChecker\Services\get_bloginfo()
+  <testsuite name="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" tests="7" assertions="0" errors="7" warnings="0" failures="0" skipped="0" time="0.002197">
+    <testcase name="testScanDirectoryFindsAllFiles" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="75" assertions="0" time="0.002101">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testScanDirectoryFindsAllFiles
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
 
-/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:346
-/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:212
-/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php:120</error>
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
     </testcase>
-    <testcase name="testResendSlackNotificationOnlySendsSlack" class="EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Unit.Services.NotificationServiceTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php" line="131" assertions="0" time="0.000235">
-      <error type="Error">EightyFourEM\FileIntegrityChecker\Tests\Unit\Services\NotificationServiceTest::testResendSlackNotificationOnlySendsSlack
-Error: Call to undefined function EightyFourEM\FileIntegrityChecker\Services\get_bloginfo()
+    <testcase name="testScanDirectoryFileStructure" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="94" assertions="0" time="0.000029">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testScanDirectoryFileStructure
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
 
-/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:346
-/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Services/NotificationService.php:285
-/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Unit/Services/NotificationServiceTest.php:208</error>
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
+    </testcase>
+    <testcase name="testCompareScansDetectsNewFiles" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="112" assertions="0" time="0.000016">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testCompareScansDetectsNewFiles
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
+    </testcase>
+    <testcase name="testCompareScansDetectsChangedFiles" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="146" assertions="0" time="0.000014">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testCompareScansDetectsChangedFiles
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
+    </testcase>
+    <testcase name="testCompareScansDetectsDeletedFiles" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="180" assertions="0" time="0.000013">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testCompareScansDetectsDeletedFiles
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
+    </testcase>
+    <testcase name="testGetStatistics" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="214" assertions="0" time="0.000012">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testGetStatistics
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
+    </testcase>
+    <testcase name="testProgressCallback" class="EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest" classname="EightyFourEM.FileIntegrityChecker.Tests.Integration.FileScannerIntegrationTest" file="/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php" line="256" assertions="0" time="0.000013">
+      <error type="ArgumentCountError">EightyFourEM\FileIntegrityChecker\Tests\Integration\FileScannerIntegrationTest::testProgressCallback
+ArgumentCountError: Too few arguments to function EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator::__construct(), 0 passed in /home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php on line 19 and exactly 1 expected
+
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/src/Scanner/ChecksumGenerator.php:38
+/home/andrew/workspace/84em/app/public/wp-content/plugins/84em-file-integrity-checker/tests/Integration/FileScannerIntegrationTest.php:19</error>
     </testcase>
   </testsuite>
 </testsuites>

@@ -195,7 +195,6 @@ class Plugin {
                 $container->get( IntegrityService::class ),
                 $container->get( ScanSchedulesRepository::class ),
                 $container->get( LoggerService::class ),
-                $container->get( NotificationService::class )
             );
         } );
 
