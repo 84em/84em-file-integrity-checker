@@ -13,6 +13,13 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 - Pre-generated diffs for better performance
 - Sensitive file protection (wp-config.php, .env, etc.)
 
+### 🔐 Security & Data Protection
+- AES-256-GCM encryption for all stored file content
+- Authenticated encryption with tamper detection
+- Secure key derivation from WordPress salts
+- Automatic encryption of cached file data
+- Protection of sensitive file content at rest
+
 ### ⏰ Advanced Scheduling System
 - Multiple independent scan schedules
 - Flexible frequency options:
@@ -54,10 +61,11 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 
 ## Requirements
 
-- PHP 8.0 or higher
+- PHP 8.0 or higher with OpenSSL extension
 - WordPress 5.8 or higher
 - MySQL 5.7+ or MariaDB 10.2+
 - Action Scheduler (provided by WooCommerce, Action Scheduler plugin, or similar)
+- Properly configured WordPress salts (AUTH_KEY, SECURE_AUTH_KEY, etc.)
 - Composer (for development)
 
 ## Installation

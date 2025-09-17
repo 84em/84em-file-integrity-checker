@@ -7,6 +7,8 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Database;
 
+use EightyFourEM\FileIntegrityChecker\Services\EncryptionService;
+
 /**
  * Repository for managing temporary file content cache
  *
@@ -26,6 +28,22 @@ class ChecksumCacheRepository {
      * Default TTL in hours
      */
     private const DEFAULT_TTL_HOURS = 48;
+
+    /**
+     * Encryption service
+     *
+     * @var EncryptionService
+     */
+    private EncryptionService $encryptionService;
+
+    /**
+     * Constructor
+     *
+     * @param EncryptionService $encryptionService Encryption service (required)
+     */
+    public function __construct( EncryptionService $encryptionService ) {
+        $this->encryptionService = $encryptionService;
+    }
 
     /**
      * Store file content temporarily
@@ -59,8 +77,14 @@ class ChecksumCacheRepository {
             return $this->updateExpiration( $file_path, $checksum, $ttl_hours );
         }
 
-        // Compress content
-        $compressed = gzcompress( $content, 9 );
+        // Encrypt content first (mandatory for security)
+        $encrypted = $this->encryptionService->encrypt( $content );
+        if ( $encrypted === false ) {
+            return false;
+        }
+
+        // Compress the encrypted data
+        $compressed = gzcompress( $encrypted, 9 );
         if ( $compressed === false ) {
             return false;
         }
@@ -114,9 +138,17 @@ class ChecksumCacheRepository {
         }
 
         // Decompress content
-        $content = gzuncompress( $row->file_content );
+        $decompressed = gzuncompress( $row->file_content );
 
+        if ( $decompressed === false ) {
+            return null;
+        }
+
+        // Decrypt the content (mandatory)
+        $content = $this->encryptionService->decrypt( $decompressed );
         if ( $content === false ) {
+            // Decryption failure - remove corrupted entry
+            $this->deleteEntry( $file_path, $checksum );
             return null;
         }
 
@@ -275,5 +307,14 @@ class ChecksumCacheRepository {
         );
 
         return $result !== false;
+    }
+
+    /**
+     * Get encryption statistics
+     *
+     * @return array
+     */
+    public function getEncryptionStatistics(): array {
+        return $this->encryptionService->getStatistics();
     }
 }
