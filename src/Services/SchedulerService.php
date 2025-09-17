@@ -89,16 +89,19 @@ class SchedulerService {
             return;
         }
 
-        // Schedule hourly check for due schedules
-        if ( ! as_next_scheduled_action( 'eightyfourem_check_scan_schedules' ) ) {
-            as_schedule_recurring_action(
-                time() + 60,
-                HOUR_IN_SECONDS,
-                'eightyfourem_check_scan_schedules',
-                [],
-                self::ACTION_GROUP
-            );
-        }
+        // Wait for Action Scheduler to be fully initialized
+        add_action( 'action_scheduler_init', function() {
+            // Schedule hourly check for due schedules
+            if ( ! as_next_scheduled_action( 'eightyfourem_check_scan_schedules' ) ) {
+                as_schedule_recurring_action(
+                    time() + 60,
+                    HOUR_IN_SECONDS,
+                    'eightyfourem_check_scan_schedules',
+                    [],
+                    self::ACTION_GROUP
+                );
+            }
+        } );
 
         add_action( 'eightyfourem_check_scan_schedules', [ $this, 'checkAndScheduleDueScans' ] );
     }
@@ -541,34 +544,37 @@ class SchedulerService {
             return;
         }
 
-        // Get settings service to check if auto cleanup is enabled
-        $settings = new SettingsService();
+        // Wait for Action Scheduler to be fully initialized
+        add_action( 'action_scheduler_init', function() {
+            // Get settings service to check if auto cleanup is enabled
+            $settings = new SettingsService();
 
-        if ( ! $settings->isAutoLogCleanupEnabled() ) {
-            // Cancel any existing cleanup schedule
-            as_unschedule_all_actions( self::LOG_CLEANUP_HOOK, [], self::ACTION_GROUP );
-            return;
-        }
+            if ( ! $settings->isAutoLogCleanupEnabled() ) {
+                // Cancel any existing cleanup schedule
+                as_unschedule_all_actions( self::LOG_CLEANUP_HOOK, [], self::ACTION_GROUP );
+                return;
+            }
 
-        // Check if already scheduled
-        $next_cleanup = as_next_scheduled_action( self::LOG_CLEANUP_HOOK, [], self::ACTION_GROUP );
+            // Check if already scheduled
+            $next_cleanup = as_next_scheduled_action( self::LOG_CLEANUP_HOOK, [], self::ACTION_GROUP );
 
-        if ( false === $next_cleanup ) {
-            // Schedule daily cleanup at 3 AM
-            $timestamp = strtotime( 'tomorrow 3:00 AM' );
-            as_schedule_recurring_action(
-                $timestamp,
-                DAY_IN_SECONDS,
-                self::LOG_CLEANUP_HOOK,
-                [],
-                self::ACTION_GROUP
-            );
+            if ( false === $next_cleanup ) {
+                // Schedule daily cleanup at 3 AM
+                $timestamp = strtotime( 'tomorrow 3:00 AM' );
+                as_schedule_recurring_action(
+                    $timestamp,
+                    DAY_IN_SECONDS,
+                    self::LOG_CLEANUP_HOOK,
+                    [],
+                    self::ACTION_GROUP
+                );
 
-            $this->logger->info(
-                'Scheduled daily log cleanup task',
-                LoggerService::CONTEXT_SCHEDULER
-            );
-        }
+                $this->logger->info(
+                    'Scheduled daily log cleanup task',
+                    LoggerService::CONTEXT_SCHEDULER
+                );
+            }
+        } );
     }
 
     /**

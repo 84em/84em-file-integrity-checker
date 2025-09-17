@@ -68,22 +68,25 @@ class ScheduledCacheCleanup {
             return;
         }
 
-        // Check if cleanup is already scheduled
-        if ( ! as_has_scheduled_action( self::CLEANUP_ACTION ) ) {
-            // Schedule recurring cleanup every 6 hours
-            as_schedule_recurring_action(
-                time() + HOUR_IN_SECONDS,
-                self::CLEANUP_INTERVAL,
-                self::CLEANUP_ACTION,
-                [],
-                'file-integrity-checker'
-            );
+        // Wait for Action Scheduler to be fully initialized
+        add_action( 'action_scheduler_init', function() {
+            // Check if cleanup is already scheduled
+            if ( ! as_has_scheduled_action( self::CLEANUP_ACTION ) ) {
+                // Schedule recurring cleanup every 6 hours
+                as_schedule_recurring_action(
+                    time() + HOUR_IN_SECONDS,
+                    self::CLEANUP_INTERVAL,
+                    self::CLEANUP_ACTION,
+                    [],
+                    'file-integrity-checker'
+                );
 
-            $this->logger->info(
-                'Scheduled cache cleanup task registered',
-                'cache_cleanup'
-            );
-        }
+                $this->logger->info(
+                    'Scheduled cache cleanup task registered',
+                    'cache_cleanup'
+                );
+            }
+        } );
     }
 
     /**

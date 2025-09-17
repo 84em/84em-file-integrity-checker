@@ -5,6 +5,10 @@ All notable changes to the 84EM File Integrity Checker plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2025-09-17
+### Fixed
+- Fixed PHP warnings to ensure as_has_scheduled_action() is only called after Action Scheduler data store is initialized
+
 ## [2.0.2] - 2025-09-16
 
 ### Changed
