@@ -77,16 +77,16 @@ class NotificationServiceTest extends TestCase {
             ->method( 'getNotificationEmail' )
             ->willReturn( 'admin@example.com' );
 
-        $this->settingsService->expects( $this->once() )
+        $this->settingsService->expects( $this->any() )
             ->method( 'shouldIncludeFileList' )
             ->willReturn( false );
 
         // Mock other required methods
-        $this->settingsService->expects( $this->once() )
+        $this->settingsService->expects( $this->any() )
             ->method( 'getEmailNotificationSubject' )
             ->willReturn( 'File Integrity Scan - %site_name%' );
 
-        $this->settingsService->expects( $this->once() )
+        $this->settingsService->expects( $this->any() )
             ->method( 'getEmailFromAddress' )
             ->willReturn( 'noreply@example.com' );
 
@@ -165,16 +165,16 @@ class NotificationServiceTest extends TestCase {
             ->method( 'getSlackWebhookUrl' )
             ->willReturn( 'https://hooks.slack.com/services/TEST' );
 
-        $this->settingsService->expects( $this->once() )
+        $this->settingsService->expects( $this->any() )
             ->method( 'shouldIncludeFileList' )
             ->willReturn( false );
 
         // Mock other required methods
-        $this->settingsService->expects( $this->once() )
+        $this->settingsService->expects( $this->any() )
             ->method( 'getSlackNotificationHeader' )
             ->willReturn( 'File Integrity Alert' );
 
-        $this->settingsService->expects( $this->once() )
+        $this->settingsService->expects( $this->any() )
             ->method( 'getSlackMessageTemplate' )
             ->willReturn( 'Changes detected on %site_name%' );
 

@@ -24,10 +24,12 @@ use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 use EightyFourEM\FileIntegrityChecker\Services\ScheduledCacheCleanup;
 use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
+use EightyFourEM\FileIntegrityChecker\Services\EncryptionService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
+use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 
 /**
  * Main plugin bootstrap class
@@ -170,11 +172,17 @@ class Plugin {
             );
         } );
 
+        $this->container->register( DiffGenerator::class, function () {
+            return new DiffGenerator();
+        } );
+
         $this->container->register( FileScanner::class, function ( $container ) {
             return new FileScanner(
                 $container->get( ChecksumGenerator::class ),
                 $container->get( SettingsService::class ),
-                $container->get( FileAccessSecurity::class )
+                $container->get( FileAccessSecurity::class ),
+                $container->get( ChecksumCacheRepository::class ),
+                $container->get( DiffGenerator::class )
             );
         } );
 
@@ -187,6 +195,13 @@ class Plugin {
             return new LoggerService(
                 $container->get( LogRepository::class ),
                 $container->get( SettingsService::class )
+            );
+        } );
+
+        // Encryption service
+        $this->container->register( EncryptionService::class, function ( $container ) {
+            return new EncryptionService(
+                $container->get( LoggerService::class )
             );
         } );
 
@@ -220,7 +235,9 @@ class Plugin {
 
         // Cache services
         $this->container->register( ChecksumCacheRepository::class, function ( $container ) {
-            return new ChecksumCacheRepository();
+            return new ChecksumCacheRepository(
+                $container->get( EncryptionService::class )
+            );
         } );
 
         $this->container->register( ScheduledCacheCleanup::class, function ( $container ) {

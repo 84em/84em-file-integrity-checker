@@ -12,6 +12,11 @@ define( 'EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION', '1.0.0' );
 define( 'EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_PATH', __DIR__ . '/../' );
 define( 'EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_URL', 'http://localhost/wp-content/plugins/84em-file-integrity-checker/' );
 
+// Define WordPress time constants
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
+    define( 'HOUR_IN_SECONDS', 3600 );
+}
+
 // Load Composer autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -69,17 +74,20 @@ if ( ! function_exists( 'current_time' ) ) {
     }
 }
 
+// Global options storage for testing
+$GLOBALS['test_options'] = [];
+
 if ( ! function_exists( 'get_option' ) ) {
     function get_option( $option, $default = false ) {
-        static $options = [];
-        return $options[ $option ] ?? $default;
+        global $test_options;
+        return $test_options[ $option ] ?? $default;
     }
 }
 
 if ( ! function_exists( 'update_option' ) ) {
     function update_option( $option, $value ) {
-        static $options = [];
-        $options[ $option ] = $value;
+        global $test_options;
+        $test_options[ $option ] = $value;
         return true;
     }
 }
@@ -92,11 +100,115 @@ if ( ! function_exists( 'add_option' ) ) {
 
 if ( ! function_exists( 'delete_option' ) ) {
     function delete_option( $option ) {
-        static $options = [];
-        unset( $options[ $option ] );
+        global $test_options;
+        unset( $test_options[ $option ] );
         return true;
     }
 }
+
+if ( ! function_exists( 'wp_generate_password' ) ) {
+    function wp_generate_password( $length = 12, $special_chars = true, $extra_special_chars = false ) {
+        $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        if ( $special_chars ) {
+            $chars .= '!@#$%^&*()';
+        }
+        if ( $extra_special_chars ) {
+            $chars .= '-_ []{}<>~`+=,.;:/?|';
+        }
+
+        $password = '';
+        $chars_length = strlen( $chars );
+        for ( $i = 0; $i < $length; $i++ ) {
+            $password .= $chars[ random_int( 0, $chars_length - 1 ) ];
+        }
+
+        return $password;
+    }
+}
+
+if ( ! function_exists( 'get_bloginfo' ) ) {
+    function get_bloginfo( $show = '', $filter = 'raw' ) {
+        switch ( $show ) {
+            case 'name':
+                return 'Test Site';
+            case 'admin_email':
+                return 'admin@example.com';
+            case 'url':
+                return 'http://example.com';
+            case 'wpurl':
+                return 'http://example.com/wp';
+            case 'version':
+                return '6.8.0';
+            default:
+                return 'Test Site';
+        }
+    }
+}
+
+if ( ! function_exists( 'get_home_url' ) ) {
+    function get_home_url( $blog_id = null, $path = '', $scheme = null ) {
+        return 'http://example.com' . $path;
+    }
+}
+
+if ( ! function_exists( 'admin_url' ) ) {
+    function admin_url( $path = '', $scheme = 'admin' ) {
+        return 'http://example.com/wp-admin/' . ltrim( $path, '/' );
+    }
+}
+
+if ( ! function_exists( 'mysql2date' ) ) {
+    function mysql2date( $format, $date_string, $translate = true ) {
+        if ( empty( $date_string ) ) {
+            return false;
+        }
+        $datetime = new DateTime( $date_string );
+        return $datetime->format( $format );
+    }
+}
+
+// Create mock $wpdb object for tests
+if ( ! class_exists( 'wpdb' ) ) {
+    class wpdb {
+        public $prefix = 'wp_';
+        private $data = [];
+
+        public function get_var( $query ) {
+            return null; // Return null for simplicity
+        }
+
+        public function get_row( $query ) {
+            return null; // Return null for simplicity
+        }
+
+        public function insert( $table, $data, $format = null ) {
+            return 1; // Return success
+        }
+
+        public function update( $table, $data, $where, $format = null, $where_format = null ) {
+            return 1; // Return success
+        }
+
+        public function delete( $table, $where, $where_format = null ) {
+            return 1; // Return success
+        }
+
+        public function query( $query ) {
+            return 0; // Return 0 affected rows
+        }
+
+        public function prepare( $query, ...$args ) {
+            return vsprintf( str_replace( ['%s', '%d'], ['%s', '%d'], $query ), $args );
+        }
+
+        public function get_charset_collate() {
+            return 'DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci';
+        }
+    }
+}
+
+// Create global $wpdb instance
+$GLOBALS['wpdb'] = new wpdb();
 
 // Create test directories
 $test_dirs = [
