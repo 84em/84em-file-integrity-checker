@@ -7,14 +7,18 @@ namespace EightyFourEM\FileIntegrityChecker\Tests\Unit\Scanner;
 
 use PHPUnit\Framework\TestCase;
 use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 
 class ChecksumGeneratorTest extends TestCase {
     private ChecksumGenerator $checksumGenerator;
     private string $testFilePath;
     private string $testFileContent = "This is test content for checksum generation.";
+    private $loggerMock;
 
     protected function setUp(): void {
-        $this->checksumGenerator = new ChecksumGenerator();
+        // Create mock logger
+        $this->loggerMock = $this->createMock( LoggerService::class );
+        $this->checksumGenerator = new ChecksumGenerator( $this->loggerMock );
         
         // Create a temporary test file
         $this->testFilePath = sys_get_temp_dir() . '/test_file_' . uniqid() . '.txt';

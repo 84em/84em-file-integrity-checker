@@ -5,10 +5,15 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Tests\Integration;
 
+use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 use PHPUnit\Framework\TestCase;
 use EightyFourEM\FileIntegrityChecker\Scanner\FileScanner;
 use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
+use EightyFourEM\FileIntegrityChecker\Services\EncryptionService;
+use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
+use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
 
 class FileScannerIntegrationTest extends TestCase {
     private FileScanner $fileScanner;
@@ -16,15 +21,31 @@ class FileScannerIntegrationTest extends TestCase {
     private array $testFiles = [];
 
     protected function setUp(): void {
-        $checksumGenerator = new ChecksumGenerator();
+        // Create mock logger and encryption service
+        $loggerMock = $this->createMock( LoggerService::class );
+        $encryptionService = $this->createMock( EncryptionService::class );
+
+        // Mock encryption service methods
+        $encryptionService->method( 'isAvailable' )->willReturn( true );
+        $encryptionService->method( 'encrypt' )->willReturnCallback( function( $data ) {
+            return base64_encode( $data ); // Simple mock encryption
+        });
+        $encryptionService->method( 'decrypt' )->willReturnCallback( function( $data ) {
+            return base64_decode( $data ); // Simple mock decryption
+        });
+
+        $checksumGenerator = new ChecksumGenerator( $loggerMock );
         $settingsService = new SettingsService();
-        
-        $this->fileScanner = new FileScanner( $checksumGenerator, $settingsService );
-        
+        $fileAccessSecurity = new FileAccessSecurity();
+        $cacheRepository = new ChecksumCacheRepository( $encryptionService );
+        $diffGenerator = new DiffGenerator();
+
+        $this->fileScanner = new FileScanner( $checksumGenerator, $settingsService, $fileAccessSecurity, $cacheRepository, $diffGenerator );
+
         // Create temporary test directory
         $this->testDirectory = sys_get_temp_dir() . '/file_scanner_test_' . uniqid();
         mkdir( $this->testDirectory, 0755, true );
-        
+
         $this->createTestFiles();
     }
 
@@ -45,11 +66,11 @@ class FileScannerIntegrationTest extends TestCase {
         foreach ( $files as $relativePath => $content ) {
             $fullPath = $this->testDirectory . '/' . $relativePath;
             $dir = dirname( $fullPath );
-            
+
             if ( ! is_dir( $dir ) ) {
                 mkdir( $dir, 0755, true );
             }
-            
+
             file_put_contents( $fullPath, $content );
             $this->testFiles[] = $fullPath;
         }
@@ -61,12 +82,12 @@ class FileScannerIntegrationTest extends TestCase {
                 unlink( $file );
             }
         }
-        
+
         // Remove directories
         if ( is_dir( $this->testDirectory . '/subdir' ) ) {
             rmdir( $this->testDirectory . '/subdir' );
         }
-        
+
         if ( is_dir( $this->testDirectory ) ) {
             rmdir( $this->testDirectory );
         }
@@ -74,10 +95,10 @@ class FileScannerIntegrationTest extends TestCase {
 
     public function testScanDirectoryFindsAllFiles(): void {
         $scannedFiles = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Should find PHP, CSS, JS files (default file types), but not TXT or PNG
         $this->assertGreaterThan( 0, count( $scannedFiles ) );
-        
+
         $foundPaths = array_column( $scannedFiles, 'file_path' );
         $expectedPaths = [
             $this->testDirectory . '/test.php',
@@ -85,7 +106,7 @@ class FileScannerIntegrationTest extends TestCase {
             $this->testDirectory . '/script.js',
             $this->testDirectory . '/subdir/nested.php',
         ];
-        
+
         foreach ( $expectedPaths as $expectedPath ) {
             $this->assertContains( $expectedPath, $foundPaths );
         }
@@ -93,14 +114,14 @@ class FileScannerIntegrationTest extends TestCase {
 
     public function testScanDirectoryFileStructure(): void {
         $scannedFiles = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         foreach ( $scannedFiles as $fileData ) {
             $this->assertArrayHasKey( 'file_path', $fileData );
             $this->assertArrayHasKey( 'file_size', $fileData );
             $this->assertArrayHasKey( 'checksum', $fileData );
             $this->assertArrayHasKey( 'last_modified', $fileData );
             $this->assertArrayHasKey( 'status', $fileData );
-            
+
             $this->assertIsString( $fileData['file_path'] );
             $this->assertIsInt( $fileData['file_size'] );
             $this->assertIsString( $fileData['checksum'] );
@@ -111,14 +132,14 @@ class FileScannerIntegrationTest extends TestCase {
 
     public function testCompareScansDetectsNewFiles(): void {
         $firstScan = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Create a new file
         $newFilePath = $this->testDirectory . '/new.php';
         file_put_contents( $newFilePath, '<?php echo "New file";' );
         $this->testFiles[] = $newFilePath;
-        
+
         $secondScan = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Convert first scan to the format expected by compareScans (simulating DB format)
         $previousFiles = [];
         foreach ( $firstScan as $file ) {
@@ -129,29 +150,29 @@ class FileScannerIntegrationTest extends TestCase {
             $obj->last_modified = $file['last_modified'];
             $previousFiles[] = $obj;
         }
-        
+
         $comparedFiles = $this->fileScanner->compareScans( $secondScan, $previousFiles );
-        
+
         // Find the new file
         $newFiles = array_filter( $comparedFiles, function ( $file ) {
             return $file['status'] === 'new';
         } );
-        
+
         $this->assertCount( 1, $newFiles );
-        
+
         $newFile = array_values( $newFiles )[0];
         $this->assertEquals( $newFilePath, $newFile['file_path'] );
     }
 
     public function testCompareScansDetectsChangedFiles(): void {
         $firstScan = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Modify an existing file
         $testFile = $this->testDirectory . '/test.php';
         file_put_contents( $testFile, '<?php echo "Modified content";' );
-        
+
         $secondScan = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Convert first scan to DB format
         $previousFiles = [];
         foreach ( $firstScan as $file ) {
@@ -162,16 +183,16 @@ class FileScannerIntegrationTest extends TestCase {
             $obj->last_modified = $file['last_modified'];
             $previousFiles[] = $obj;
         }
-        
+
         $comparedFiles = $this->fileScanner->compareScans( $secondScan, $previousFiles );
-        
+
         // Find the changed file
         $changedFiles = array_filter( $comparedFiles, function ( $file ) use ( $testFile ) {
             return $file['status'] === 'changed' && $file['file_path'] === $testFile;
         } );
-        
+
         $this->assertCount( 1, $changedFiles );
-        
+
         $changedFile = array_values( $changedFiles )[0];
         $this->assertArrayHasKey( 'previous_checksum', $changedFile );
         $this->assertNotEquals( $changedFile['checksum'], $changedFile['previous_checksum'] );
@@ -179,13 +200,13 @@ class FileScannerIntegrationTest extends TestCase {
 
     public function testCompareScansDetectsDeletedFiles(): void {
         $firstScan = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Delete a file
         $testFile = $this->testDirectory . '/test.php';
         unlink( $testFile );
-        
+
         $secondScan = $this->fileScanner->scanDirectory( $this->testDirectory );
-        
+
         // Convert first scan to DB format
         $previousFiles = [];
         foreach ( $firstScan as $file ) {
@@ -196,16 +217,16 @@ class FileScannerIntegrationTest extends TestCase {
             $obj->last_modified = $file['last_modified'];
             $previousFiles[] = $obj;
         }
-        
+
         $comparedFiles = $this->fileScanner->compareScans( $secondScan, $previousFiles );
-        
+
         // Find the deleted file
         $deletedFiles = array_filter( $comparedFiles, function ( $file ) use ( $testFile ) {
             return $file['status'] === 'deleted' && $file['file_path'] === $testFile;
         } );
-        
+
         $this->assertCount( 1, $deletedFiles );
-        
+
         $deletedFile = array_values( $deletedFiles )[0];
         $this->assertEquals( '', $deletedFile['checksum'] ); // Empty checksum for deleted files
         $this->assertArrayHasKey( 'previous_checksum', $deletedFile );
@@ -242,9 +263,9 @@ class FileScannerIntegrationTest extends TestCase {
                 'last_modified' => '2023-01-01 12:00:00'
             ],
         ];
-        
+
         $stats = $this->fileScanner->getStatistics( $files );
-        
+
         $this->assertEquals( 4, $stats['total_files'] );
         $this->assertEquals( 1, $stats['new_files'] );
         $this->assertEquals( 1, $stats['changed_files'] );
@@ -255,15 +276,15 @@ class FileScannerIntegrationTest extends TestCase {
 
     public function testProgressCallback(): void {
         $callbackCalls = [];
-        
+
         $progressCallback = function ( $count, $currentFile ) use ( &$callbackCalls ) {
             $callbackCalls[] = [ 'count' => $count, 'file' => $currentFile ];
         };
-        
+
         $this->fileScanner->scanDirectory( $this->testDirectory, $progressCallback );
-        
+
         $this->assertGreaterThan( 0, count( $callbackCalls ) );
-        
+
         // Check final callback
         $lastCall = end( $callbackCalls );
         $this->assertIsArray( $lastCall );

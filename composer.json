@@ -1,7 +1,7 @@
 {
   "name": "84em/file-integrity-checker",
   "description": "WordPress plugin for scanning and tracking file checksums to detect changes",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "wordpress-plugin",
   "license": "MIT",
   "authors": [
@@ -16,8 +16,7 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^9.6",
-    "wp-cli/wp-cli": "^2.9",
-    "wp-cli/wp-cli-tests": "^4.3"
+    "wp-cli/wp-cli": "^2.9"
   },
   "autoload": {
     "psr-4": {

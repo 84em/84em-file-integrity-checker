@@ -45,17 +45,31 @@ class FileScanner {
     private FileAccessSecurity $fileAccessSecurity;
 
     /**
+     * Diff generator
+     * @var DiffGenerator
+     */
+    private DiffGenerator $diffGenerator;
+
+    /**
      * Constructor
      *
      * @param ChecksumGenerator $checksumGenerator Checksum generator
      * @param SettingsService   $settingsService   Settings service
      * @param FileAccessSecurity $fileAccessSecurity File access security service
+     * @param ChecksumCacheRepository $cacheRepository Cache repository
      */
-    public function __construct( ChecksumGenerator $checksumGenerator, SettingsService $settingsService, FileAccessSecurity $fileAccessSecurity ) {
+    public function __construct(
+        ChecksumGenerator $checksumGenerator,
+        SettingsService $settingsService,
+        FileAccessSecurity $fileAccessSecurity,
+        ChecksumCacheRepository $cacheRepository,
+        DiffGenerator $diffGenerator
+    ) {
         $this->checksumGenerator = $checksumGenerator;
         $this->settingsService   = $settingsService;
         $this->fileAccessSecurity = $fileAccessSecurity;
-        $this->cacheRepository = new ChecksumCacheRepository();
+        $this->cacheRepository = $cacheRepository;
+        $this->diffGenerator = $diffGenerator;
     }
 
     /**
@@ -341,9 +355,7 @@ class FileScanner {
      * @return string Unified diff
      */
     private function generateUnifiedDiff( string $old_content, string $new_content, string $file_path ): string {
-        // Use secure PHP-native diff generation instead of shell commands
-        $diff_generator = new DiffGenerator();
-        return $diff_generator->generateUnifiedDiff( $old_content, $new_content, $file_path );
+        return $this->diffGenerator->generateUnifiedDiff( $old_content, $new_content, $file_path );
     }
 
     /**
