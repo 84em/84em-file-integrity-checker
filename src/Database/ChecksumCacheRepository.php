@@ -27,7 +27,7 @@ class ChecksumCacheRepository {
     /**
      * Default TTL in hours
      */
-    private const DEFAULT_TTL_HOURS = 48;
+    private const DEFAULT_TTL_HOURS = 2160;
 
     /**
      * Encryption service
