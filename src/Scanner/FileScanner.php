@@ -290,14 +290,18 @@ class FileScanner {
             // Generate a unified diff
             $diff = $this->generateUnifiedDiff( $previous_content, $current_content, $file_path );
 
-            // Cache current content for next scan (48 hours TTL)
-            $this->cacheRepository->storeTemporary( $file_path, $current_checksum, $current_content, 48 );
+            // Cache current content for next scan (TTL matches scan retention period)
+            $retention_days = $this->settingsService->getRetentionPeriod();
+            $retention_hours = $retention_days * 24;
+            $this->cacheRepository->storeTemporary( $file_path, $current_checksum, $current_content, $retention_hours );
 
             return $diff;
         }
 
         // No previous content available, cache current for next time
-        $this->cacheRepository->storeTemporary( $file_path, $current_checksum, $current_content, 48 );
+        $retention_days = $this->settingsService->getRetentionPeriod();
+        $retention_hours = $retention_days * 24;
+        $this->cacheRepository->storeTemporary( $file_path, $current_checksum, $current_content, $retention_hours );
 
         // Return a summary since we don't have previous content
         $diff_summary = [
@@ -339,10 +343,12 @@ class FileScanner {
             return;
         }
 
-        // Read and cache the content temporarily (48 hours)
+        // Read and cache the content temporarily (TTL matches scan retention period)
         $content = file_get_contents( $file_path );
         if ( $content !== false ) {
-            $this->cacheRepository->storeTemporary( $file_path, $checksum, $content, 48 );
+            $retention_days = $this->settingsService->getRetentionPeriod();
+            $retention_hours = $retention_days * 24;
+            $this->cacheRepository->storeTemporary( $file_path, $checksum, $content, $retention_hours );
         }
     }
 
