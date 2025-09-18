@@ -5,6 +5,23 @@ All notable changes to the 84EM File Integrity Checker plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-09-18
+### Added
+- **Settings Link**: Added convenient Settings link to plugin action links on WordPress plugins page
+- Settings link provides quick access to plugin dashboard for administrators
+- Link only appears for users with manage_options capability
+
+### Fixed
+- **Critical Fix**: File content cache TTL now properly matches the scan retention period setting
+- Cache TTL dynamically adjusts based on user-configured retention period (default 90 days)
+- Resolved issue where diffs would show "Previous version not available" for scans more than 48 hours apart
+- ChecksumCacheRepository default TTL increased from 48 hours to 2160 hours (90 days) as fallback
+
+### Changed
+- FileScanner now retrieves retention period from SettingsService for cache TTL calculation
+- Cache duration automatically scales with user-configured retention settings
+- Ensures file content remains available for diff generation throughout entire retention period
+
 ## [2.1.0] - 2025-09-17
 ### Added
 - **Security Enhancement**: Implemented mandatory AES-256-GCM encryption for all stored file content

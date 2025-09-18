@@ -27,6 +27,7 @@ use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Services\EncryptionService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
+use EightyFourEM\FileIntegrityChecker\Admin\PluginLinks;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
@@ -106,6 +107,9 @@ class Plugin {
 
             $dashboardWidget = $this->container->get( DashboardWidget::class );
             $dashboardWidget->init();
+
+            $pluginLinks = $this->container->get( PluginLinks::class );
+            $pluginLinks->init();
         }
 
         // Register WP-CLI commands if available
@@ -264,6 +268,10 @@ class Plugin {
                 $container->get( IntegrityService::class ),
                 $container->get( ScanResultsRepository::class )
             );
+        } );
+
+        $this->container->register( PluginLinks::class, function () {
+            return new PluginLinks();
         } );
 
         // CLI services
