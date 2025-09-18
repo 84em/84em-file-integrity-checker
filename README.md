@@ -2,6 +2,43 @@
 
 A modern WordPress plugin for monitoring file integrity across your WordPress installation. Detect unauthorized changes, track file modifications, and maintain security compliance with automated scanning and comprehensive reporting.
 
+## ⚠️ Important: What This Plugin Is (And Isn't)
+
+### This is a SPECIALIZED File Integrity Monitor, NOT a Complete Security Plugin
+
+**✅ What This Plugin DOES:**
+- **Monitors file changes** using SHA-256 checksums to detect any modifications
+- **Tracks exactly what changed** by storing encrypted file content and generating diffs
+- **Provides forensic analysis** showing line-by-line changes in modified files
+- **Maintains compliance audit trails** with comprehensive logging and history
+- **Alerts on unauthorized changes** via email and Slack notifications
+- **Schedules automated scans** using reliable Action Scheduler (not WP Cron)
+
+**❌ What This Plugin DOES NOT Do:**
+- **Does NOT block attacks** - No firewall or traffic filtering
+- **Does NOT scan for malware** - No virus/malware pattern detection
+- **Does NOT fix vulnerabilities** - No automatic security patching
+- **Does NOT harden WordPress** - No login protection, 2FA, or security headers
+- **Does NOT prevent intrusions** - No brute force protection or IP blocking
+- **Does NOT monitor user activity** - No login tracking or user auditing
+- **Does NOT clean infections** - No automatic malware removal
+- **Does NOT check plugin/theme vulnerabilities** - No vulnerability database checks
+- **Does NOT protect against SQL injection** - No query filtering
+- **Does NOT implement WAF** - No Web Application Firewall features
+
+### 📋 When to Use This Plugin
+
+**Use this plugin when you need:**
+- Regulatory compliance requiring file integrity monitoring (PCI DSS, HIPAA, etc.)
+- Forensic capabilities to investigate what changed in your files
+- Detection of unauthorized file modifications
+- Detailed audit trails for security compliance
+- To complement your existing security plugin with deep file monitoring
+
+**This plugin works best ALONGSIDE traditional security plugins** like Wordfence, Sucuri, or iThemes Security that handle active threat prevention. Think of it as your "security camera" that records what happened, not your "security guard" that stops threats.
+
+---
+
 ## Features
 
 ### 🔍 Comprehensive File Scanning
