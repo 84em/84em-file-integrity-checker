@@ -125,9 +125,12 @@
             // Remove any existing progress containers
             $('.file-integrity-progress-container').remove();
 
-            // Create queued message with link to results page
+            // Create unique identifier for this specific message
+            const messageId = 'scan-queued-' + Date.now();
+
+            // Create queued message with link to results page and unique ID
             const queuedHtml = `
-                <div class="file-integrity-alert alert-success">
+                <div id="${messageId}" class="file-integrity-alert alert-success scan-queued-message">
                     <span class="dashicons dashicons-yes-alt"></span>
                     <span>
                         <strong>Scan has been queued successfully!</strong>
@@ -141,9 +144,9 @@
             // Add message after scan controls
             $('.scan-controls').after(queuedHtml);
 
-            // Auto-hide after 10 seconds
+            // Auto-hide after 10 seconds - target specific element by ID
             setTimeout(() => {
-                $('.file-integrity-alert.alert-success').fadeOut(500, function() {
+                $('#' + messageId).fadeOut(500, function() {
                     $(this).remove();
                 });
             }, 10000);
