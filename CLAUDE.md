@@ -71,22 +71,23 @@ The plugin follows a modern PHP architecture with dependency injection and servi
    - `NotificationService`: Email and Slack webhook notifications
    - `SettingsService`: Configuration management
    - `LoggerService`: System logging with levels and retention
-   - `FileViewerService`: Secure file viewing with access controls
+   - `EncryptionService`: Secure encryption for sensitive data storage
+   - `ScheduledCacheCleanup`: Automated cache cleanup service
 
 ### Database Architecture
 
 The plugin uses a repository pattern with these **5 tables**:
 - `eightyfourem_integrity_scan_results`: Scan metadata and statistics
-- `eightyfourem_integrity_file_records`: Individual file checksums, change tracking, and diff content
+- `eightyfourem_integrity_file_records`: Individual file checksums and change tracking
 - `eightyfourem_integrity_scan_schedules`: Multiple scan schedules with configurations
-- `eightyfourem_integrity_file_content`: Stores file content for diff generation (keyed by checksum)
+- `eightyfourem_integrity_checksum_cache`: File checksum cache with TTL for performance optimization
 - `eightyfourem_integrity_logs`: System activity logging with context and levels
 
 Repositories (`src/Database/`):
 - `ScanResultsRepository`: CRUD operations for scan results
 - `FileRecordRepository`: File checksum storage and comparison
 - `ScanSchedulesRepository`: Schedule management
-- `FileContentRepository`: File content storage for diff generation
+- `ChecksumCacheRepository`: Cached checksum management with encryption support
 - `LogRepository`: System log persistence with retention management
 - `DatabaseManager`: Schema creation and upgrades
 
@@ -101,6 +102,7 @@ The scanning system (`src/Scanner/`) processes files in batches:
 WordPress admin integration (`src/Admin/`):
 - `AdminPages`: Settings, schedules, scan results, and logs pages
 - `DashboardWidget`: At-a-glance monitoring widget
+- `PluginLinks`: Adds quick access links to the plugins list page
 - **AJAX Endpoints**:
   - `file_integrity_start_scan`: Initiate scan
   - `file_integrity_check_progress`: Monitor scan progress
@@ -157,11 +159,14 @@ The `build.sh` script creates production-ready ZIP files:
 
 ## Additional Features Not in README
 
-- **File Content Storage**: Stores file content for generating diffs between versions
-- **File Viewer**: Secure file viewing through admin interface with access controls
+- **Checksum Caching**: File checksums are cached with TTL for improved performance on subsequent scans
+- **Compressed Storage**: File content is compressed using gzcompress for efficient storage
 - **Comprehensive Logging**: Detailed activity logging with contexts, levels, and user tracking
-- **Diff Generation**: Shows actual file changes between scans
-- **Progress Tracking**: Real-time scan progress monitoring via AJAX
-- **Bulk Operations**: Delete multiple scan results at once
+- **Diff Generation**: Shows actual file changes between scans using the DiffGenerator utility
+- **Bulk Operations**: Delete multiple scan results at once through the admin interface
 - **Notification Resending**: Ability to resend email/Slack notifications for past scans
-- **Schedule Recalculation**: Command to recalculate all schedule next run times
+- **Schedule Recalculation**: WP-CLI command to recalculate all schedule next run times
+- **Background Scan Processing**: "Run Scan Now" button triggers background execution via Action Scheduler to avoid frontend timeouts
+- **Scan Queueing**: Scans are queued with status 'queued' and processed asynchronously with user-friendly feedback
+- **Rate Limiting**: AJAX endpoints include rate limiting to prevent abuse
+- **Memory Efficient Scanning**: Streaming file reads for checksum generation to handle large files

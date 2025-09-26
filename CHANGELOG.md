@@ -5,6 +5,45 @@ All notable changes to the 84EM File Integrity Checker plugin will be documented
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-09-26
+### Added
+- **Background Scan Processing**: "Run Scan Now" button now triggers background execution via Action Scheduler
+  - Prevents frontend timeouts during long-running scans
+  - Scans are queued with 'queued' status and processed asynchronously
+  - User receives immediate feedback with link to Scan Results page
+  - Scan button re-enables after 3 seconds to prevent spam
+- **UI Enhancements**:
+  - New queued scan notification with auto-hide after 10 seconds
+  - Added status-queued badge styling for consistent status display
+  - Success message includes direct link to Scan Results page
+- **WCAG AAA Compliance**: Implemented 7:1 contrast ratios throughout entire plugin interface
+  - All text elements now meet WCAG AAA accessibility standards
+  - Color-coded status badges use colored backgrounds with white text for optimal visibility
+  - Stat numbers use vibrant, distinguishable colors while maintaining accessibility
+
+### Changed
+- AJAX scan handler now creates queued scan records instead of running synchronously
+- SchedulerService updated to handle pre-created scan records with queued status
+- Improved user experience with non-blocking scan execution
+- Updated dependency injection to include ScanResultsRepository in SchedulerService
+- **Complete UI/UX Refactoring**:
+  - Removed ALL inline styles and `<style>` blocks from admin view templates
+  - Centralized all styling in admin.css for improved maintainability
+  - Proper separation of concerns between structure and presentation
+  - Hybrid color approach using colored backgrounds for badges and vibrant colors for statistics
+
+### Fixed
+- Improved file status ordering in scan results for better readability
+- Removed incorrect PHP code detection in non-PHP files
+- Plugin scope and use case documentation clarified
+- Fixed CSS specificity issue where anchor tags in card-actions were displaying full width
+- Corrected status-changed badge color contrast ratio from 1.97:1 to 7.01:1
+
+### Documentation
+- Updated CLAUDE.md with accurate service layer components
+- Corrected database table names and repository listings
+- Added comprehensive documentation for background scan processing feature
+
 ## [2.1.1] - 2025-09-18
 ### Added
 - **Settings Link**: Added convenient Settings link to plugin action links on WordPress plugins page

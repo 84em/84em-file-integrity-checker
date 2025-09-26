@@ -47,7 +47,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     <!-- Scan Controls -->
     <div class="scan-controls">
-        <form method="post" style="display: inline;">
+        <form method="post" class="inline-form">
             <?php wp_nonce_field( 'file_integrity_admin_action_run_scan' ); ?>
             <input type="hidden" name="action" value="run_scan" />
             <button type="submit" class="button button-primary button-large start-scan-btn">
@@ -247,7 +247,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     Settings
                 </a>
                 <br><br>
-                <form method="post" style="display: inline;">
+                <form method="post" class="inline-form">
                     <?php wp_nonce_field( 'file_integrity_admin_action_cleanup_old_scans' ); ?>
                     <input type="hidden" name="action" value="cleanup_old_scans" />
                     <button type="submit" class="button cleanup-old-scans" onclick="event.preventDefault(); FICModal.confirm('Delete old scan results? This cannot be undone.', 'Delete Old Scans', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.form.submit(); }); return false;">
@@ -262,7 +262,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     <!-- Quick Start Guide -->
     <?php if ( $stats['total_scans'] === 0 ): ?>
-    <div class="file-integrity-card" style="margin-top: 20px;">
+    <div class="file-integrity-card getting-started-card">
         <h3>Getting Started</h3>
         <div class="card-content">
             <ol>

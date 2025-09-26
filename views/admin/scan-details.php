@@ -44,7 +44,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
     </h1>
 
     <!-- Scan Summary -->
-    <div class="file-integrity-dashboard" style="margin-bottom: 30px;">
+    <div class="file-integrity-dashboard scan-summary-container">
         
         <!-- Basic Info Card -->
         <div class="file-integrity-card">
@@ -85,7 +85,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 </table>
                 
                 <?php if ( ! empty( $scan_summary['notes'] ) ): ?>
-                <div style="margin-top: 15px;">
+                <div class="scan-notes">
                     <strong>Notes:</strong><br>
                     <em><?php echo esc_html( $scan_summary['notes'] ); ?></em>
                 </div>
@@ -126,7 +126,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
         <div class="file-integrity-card">
             <h3>Actions</h3>
         <div class="card-content">
-            <div class="card-actions" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="card-actions">
                 <?php 
                 // Check if there are changes to notify about
                 $has_changes = $scan_summary['changed_files'] > 0 || $scan_summary['new_files'] > 0 || $scan_summary['deleted_files'] > 0;
@@ -141,35 +141,32 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 ?>
                 
                 <?php if ( $email_enabled ): ?>
-                <button type="button" class="button button-secondary resend-email-notification" 
-                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
-                        style="width: 100%; justify-content: center;">
+                <button type="button" class="button button-secondary resend-email-notification full-width"
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
                     <span class="dashicons dashicons-email"></span>
                     Resend Email Notification
                 </button>
                 <?php endif; ?>
                 
                 <?php if ( $slack_enabled ): ?>
-                <button type="button" class="button button-secondary resend-slack-notification" 
-                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
-                        style="width: 100%; justify-content: center;">
+                <button type="button" class="button button-secondary resend-slack-notification full-width"
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
                     <span class="dashicons dashicons-admin-comments"></span>
                     Resend Slack Notification
                 </button>
                 <?php endif; ?>
                 
-                <hr style="margin: 5px 0; border: none; border-top: 1px solid #ddd;">
-                
-                <button type="button" class="button button-link-delete delete-scan-details" 
-                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
-                        style="width: 100%; justify-content: center; color: #d63638;">
+                <hr class="card-actions-divider">
+
+                <button type="button" class="button button-link-delete delete-scan-details full-width"
+                        data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>">
                     <span class="dashicons dashicons-trash"></span>
                     Delete This Scan
                 </button>
             </div>
             
             <?php if ( ! $has_changes && ( $settingsService->isNotificationEnabled() || $settingsService->isSlackEnabled() ) ): ?>
-            <p class="description" style="margin-top: 10px;">
+            <p class="description notification-note">
                 <em>Notifications are only available for scans with detected changes.</em>
             </p>
             <?php endif; ?>
@@ -189,7 +186,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
     </div>
 
     <!-- Quick Summary of Changes -->
-    <div class="file-integrity-card" style="margin-bottom: 20px;">
+    <div class="file-integrity-card change-summary-card">
         <h3>Change Summary</h3>
         <div class="card-content">
             <ul>
@@ -218,15 +215,15 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
         <h3>
             File Records
             <?php if ( $file_results['total_count'] > 0 ): ?>
-                <span style="font-weight: normal; font-size: 14px;">
+                <span class="records-count">
                     (<?php echo esc_html( number_format( $file_results['total_count'] ) ); ?> total)
                 </span>
             <?php endif; ?>
         </h3>
         
         <!-- Filter Controls -->
-        <div style="margin: 15px 0;">
-            <form method="get" style="display: inline-block;">
+        <div class="filter-controls">
+            <form method="get" class="filter-form">
                 <input type="hidden" name="page" value="file-integrity-checker-results" />
                 <input type="hidden" name="scan_id" value="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>" />
                 <select name="status_filter" onchange="this.form.submit()">
@@ -247,10 +244,10 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                 <table class="scan-results-table widefat striped">
                     <thead>
                         <tr>
-                            <th style="width: 60%;">File Path</th>
-                            <th style="width: 12%;">Status</th>
-                            <th style="width: 12%;">Size</th>
-                            <th style="width: 16%;">Last Modified</th>
+                            <th class="column-file-path">File Path</th>
+                            <th class="column-status">Status</th>
+                            <th class="column-size">Size</th>
+                            <th class="column-modified">Last Modified</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -264,7 +261,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                     </div>
                                 <?php endif; ?>
                                 <?php if ( ! empty( $file->previous_checksum ) && $file->previous_checksum !== $file->checksum ): ?>
-                                    <div class="file-checksum" title="Previous checksum" style="color: #999;">
+                                    <div class="file-checksum previous-checksum" title="Previous checksum">
                                         Was: <?php echo esc_html( substr( $file->previous_checksum, 0, 16 ) ); ?>...
                                     </div>
                                 <?php endif; ?>
@@ -276,20 +273,19 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                 
                                 <?php if ( $is_blocked ): ?>
                                     <?php if ( $file->status === 'changed' ): ?>
-                                        <div style="margin-top: 5px; padding: 8px 12px; background: #f0f0f1; border-left: 3px solid #72aee6; border-radius: 2px;">
-                                            <span class="dashicons dashicons-lock" style="color: #72aee6; vertical-align: middle;"></span>
-                                            <span style="color: #50575e; font-size: 13px;">
+                                        <div class="file-security-notice">
+                                            <span class="dashicons dashicons-lock"></span>
+                                            <span class="security-notice-text">
                                                 This file contains sensitive information and cannot be viewed for security reasons
                                             </span>
                                         </div>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <?php if ( ! empty( $file->diff_content ) && $file->status === 'changed' ): ?>
-                                        <button type="button" 
-                                                class="button button-small view-diff-btn" 
+                                        <button type="button"
+                                                class="button button-small view-diff-btn"
                                                 data-file-path="<?php echo esc_attr( $file->file_path ); ?>"
-                                                data-diff="<?php echo esc_attr( json_encode( $file->diff_content ) ); ?>"
-                                                style="margin-top: 5px;">
+                                                data-diff="<?php echo esc_attr( json_encode( $file->diff_content ) ); ?>">
                                             <span class="dashicons dashicons-visibility"></span> View Changes
                                         </button>
                                     <?php endif; ?>
@@ -304,7 +300,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                                 <?php if ( $file->status !== 'deleted' ): ?>
                                     <?php echo esc_html( size_format( $file->file_size ) ); ?>
                                 <?php else: ?>
-                                    <span style="color: #999;">—</span>
+                                    <span class="text-muted">—</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -354,7 +350,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
     </div>
 
     <!-- Action Buttons -->
-    <div style="margin-top: 20px;">
+    <div class="action-buttons-container">
         <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results' ) ); ?>" class="button button-primary">
             <span class="dashicons dashicons-arrow-left-alt"></span>
             Back to All Results
@@ -369,7 +365,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
 </div>
 
 <!-- Diff Modal HTML -->
-<div id="diff-modal" class="fic-diff-modal" style="display: none;">
+<div id="diff-modal" class="fic-diff-modal">
     <div class="fic-diff-modal-overlay"></div>
     <div class="fic-diff-modal-content">
         <div class="fic-diff-modal-header">
@@ -386,130 +382,6 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
         </div>
     </div>
 </div>
-
-<style>
-.fic-diff-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 100000;
-}
-
-.fic-diff-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-}
-
-.fic-diff-modal-content {
-    position: relative;
-    background: white;
-    max-width: 90%;
-    max-height: 80%;
-    margin: 5% auto;
-    border-radius: 4px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    display: flex;
-    flex-direction: column;
-}
-
-.fic-diff-modal-header {
-    padding: 15px 20px;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.fic-diff-modal-header h3 {
-    margin: 0;
-}
-
-.fic-diff-modal-close {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    font-size: 20px;
-    color: #666;
-}
-
-.fic-diff-modal-close:hover {
-    color: #000;
-}
-
-.fic-diff-modal-body {
-    padding: 20px;
-    overflow-y: auto;
-    flex-grow: 1;
-}
-
-.diff-info {
-    margin-bottom: 15px;
-    padding: 10px;
-    background: #f0f0f0;
-    border-radius: 4px;
-}
-
-.diff-preview {
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    background: #f8f8f8;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    white-space: pre;
-    overflow-x: auto;
-    font-size: 13px;
-    line-height: 1.4;
-}
-
-/* Diff syntax highlighting */
-.diff-header {
-    color: #666;
-    font-weight: bold;
-}
-
-.diff-hunk {
-    color: #00a0a0;
-    background: #f0f0f0;
-    display: inline-block;
-    width: 100%;
-    padding: 2px 5px;
-    margin: 5px 0;
-}
-
-.diff-added {
-    color: #008000;
-    background: #e6ffed;
-    display: inline-block;
-    width: 100%;
-}
-
-.diff-removed {
-    color: #d00;
-    background: #ffebe9;
-    display: inline-block;
-    width: 100%;
-}
-
-.diff-context {
-    color: #666;
-}
-
-.diff-section {
-    margin: 15px 0;
-}
-
-.diff-section h4 {
-    margin: 10px 0 5px;
-    color: #333;
-}
-</style>
 
 <script>
 jQuery(document).ready(function($) {
@@ -555,7 +427,7 @@ jQuery(document).ready(function($) {
             if (diffData.type === 'summary') {
                 content += '<div class="diff-info">';
                 if (diffData.message) {
-                    content += '<div class="notice notice-warning" style="padding: 10px; margin-bottom: 15px;">';
+                    content += '<div class="notice notice-warning diff-notice">';
                     content += '<strong>' + escapeHtml(diffData.message) + '</strong>';
                     content += '</div>';
                 }
@@ -565,8 +437,8 @@ jQuery(document).ready(function($) {
                 
                 if (diffData.checksum_changed) {
                     content += '<strong>Checksum Changed:</strong><br>';
-                    content += '<span style="color: #d00;">- From: ' + (diffData.checksum_changed.from || 'N/A').substring(0, 32) + '...</span><br>';
-                    content += '<span style="color: #0a0;">+ To: ' + (diffData.checksum_changed.to || 'N/A').substring(0, 32) + '...</span>';
+                    content += '<span class="checksum-removed">- From: ' + (diffData.checksum_changed.from || 'N/A').substring(0, 32) + '...</span><br>';
+                    content += '<span class="checksum-added">+ To: ' + (diffData.checksum_changed.to || 'N/A').substring(0, 32) + '...</span>';
                 }
                 content += '</div>';
             }

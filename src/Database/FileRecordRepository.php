@@ -137,9 +137,16 @@ class FileRecordRepository {
 
         $results = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$wpdb->prefix}" . self::TABLE_NAME . 
-                " WHERE scan_result_id = %d AND status != 'unchanged' 
-                ORDER BY status, file_path",
+                "SELECT * FROM {$wpdb->prefix}" . self::TABLE_NAME .
+                " WHERE scan_result_id = %d AND status != 'unchanged'
+                ORDER BY
+                    CASE status
+                        WHEN 'changed' THEN 1
+                        WHEN 'new' THEN 2
+                        WHEN 'deleted' THEN 3
+                        ELSE 4
+                    END,
+                    file_path",
                 $scan_result_id
             )
         );

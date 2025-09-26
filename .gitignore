@@ -43,3 +43,6 @@ yarn.lock
 # build files
 /dist/
 /build/
+
+# Documentation (local planning/notes)
+/docs/

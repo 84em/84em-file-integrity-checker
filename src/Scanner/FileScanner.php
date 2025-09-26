@@ -416,12 +416,6 @@ class FileScanner {
             }
         }
 
-        // Security check: Detect PHP code in non-PHP files
-        // This is important to catch malicious PHP code hidden in files with different extensions
-        if ( $this->containsPhpCodeInNonPhpFile( $file_path, $file_extension ) ) {
-            return false;
-        }
-
         return true;
     }
 
@@ -437,75 +431,6 @@ class FileScanner {
         $pattern = str_replace( '\?', '.', $pattern );
 
         return '/^' . $pattern . '$/';
-    }
-
-    /**
-     * Check if a non-PHP file contains PHP code
-     *
-     * This security check helps detect malicious PHP code hidden in files
-     * with non-PHP extensions (e.g., backdoors disguised as .txt or .jpg files)
-     *
-     * @param string $file_path Path to the file
-     * @param string $file_extension File extension with dot
-     * @return bool True if non-PHP file contains PHP code
-     */
-    private function containsPhpCodeInNonPhpFile( string $file_path, string $file_extension ): bool {
-        // Only check non-PHP files
-        if ( $file_extension === '.php' ) {
-            return false;
-        }
-
-        // Only check files that exist and are readable
-        if ( ! file_exists( $file_path ) || ! is_readable( $file_path ) ) {
-            return false;
-        }
-
-        // Skip large files for performance (using configured max file size)
-        if ( filesize( $file_path ) > $this->settingsService->getMaxFileSize() ) {
-            return false;
-        }
-
-        // Read first 8KB of file to check for PHP code patterns
-        $handle = fopen( $file_path, 'r' );
-        if ( $handle === false ) {
-            return false;
-        }
-
-        $content = fread( $handle, 8192 );
-        fclose( $handle );
-
-        if ( $content === false ) {
-            return false;
-        }
-
-        // Check for PHP opening tags and common PHP patterns
-        $php_patterns = [
-            '<?php',
-            '<?=',
-            '<script language="php"',
-            'eval(',
-            'base64_decode(',
-            'system(',
-            'exec(',
-            'shell_exec(',
-            'passthru(',
-            'assert(',
-            'preg_replace(.*\/e',  // PREG_REPLACE_EVAL flag
-            'create_function(',
-        ];
-
-        foreach ( $php_patterns as $pattern ) {
-            if ( stripos( $content, $pattern ) !== false ) {
-                // Log this security concern
-                error_log( sprintf(
-                    'File Integrity Checker: Potential PHP code detected in non-PHP file: %s',
-                    $file_path
-                ) );
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

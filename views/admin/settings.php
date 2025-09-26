@@ -38,7 +38,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <input type="hidden" name="action" value="update_settings" />
 
         <!-- Scan Configuration -->
-        <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <div class="file-integrity-card">
             <h3>Scan Configuration</h3>
             <div class="card-content">
                 <table class="form-table">
@@ -111,7 +111,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
         <!-- Scheduling Configuration -->
         <?php if ( $scheduler_available ): ?>
-        <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <div class="file-integrity-card">
             <h3>Scheduling Configuration</h3>
             <div class="card-content">
                 <table class="form-table">
@@ -133,7 +133,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
         </div>
         <?php else: ?>
-        <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <div class="file-integrity-card">
             <h3>Scheduling Configuration</h3>
             <div class="card-content">
                 <div class="file-integrity-alert alert-warning">
@@ -145,7 +145,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         <?php endif; ?>
 
         <!-- Notification Settings -->
-        <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <div class="file-integrity-card">
             <h3>Notification Settings</h3>
             <div class="card-content">
                 <table class="form-table">
@@ -155,7 +155,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                         </th>
                         <td>
                             <fieldset>
-                                <label style="display: block; margin-bottom: 10px;">
+                                <label class="notification-method-label">
                                     <input type="checkbox" 
                                            name="notification_enabled" 
                                            id="notification_enabled" 
@@ -163,7 +163,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                                            <?php checked( $settings['notification_enabled'] ); ?> />
                                     Enable email notifications
                                 </label>
-                                <label style="display: block;">
+                                <label class="notification-method-label">
                                     <input type="checkbox" 
                                            name="slack_enabled" 
                                            id="slack_enabled" 
@@ -179,7 +179,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <!-- Email Settings Section (conditionally shown) -->
                     <tbody class="email-notification-settings" style="<?php echo $settings['notification_enabled'] ? '' : 'display:none;'; ?>">
                         <tr>
-                            <td colspan="2" style="padding: 0;">
+                            <td colspan="2" class="settings-section-header">
                                 <h4 class="email-settings-header">📧 Email Settings</h4>
                             </td>
                         </tr>
@@ -235,7 +235,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                     <!-- Slack Settings Section (conditionally shown) -->
                     <tbody class="slack-notification-settings" style="<?php echo $settings['slack_enabled'] ? '' : 'display:none;'; ?>">
                         <tr>
-                            <td colspan="2" style="padding: 0;">
+                            <td colspan="2" class="settings-section-header">
                                 <h4 class="slack-settings-header">💬 Slack Settings</h4>
                             </td>
                         </tr>
@@ -254,7 +254,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                                     Enter your Slack webhook URL. 
                                     <a href="https://api.slack.com/messaging/webhooks" target="_blank">Learn how to create a webhook</a>
                                 </p>
-                                <button type="button" class="button button-secondary" id="test-slack-notification" style="margin-top: 10px;">
+                                <button type="button" class="button button-secondary slack-test-button" id="test-slack-notification">
                                     Test Slack Notification
                                 </button>
                             </td>
@@ -299,7 +299,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         </div>
 
         <!-- Data Management -->
-        <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <div class="file-integrity-card">
             <h3>Data Management</h3>
             <div class="card-content">
                 <table class="form-table">
@@ -346,7 +346,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         </div>
 
         <!-- Logging Configuration -->
-        <div class="file-integrity-card" style="margin-bottom: 30px;">
+        <div class="file-integrity-card">
             <h3>Logging Configuration</h3>
             <div class="card-content">
                 <table class="form-table">
@@ -367,7 +367,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                             ?>
                             <fieldset>
                                 <?php foreach ( $all_levels as $level => $label ) : ?>
-                                    <label style="display: block; margin-bottom: 5px;">
+                                    <label class="log-level-label">
                                         <input type="checkbox" 
                                                name="log_levels[]" 
                                                value="<?php echo esc_attr( $level ); ?>"
@@ -436,10 +436,10 @@ if ( ! defined( 'ABSPATH' ) ) {
         </div>
 
         <!-- Uninstall Settings -->
-        <div class="file-integrity-card" style="margin-bottom: 30px; border: 2px solid #dc3232;">
-            <h3 style="color: #dc3232;">⚠️ Uninstall Settings</h3>
+        <div class="file-integrity-card uninstall-card">
+            <h3 class="uninstall-title">⚠️ Uninstall Settings</h3>
             <div class="card-content">
-                <div class="file-integrity-alert alert-warning" style="margin-bottom: 20px;">
+                <div class="file-integrity-alert alert-warning uninstall-alert">
                     <span class="dashicons dashicons-warning"></span>
                     <span><strong>DANGER ZONE:</strong> These settings control what happens when the plugin is uninstalled.</span>
                 </div>
@@ -449,20 +449,20 @@ if ( ! defined( 'ABSPATH' ) ) {
                             <label for="delete_data_on_uninstall">Delete Data on Uninstall</label>
                         </th>
                         <td>
-                            <label style="display: block; padding: 10px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;">
-                                <input type="checkbox" 
-                                       name="delete_data_on_uninstall" 
-                                       id="delete_data_on_uninstall" 
-                                       value="1" 
+                            <label class="uninstall-checkbox-container">
+                                <input type="checkbox"
+                                       name="delete_data_on_uninstall"
+                                       id="delete_data_on_uninstall"
+                                       value="1"
                                        <?php checked( $settings['delete_data_on_uninstall'] ?? false ); ?>
                                        onchange="toggleUninstallWarning(this)" />
-                                <strong style="color: #dc3232;">
+                                <strong class="uninstall-checkbox-label">
                                     Delete ALL plugin data when uninstalling
                                 </strong>
                             </label>
-                            <div id="uninstall-warning" style="display: <?php echo esc_attr( ($settings['delete_data_on_uninstall'] ?? false) ? 'block' : 'none' ); ?>; margin-top: 10px; padding: 10px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px;">
-                                <strong style="color: #721c24;">⚠️ WARNING:</strong>
-                                <ul style="margin: 10px 0 0 20px; color: #721c24;">
+                            <div id="uninstall-warning" class="uninstall-warning" style="display: <?php echo esc_attr( ($settings['delete_data_on_uninstall'] ?? false) ? 'block' : 'none' ); ?>;">
+                                <strong class="uninstall-warning-title">⚠️ WARNING:</strong>
+                                <ul class="uninstall-warning-list">
                                     <li>All scan history will be permanently deleted</li>
                                     <li>All schedules will be removed</li>
                                     <li>All settings will be erased</li>
@@ -470,11 +470,11 @@ if ( ! defined( 'ABSPATH' ) ) {
                                     <li>All log entries will be deleted</li>
                                     <li><strong>This action CANNOT be undone!</strong></li>
                                 </ul>
-                                <p style="margin-top: 10px; color: #721c24;">
+                                <p class="uninstall-warning-final">
                                     <strong>Only check this box if you want to completely remove all traces of this plugin from your database.</strong>
                                 </p>
                             </div>
-                            <p class="description" style="margin-top: 10px;">
+                            <p class="description uninstall-recommendation">
                                 When <strong>UNCHECKED</strong> (recommended): Your data will be preserved if you uninstall the plugin, allowing you to reinstall later without losing your scan history and settings.<br>
                                 When <strong>CHECKED</strong>: All plugin data will be permanently deleted when you uninstall the plugin.
                             </p>

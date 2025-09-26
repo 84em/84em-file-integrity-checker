@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Services;
 
 use EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository;
+use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 
 /**
  * Manages scheduled scans using Action Scheduler
@@ -43,6 +44,13 @@ class SchedulerService {
     private ScanSchedulesRepository $schedulesRepository;
 
     /**
+     * Scan results repository
+     *
+     * @var ScanResultsRepository
+     */
+    private ScanResultsRepository $scanResultsRepository;
+
+    /**
      * Logger service
      *
      * @var LoggerService
@@ -52,17 +60,20 @@ class SchedulerService {
     /**
      * Constructor
      *
-     * @param IntegrityService        $integrityService    Integrity service
-     * @param ScanSchedulesRepository $schedulesRepository Schedules repository
-     * @param LoggerService           $logger              Logger service
+     * @param IntegrityService        $integrityService       Integrity service
+     * @param ScanSchedulesRepository $schedulesRepository    Schedules repository
+     * @param ScanResultsRepository   $scanResultsRepository  Scan results repository
+     * @param LoggerService           $logger                 Logger service
      */
     public function __construct(
         IntegrityService $integrityService,
         ScanSchedulesRepository $schedulesRepository,
+        ScanResultsRepository $scanResultsRepository,
         LoggerService $logger,
     ) {
         $this->integrityService = $integrityService;
         $this->schedulesRepository = $schedulesRepository;
+        $this->scanResultsRepository = $scanResultsRepository;
         $this->logger = $logger;
     }
 
@@ -482,10 +493,25 @@ class SchedulerService {
     public function executeScan( array $args = [] ): void {
         $scan_type = $args['type'] ?? 'manual';
         $schedule_id = $args['schedule_id'] ?? null;
+        $scan_id = $args['scan_id'] ?? null;
+        $queued = $args['queued'] ?? false;
 
         try {
-            // Run the integrity scan, passing schedule_id if available
-            $scan_result = $this->integrityService->runScan( $scan_type, null, $schedule_id );
+            // If we have a pre-created scan ID (from queued background scan)
+            if ( $scan_id && $queued ) {
+                // The scan record already exists with status 'queued'
+                // Just run the normal scan which will create its own scan record
+                // We'll delete the queued one to avoid duplicates
+                $scan_result = $this->integrityService->runScan( $scan_type, null, $schedule_id );
+
+                // Delete the queued scan record since we created a new one
+                if ( $scan_result && isset( $scan_result['scan_id'] ) ) {
+                    $this->scanResultsRepository->delete( $scan_id );
+                }
+            } else {
+                // Normal scan execution (creates new scan record)
+                $scan_result = $this->integrityService->runScan( $scan_type, null, $schedule_id );
+            }
 
             if ( $scan_result && $scan_result['status'] === 'completed' ) {
                 // Log successful scan
@@ -496,6 +522,7 @@ class SchedulerService {
                         'scan_id' => $scan_result['scan_id'],
                         'schedule_id' => $schedule_id,
                         'scan_type' => $scan_type,
+                        'queued' => $queued,
                         'stats' => [
                             'changed_files' => $scan_result['changed_files'],
                             'new_files' => $scan_result['new_files'],
@@ -517,18 +544,30 @@ class SchedulerService {
                     'Scheduled scan failed',
                     LoggerService::CONTEXT_SCHEDULER,
                     [
+                        'scan_id' => $scan_id,
                         'schedule_id' => $schedule_id,
                         'scan_type' => $scan_type,
+                        'queued' => $queued,
                     ]
                 );
             }
         } catch ( \Exception $e ) {
+            // If we have a pre-created scan ID, update it to failed status
+            if ( $scan_id && $queued ) {
+                $this->scanResultsRepository->update( $scan_id, [
+                    'status' => 'failed',
+                    'notes' => 'Scan failed: ' . $e->getMessage(),
+                ] );
+            }
+
             $this->logger->error(
                 'File integrity scan error: ' . $e->getMessage(),
                 LoggerService::CONTEXT_SCHEDULER,
                 [
+                    'scan_id' => $scan_id,
                     'schedule_id' => $schedule_id,
                     'scan_type' => $scan_type,
+                    'queued' => $queued,
                     'exception' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]

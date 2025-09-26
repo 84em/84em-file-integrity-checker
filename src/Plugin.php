@@ -213,6 +213,7 @@ class Plugin {
             return new SchedulerService(
                 $container->get( IntegrityService::class ),
                 $container->get( ScanSchedulesRepository::class ),
+                $container->get( ScanResultsRepository::class ),
                 $container->get( LoggerService::class ),
             );
         } );

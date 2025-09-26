@@ -826,32 +826,65 @@ class AdminPages {
         if ( ! Security::check_ajax_referer( 'ajax_start_scan', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
-        
+
         // Rate limit scan starts
         if ( ! Security::check_rate_limit( 'start_scan', 5, 300 ) ) {
             wp_send_json_error( 'Too many scan attempts. Please wait before trying again.' );
         }
-        
+
         // Check permissions
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( 'Insufficient permissions' );
         }
-        
+
         try {
-            // Start the scan
-            $scan_result = $this->integrityService->runScan( 'manual' );
-            
-            if ( $scan_result && isset( $scan_result['scan_id'] ) ) {
+            // Create initial scan record with queued status
+            $scan_id = $this->scanResultsRepository->create( [
+                'scan_date' => current_time( 'mysql' ),
+                'status' => 'queued',
+                'scan_type' => 'manual',
+                'notes' => 'Scan queued at ' . current_time( 'mysql' ),
+            ] );
+
+            if ( ! $scan_id ) {
+                wp_send_json_error( 'Failed to create scan record' );
+                return;
+            }
+
+            // Schedule the scan to run immediately in the background using async action
+            $action_id = as_enqueue_async_action(
+                'eightyfourem_file_integrity_scan',
+                [
+                    [
+                        'type' => 'manual',
+                        'scan_id' => $scan_id,
+                        'queued' => true
+                    ]
+                ],
+                'file-integrity-checker'
+            );
+
+            if ( $action_id !== false ) {
+                $this->logger->info(
+                    'Scan queued successfully for background processing',
+                    LoggerService::CONTEXT_ADMIN,
+                    [ 'scan_id' => $scan_id, 'action_id' => $action_id ]
+                );
+
                 wp_send_json_success( [
-                    'scan_id' => $scan_result['scan_id'],
-                    'message' => 'Scan started successfully'
+                    'scan_id' => $scan_id,
+                    'message' => 'Scan has been queued and will run in the background',
+                    'results_url' => admin_url( 'admin.php?page=file-integrity-checker-results' ),
+                    'background' => true
                 ] );
             } else {
-                wp_send_json_error( 'Failed to start scan' );
+                // If scheduling failed, delete the scan record and return error
+                $this->scanResultsRepository->delete( $scan_id );
+                wp_send_json_error( 'Failed to queue scan for background processing' );
             }
         } catch ( \Exception $e ) {
             $this->logger->error(
-                'Error starting scan: ' . $e->getMessage(),
+                'Error queuing scan: ' . $e->getMessage(),
                 LoggerService::CONTEXT_ADMIN,
                 [ 'exception' => $e->getMessage() ]
             );

@@ -88,7 +88,17 @@
                 this.startScan().then(
                     (response) => {
                         if (response.success) {
-                            this.showScanProgress(response.data.scan_id);
+                            // Check if scan is running in background
+                            if (response.data.background) {
+                                this.showScanQueuedMessage(response.data);
+                                // Re-enable button after a short delay
+                                setTimeout(() => {
+                                    this.resetScanButton(button, originalText);
+                                }, 3000);
+                            } else {
+                                // Legacy synchronous scan (fallback)
+                                this.showScanProgress(response.data.scan_id);
+                            }
                         } else {
                             this.showError(response.data || 'Failed to start scan');
                             this.resetScanButton(button, originalText);
@@ -108,6 +118,38 @@
                 action: 'file_integrity_start_scan',
                 _wpnonce: fileIntegrityChecker.nonces.start_scan
             });
+        },
+
+        // Show scan queued message
+        showScanQueuedMessage: function(data) {
+            // Remove any existing progress containers
+            $('.file-integrity-progress-container').remove();
+
+            // Create unique identifier for this specific message
+            const messageId = 'scan-queued-' + Date.now();
+
+            // Create queued message with link to results page and unique ID
+            const queuedHtml = `
+                <div id="${messageId}" class="file-integrity-alert alert-success scan-queued-message">
+                    <span class="dashicons dashicons-yes-alt"></span>
+                    <span>
+                        <strong>Scan has been queued successfully!</strong>
+                        <br>
+                        The scan will run in the background. You can check the status on the
+                        <a href="${data.results_url}">Scan Results</a> page.
+                    </span>
+                </div>
+            `;
+
+            // Add message after scan controls
+            $('.scan-controls').after(queuedHtml);
+
+            // Auto-hide after 10 seconds - target specific element by ID
+            setTimeout(() => {
+                $('#' + messageId).fadeOut(500, function() {
+                    $(this).remove();
+                });
+            }, 10000);
         },
 
         // Show scan progress
