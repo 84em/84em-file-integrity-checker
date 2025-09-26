@@ -25,7 +25,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
     <?php else: ?>
         
         <!-- Results Summary -->
-        <div class="file-integrity-card" style="margin-bottom: 20px;">
+        <div class="file-integrity-card results-summary-card">
             <h3>Results Overview</h3>
             <div class="card-content">
                 <p>Showing <?php echo esc_html( number_format( count( $results['results'] ) ) ); ?> of <?php echo esc_html( number_format( $results['total_count'] ) ); ?> scan results.</p>
@@ -41,7 +41,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                     <option value="delete">Delete</option>
                 </select>
                 <input type="button" id="doaction" class="button action bulk-delete-btn" value="Apply">
-                <span class="selected-count" style="display: none; margin-left: 10px;">
+                <span class="selected-count hidden-count">
                     <span class="count">0</span> selected
                 </span>
             </div>
@@ -196,7 +196,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
         <?php endif; ?>
 
         <!-- Action Buttons -->
-        <div class="file-integrity-card" style="margin-top: 20px;">
+        <div class="file-integrity-card action-card">
             <h3>Actions</h3>
             <div class="card-actions">
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button button-primary">
@@ -204,7 +204,7 @@ $total_pages = ceil( $results['total_count'] / $per_page );
                     Back to Dashboard
                 </a>
                 
-                <form method="post" style="display: inline; margin-left: 10px;">
+                <form method="post" class="inline-form cleanup-form">
                     <?php wp_nonce_field( 'file_integrity_admin_action_cleanup_old_scans' ); ?>
                     <input type="hidden" name="action" value="cleanup_old_scans" />
                     <button type="submit" class="button cleanup-old-scans" onclick="event.preventDefault(); FICModal.confirm('Delete old scan results? This will remove scan data older than your configured retention period.', 'Delete Old Scans', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.form.submit(); }); return false;">

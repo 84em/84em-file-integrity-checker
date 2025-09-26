@@ -168,7 +168,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     </td>
                 </tr>
                 
-                <tr class="schedule-minute-row" style="display: none;">
+                <tr class="schedule-minute-row hidden-field">
                     <th scope="row">
                         <label for="minute">Minute</label>
                     </th>
@@ -188,7 +188,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     </td>
                 </tr>
                 
-                <tr class="schedule-day-of-week-row" style="display: none;">
+                <tr class="schedule-day-of-week-row hidden-field">
                     <th scope="row">
                         <label>Days of Week</label>
                     </th>
@@ -230,7 +230,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
     </div>
 
     <!-- Edit Schedule Form (Initially Hidden) -->
-    <div class="file-integrity-card" id="edit-schedule-form" style="display: none;">
+    <div class="file-integrity-card hidden-field" id="edit-schedule-form">
         <h3>Edit Schedule</h3>
         <form method="post" class="schedule-form">
             <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
@@ -262,7 +262,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     </td>
                 </tr>
                 
-                <tr class="edit-schedule-minute-row" style="display: none;">
+                <tr class="edit-schedule-minute-row hidden-field">
                     <th scope="row">
                         <label for="edit_minute">Minute</label>
                     </th>
@@ -282,7 +282,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                     </td>
                 </tr>
                 
-                <tr class="edit-schedule-day-of-week-row" style="display: none;">
+                <tr class="edit-schedule-day-of-week-row hidden-field">
                     <th scope="row">
                         <label>Days of Week</label>
                     </th>
@@ -474,7 +474,7 @@ if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset( $_POST['action'] ) ) {
                                     <span class="dashicons dashicons-edit"></span> Edit
                                 </button>
                                 
-                                <form method="post" style="display: inline;" onsubmit="event.preventDefault(); FICModal.confirm('Are you sure you want to delete this schedule?', 'Delete Schedule', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.submit(); }); return false;">
+                                <form method="post" class="inline-form" onsubmit="event.preventDefault(); FICModal.confirm('Are you sure you want to delete this schedule?', 'Delete Schedule', 'Yes, Delete', 'Cancel').then(confirmed => { if(confirmed) this.submit(); }); return false;">
                                     <?php wp_nonce_field( 'file_integrity_schedule_action' ); ?>
                                     <input type="hidden" name="action" value="delete_schedule">
                                     <input type="hidden" name="schedule_id" value="<?php echo esc_attr( $schedule->id ); ?>">

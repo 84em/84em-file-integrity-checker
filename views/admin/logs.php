@@ -112,7 +112,7 @@ $available_levels = $logger->getAvailableLevels();
         </form>
 
         <div class="alignright">
-            <form method="post" action="" id="clear-logs-form" style="display: inline;">
+            <form method="post" action="" id="clear-logs-form" class="inline-form">
                 <?php wp_nonce_field( 'clear_logs' ); ?>
                 <input type="hidden" name="clear_logs" value="1">
                 <button type="button" id="clear-logs-btn" class="button button-secondary">
@@ -130,12 +130,12 @@ $available_levels = $logger->getAvailableLevels();
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
-                    <th scope="col" class="column-timestamp" style="width: 150px;"><?php esc_html_e( 'Timestamp', '84em-file-integrity-checker' ); ?></th>
-                    <th scope="col" class="column-level" style="width: 100px;"><?php esc_html_e( 'Level', '84em-file-integrity-checker' ); ?></th>
-                    <th scope="col" class="column-context" style="width: 120px;"><?php esc_html_e( 'Context', '84em-file-integrity-checker' ); ?></th>
+                    <th scope="col" class="column-timestamp log-column-timestamp"><?php esc_html_e( 'Timestamp', '84em-file-integrity-checker' ); ?></th>
+                    <th scope="col" class="column-level log-column-level"><?php esc_html_e( 'Level', '84em-file-integrity-checker' ); ?></th>
+                    <th scope="col" class="column-context log-column-context"><?php esc_html_e( 'Context', '84em-file-integrity-checker' ); ?></th>
                     <th scope="col" class="column-message"><?php esc_html_e( 'Message', '84em-file-integrity-checker' ); ?></th>
-                    <th scope="col" class="column-user" style="width: 100px;"><?php esc_html_e( 'User', '84em-file-integrity-checker' ); ?></th>
-                    <th scope="col" class="column-details" style="width: 80px;"><?php esc_html_e( 'Details', '84em-file-integrity-checker' ); ?></th>
+                    <th scope="col" class="column-user log-column-user"><?php esc_html_e( 'User', '84em-file-integrity-checker' ); ?></th>
+                    <th scope="col" class="column-details log-column-details"><?php esc_html_e( 'Details', '84em-file-integrity-checker' ); ?></th>
                 </tr>
             </thead>
             <tbody>
@@ -149,14 +149,7 @@ $available_levels = $logger->getAvailableLevels();
                             <?php echo esc_html( mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $log['created_at'] ) ); ?>
                         </td>
                         <td class="column-level">
-                            <span class="log-level-badge" style="
-                                background-color: <?php echo esc_attr( $level_color ); ?>;
-                                color: white;
-                                padding: 3px 8px;
-                                border-radius: 3px;
-                                font-size: 12px;
-                                display: inline-block;
-                            ">
+                            <span class="log-level-badge" style="background-color: <?php echo esc_attr( $level_color ); ?>;">
                                 <?php echo esc_html( $logger->getLevelLabel( $log['log_level'] ) ); ?>
                             </span>
                         </td>
@@ -172,7 +165,7 @@ $available_levels = $logger->getAvailableLevels();
                                     <?php echo esc_html( $user_info->user_login ); ?>
                                 </a>
                             <?php else : ?>
-                                <span style="color: #666;">—</span>
+                                <span class="text-muted">—</span>
                             <?php endif; ?>
                         </td>
                         <td class="column-details">
@@ -183,7 +176,7 @@ $available_levels = $logger->getAvailableLevels();
                                     <?php esc_html_e( 'View', '84em-file-integrity-checker' ); ?>
                                 </button>
                             <?php else : ?>
-                                <span style="color: #666;">—</span>
+                                <span class="text-muted">—</span>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -219,39 +212,11 @@ $available_levels = $logger->getAvailableLevels();
 </div>
 
 <!-- Log Details Modal -->
-<div id="log-details-modal" style="display: none;">
-    <div class="log-details-overlay" style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.7);
-        z-index: 159900;
-    "></div>
-    <div class="log-details-content" style="
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 20px;
-        border-radius: 5px;
-        max-width: 600px;
-        max-height: 80vh;
-        overflow-y: auto;
-        z-index: 160000;
-        box-shadow: 0 3px 30px rgba(0,0,0,0.2);
-    ">
+<div id="log-details-modal" class="log-details-modal">
+    <div class="log-details-overlay"></div>
+    <div class="log-details-content">
         <h3><?php esc_html_e( 'Log Details', '84em-file-integrity-checker' ); ?></h3>
-        <pre id="log-details-data" style="
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 3px;
-            overflow-x: auto;
-            font-size: 12px;
-            line-height: 1.4;
-        "></pre>
+        <pre id="log-details-data" class="log-details-pre"></pre>
         <button type="button" class="button button-primary" id="close-log-details">
             <?php esc_html_e( 'Close', '84em-file-integrity-checker' ); ?>
         </button>
@@ -304,34 +269,3 @@ jQuery(document).ready(function($) {
     });
 });
 </script>
-
-<style>
-/* Additional styles for better log display */
-.wp-list-table .column-message {
-    word-break: break-word;
-}
-
-.wp-list-table .column-timestamp {
-    white-space: nowrap;
-}
-
-.tablenav .actions select,
-.tablenav .actions input[type="date"],
-.tablenav .actions input[type="search"] {
-    margin-right: 5px;
-}
-
-@media screen and (max-width: 782px) {
-    .tablenav .actions {
-        display: block;
-        margin-bottom: 10px;
-    }
-    
-    .tablenav .actions select,
-    .tablenav .actions input {
-        display: block;
-        width: 100%;
-        margin-bottom: 5px;
-    }
-}
-</style>
