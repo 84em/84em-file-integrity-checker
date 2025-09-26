@@ -109,6 +109,11 @@
     color: #f56e28;
 }
 
+.status-queued {
+    background: color-mix(in srgb, #646970 15%, white);
+    color: #646970;
+}
+
 .status-new {
     background: color-mix(in srgb, var(--wp-admin-theme-color, #2271b1) 15%, white);
     color: var(--wp-admin-theme-color, #2271b1);
