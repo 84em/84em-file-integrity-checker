@@ -190,10 +190,8 @@ class SchedulerService {
             return false;
         }
 
-        // Cancel existing Action Scheduler action if it exists
-        if ( $existing->action_scheduler_id ) {
-            $this->cancelScheduledAction( $existing->action_scheduler_id );
-        }
+        // Cancel all existing Action Scheduler actions for this schedule
+        $this->cancelScheduleActions( $id );
 
         // Update schedule in database
         $result = $this->schedulesRepository->update( $id, $config );
@@ -234,10 +232,10 @@ class SchedulerService {
      * @return bool True on success, false on failure
      */
     public function deleteSchedule( int $id ): bool {
-        // Get schedule to cancel Action Scheduler action
+        // Get schedule to cancel all Action Scheduler actions for this schedule
         $schedule = $this->schedulesRepository->get( $id );
-        if ( $schedule && $schedule->action_scheduler_id ) {
-            $this->cancelScheduledAction( $schedule->action_scheduler_id );
+        if ( $schedule ) {
+            $this->cancelScheduleActions( $id );
         }
 
         $result = $this->schedulesRepository->delete( $id );
@@ -285,11 +283,8 @@ class SchedulerService {
      * @return bool True on success, false on failure
      */
     public function disableSchedule( int $id ): bool {
-        $schedule = $this->schedulesRepository->get( $id );
-
-        if ( $schedule && $schedule->action_scheduler_id ) {
-            $this->cancelScheduledAction( $schedule->action_scheduler_id );
-        }
+        // Cancel all pending Action Scheduler actions for this schedule
+        $this->cancelScheduleActions( $id );
 
         return $this->schedulesRepository->deactivate( $id );
     }
@@ -340,8 +335,89 @@ class SchedulerService {
     }
 
     /**
+     * Cancel all Action Scheduler actions for a specific schedule
+     *
+     * @param int $schedule_id Schedule ID
+     * @return int Number of actions cancelled
+     */
+    private function cancelScheduleActions( int $schedule_id ): int {
+        if ( ! function_exists( 'as_get_scheduled_actions' ) ) {
+            return 0;
+        }
+
+        $cancelled = 0;
+
+        try {
+            // Get all pending actions for this schedule
+            $actions = as_get_scheduled_actions( [
+                'hook' => self::SCAN_ACTION_HOOK,
+                'group' => self::ACTION_GROUP,
+                'status' => \ActionScheduler_Store::STATUS_PENDING,
+                'per_page' => -1,
+            ] );
+
+            $this->logger->info(
+                sprintf( 'Found %d pending actions to check for schedule #%d', count( $actions ), $schedule_id ),
+                LoggerService::CONTEXT_SCHEDULER,
+                [
+                    'schedule_id' => $schedule_id,
+                    'total_pending_actions' => count( $actions ),
+                ]
+            );
+
+            // Cancel actions that match this schedule_id
+            foreach ( $actions as $action_id => $action ) {
+                $args = $action->get_args();
+                // Args are wrapped in an array, so we need to check the first element
+                if ( is_array($args) && !empty($args) && isset( $args[0]['schedule_id'] ) && (int) $args[0]['schedule_id'] === $schedule_id ) {
+                    as_unschedule_action( self::SCAN_ACTION_HOOK, $args, self::ACTION_GROUP );
+                    $cancelled++;
+
+                    $this->logger->info(
+                        sprintf( 'Cancelled action #%d for schedule #%d', $action_id, $schedule_id ),
+                        LoggerService::CONTEXT_SCHEDULER,
+                        [
+                            'action_id' => $action_id,
+                            'schedule_id' => $schedule_id,
+                        ]
+                    );
+                }
+            }
+
+            if ( $cancelled > 0 ) {
+                $this->logger->info(
+                    sprintf( 'Cancelled %d Action Scheduler action(s) for schedule #%d', $cancelled, $schedule_id ),
+                    LoggerService::CONTEXT_SCHEDULER,
+                    [
+                        'schedule_id' => $schedule_id,
+                        'cancelled_count' => $cancelled,
+                    ]
+                );
+            } else {
+                $this->logger->info(
+                    sprintf( 'No actions to cancel for schedule #%d', $schedule_id ),
+                    LoggerService::CONTEXT_SCHEDULER,
+                    [ 'schedule_id' => $schedule_id ]
+                );
+            }
+        } catch ( \Exception $e ) {
+            $this->logger->error(
+                'Failed to cancel scheduled actions: ' . $e->getMessage(),
+                LoggerService::CONTEXT_SCHEDULER,
+                [
+                    'schedule_id' => $schedule_id,
+                    'exception' => $e->getMessage(),
+                ]
+            );
+        }
+
+        return $cancelled;
+    }
+
+    /**
      * Cancel a scheduled action
      *
+     * @deprecated Use cancelScheduleActions() instead
      * @param int $action_id Action Scheduler action ID
      * @return bool True on success, false on failure
      */

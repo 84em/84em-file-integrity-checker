@@ -101,21 +101,44 @@ class ScanSchedulesRepository {
 
         $table = $this->dbManager->getScanSchedulesTableName();
 
-        // Handle days_of_week array for weekly schedules
+        // Handle days_of_week array for weekly schedules (must be before cleanup)
         if ( isset( $data['days_of_week'] ) ) {
             if ( is_array( $data['days_of_week'] ) ) {
                 $data['day_of_week'] = json_encode( array_values( $data['days_of_week'] ) );
             } else {
                 $data['day_of_week'] = $data['days_of_week'];
             }
-            unset( $data['days_of_week'] );
+        }
+        // Always unset days_of_week as it's not a real database column
+        unset( $data['days_of_week'] );
+
+        // Clean up fields that don't apply to the new frequency
+        if ( isset( $data['frequency'] ) ) {
+            switch ( $data['frequency'] ) {
+                case 'hourly':
+                    // Hourly only uses minute field
+                    $data['time'] = null;
+                    $data['hour'] = null;
+                    $data['day_of_week'] = null;
+                    break;
+                case 'daily':
+                    // Daily only uses time field
+                    $data['minute'] = null;
+                    $data['day_of_week'] = null;
+                    break;
+                case 'weekly':
+                    // Weekly uses time and day_of_week
+                    $data['minute'] = null;
+                    $data['hour'] = null;
+                    break;
+            }
         }
 
         // Recalculate next run if schedule timing changed
-        if ( isset( $data['frequency'] ) || isset( $data['time'] ) || 
+        if ( isset( $data['frequency'] ) || isset( $data['time'] ) ||
              isset( $data['day_of_week'] ) || isset( $data['days_of_week'] ) ||
              isset( $data['hour'] ) || isset( $data['minute'] ) ) {
-            
+
             $existing = $this->get( $id );
             if ( $existing ) {
                 $merged = array_merge( (array) $existing, $data );
