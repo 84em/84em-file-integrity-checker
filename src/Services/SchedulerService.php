@@ -369,7 +369,7 @@ class SchedulerService {
             foreach ( $actions as $action_id => $action ) {
                 $args = $action->get_args();
                 // Args are wrapped in an array, so we need to check the first element
-                if ( isset( $args[0]['schedule_id'] ) && (int) $args[0]['schedule_id'] === $schedule_id ) {
+                if ( is_array($args) && !empty($args) && isset( $args[0]['schedule_id'] ) && (int) $args[0]['schedule_id'] === $schedule_id ) {
                     as_unschedule_action( self::SCAN_ACTION_HOOK, $args, self::ACTION_GROUP );
                     $cancelled++;
 
