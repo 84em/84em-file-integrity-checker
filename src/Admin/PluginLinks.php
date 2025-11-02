@@ -26,18 +26,31 @@ class PluginLinks {
      * @return array Modified plugin action links
      */
     public function addActionLinks( array $links ): array {
-        if ( ! current_user_can( 'manage_options' ) ) {
-            return $links;
+        $custom_links = [];
+
+        // Settings link (admin only)
+        if ( current_user_can( 'manage_options' ) ) {
+            $custom_links[] = sprintf(
+                '<a href="%s">%s</a>',
+                esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ),
+                esc_html__( 'Settings', '84em-file-integrity-checker' )
+            );
         }
 
-        $settings_link = sprintf(
-            '<a href="%s">%s</a>',
-            esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ),
-            esc_html__( 'Settings', '84em-file-integrity-checker' )
+        // Changelog link (all users)
+        $custom_links[] = sprintf(
+            '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+            esc_url( 'https://github.com/84emllc/84em-file-integrity-checker/blob/main/CHANGELOG.md' ),
+            esc_html__( 'Changelog', '84em-file-integrity-checker' )
         );
 
-        array_unshift( $links, $settings_link );
+        // View on GitHub link (all users)
+        $custom_links[] = sprintf(
+            '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+            esc_url( 'https://github.com/84emllc/84em-file-integrity-checker/' ),
+            esc_html__( 'View on GitHub', '84em-file-integrity-checker' )
+        );
 
-        return $links;
+        return array_merge( $custom_links, $links );
     }
 }
