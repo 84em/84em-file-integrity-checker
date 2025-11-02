@@ -574,9 +574,9 @@ class NotificationService {
                     'deleted' => 'red',
                     default => 'black'
                 };
-                
+
                 $message .= "<tr>";
-                $message .= "<td>" . esc_html( $file->file_path ) . "</td>";
+                $message .= "<td>" . esc_html( $this->getRelativePath( $file->file_path ) ) . "</td>";
                 $message .= "<td style='color: $status_color'>" . ucfirst( $file->status ) . "</td>";
                 $message .= "<td>" . size_format( $file->file_size ) . "</td>";
                 $message .= "</tr>";
@@ -644,7 +644,7 @@ class NotificationService {
         // Add file preview if available
         if ( ! empty( $formatted_data['changes']['preview'] ) ) {
             $file_text = "";
-            
+
             foreach ( $formatted_data['changes']['preview'] as $file ) {
                 $status_icon = match( $file->status ) {
                     'changed' => '📝',
@@ -652,7 +652,7 @@ class NotificationService {
                     'deleted' => '❌',
                     default => '•'
                 };
-                $file_text .= sprintf( "%s `%s`\n", $status_icon, basename( $file->file_path ) );
+                $file_text .= sprintf( "%s `%s`\n", $status_icon, $this->getRelativePath( $file->file_path ) );
             }
             
             if ( $formatted_data['changes']['has_more'] || 
@@ -731,8 +731,31 @@ class NotificationService {
             '%deleted_files%' => number_format( $data['statistics']['deleted_files'] ),
             '%scan_duration%' => $data['statistics']['scan_duration'],
         ];
-        
+
         return str_replace( array_keys( $replacements ), array_values( $replacements ), $template );
+    }
+
+    /**
+     * Convert absolute file path to relative path starting with wp-content/
+     *
+     * @param string $absolute_path Absolute file path
+     * @return string Relative path starting with wp-content/
+     */
+    private function getRelativePath( string $absolute_path ): string {
+        $wp_content_dir = WP_CONTENT_DIR;
+
+        // If path starts with WP_CONTENT_DIR, make it relative
+        if ( strpos( $absolute_path, $wp_content_dir ) === 0 ) {
+            return 'wp-content' . substr( $absolute_path, strlen( $wp_content_dir ) );
+        }
+
+        // If path contains wp-content/, extract from that point
+        if ( strpos( $absolute_path, '/wp-content/' ) !== false ) {
+            return substr( $absolute_path, strpos( $absolute_path, '/wp-content/' ) + 1 );
+        }
+
+        // Fallback: return the basename if we can't determine the relative path
+        return basename( $absolute_path );
     }
 
     /**
