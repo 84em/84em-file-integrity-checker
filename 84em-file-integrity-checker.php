@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: 84EM File Integrity Checker
- * Plugin URI: https://github.com/84em/84em-file-integrity-checker
+ * Plugin URI: https://github.com/84emllc/84em-file-integrity-checker
  * Description: Scans WordPress installation to generate and track file checksums, detecting file changes with Action Scheduler support.
  * Version: 2.2.1
  * Author: 84EM
