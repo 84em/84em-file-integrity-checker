@@ -16,6 +16,8 @@ use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 use EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository;
 use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
 use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
+use EightyFourEM\FileIntegrityChecker\Database\PriorityRulesRepository;
+use EightyFourEM\FileIntegrityChecker\Database\VelocityLogRepository;
 use EightyFourEM\FileIntegrityChecker\Scanner\FileScanner;
 use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
@@ -25,6 +27,7 @@ use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 use EightyFourEM\FileIntegrityChecker\Services\ScheduledCacheCleanup;
 use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Services\EncryptionService;
+use EightyFourEM\FileIntegrityChecker\Services\PriorityMatchingService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\Admin\PluginLinks;
@@ -164,6 +167,14 @@ class Plugin {
             return new LogRepository();
         } );
 
+        $this->container->register( PriorityRulesRepository::class, function () {
+            return new PriorityRulesRepository();
+        } );
+
+        $this->container->register( VelocityLogRepository::class, function () {
+            return new VelocityLogRepository();
+        } );
+
         // Security services
         $this->container->register( FileAccessSecurity::class, function () {
             return new FileAccessSecurity();
@@ -180,13 +191,22 @@ class Plugin {
             return new DiffGenerator();
         } );
 
+        $this->container->register( PriorityMatchingService::class, function ( $container ) {
+            return new PriorityMatchingService(
+                $container->get( PriorityRulesRepository::class ),
+                $container->get( VelocityLogRepository::class ),
+                $container->get( LoggerService::class )
+            );
+        } );
+
         $this->container->register( FileScanner::class, function ( $container ) {
             return new FileScanner(
                 $container->get( ChecksumGenerator::class ),
                 $container->get( SettingsService::class ),
                 $container->get( FileAccessSecurity::class ),
                 $container->get( ChecksumCacheRepository::class ),
-                $container->get( DiffGenerator::class )
+                $container->get( DiffGenerator::class ),
+                $container->get( PriorityMatchingService::class )
             );
         } );
 
