@@ -17,6 +17,11 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
     define( 'HOUR_IN_SECONDS', 3600 );
 }
 
+// Define WordPress database output constants
+if ( ! defined( 'ARRAY_A' ) ) {
+    define( 'ARRAY_A', 'ARRAY_A' );
+}
+
 // Load Composer autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -167,6 +172,12 @@ if ( ! function_exists( 'mysql2date' ) ) {
     }
 }
 
+if ( ! function_exists( 'absint' ) ) {
+    function absint( $maybeint ) {
+        return abs( (int) $maybeint );
+    }
+}
+
 // Create mock $wpdb object for tests
 if ( ! class_exists( 'wpdb' ) ) {
     class wpdb {
@@ -179,6 +190,10 @@ if ( ! class_exists( 'wpdb' ) ) {
 
         public function get_row( $query ) {
             return null; // Return null for simplicity
+        }
+
+        public function get_results( $query ) {
+            return []; // Return empty array for simplicity
         }
 
         public function insert( $table, $data, $format = null ) {
