@@ -3,7 +3,24 @@
 All notable changes to the 84EM File Integrity Checker plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.html).
+
+## [Unreleased]
+### Added
+- **Priority Monitoring Database Infrastructure** (PR#1: Database Schema + Repository Layer)
+  - Created PriorityMonitoringMigration for database schema (version 1.0.0)
+  - Added `eightyfourem_integrity_priority_rules` table for priority monitoring rules
+  - Added `eightyfourem_integrity_velocity_log` table for change velocity tracking
+  - Modified `eightyfourem_integrity_file_records` table to include priority_level column
+  - Modified `eightyfourem_integrity_scan_results` table to include priority statistics
+  - Implemented PriorityRulesRepository with full CRUD operations
+  - Implemented VelocityLogRepository for change tracking and velocity detection
+  - Added support for 6 pattern matching types: exact, prefix, suffix, contains, glob, regex
+  - Added maintenance window functionality for suppressing alerts
+  - Added notification throttling capabilities
+  - Added WordPress version-specific rule support
+  - Integrated migration into DatabaseManager for automatic execution
+  - Created comprehensive PHPUnit test suite (38 tests, 99 assertions)
 
 ## [2.2.2] - 2025-11-02
 ### Added
