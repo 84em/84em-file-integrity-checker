@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
   - Integrated migration into DatabaseManager for automatic execution
   - Created comprehensive PHPUnit test suite (38 tests, 99 assertions)
 
+- **Priority Monitoring Service Layer** (PR#2: Service Layer + Scanning Integration)
+  - Implemented PriorityMatchingService for rule evaluation and processing
+  - Integrated priority detection into FileScanner during scan comparisons
+  - Added priority level assignment to all scanned files (changed, new, unchanged)
+  - Implemented priority statistics calculation in IntegrityService
+  - Added priority stats to scan results (critical_files_changed, high_priority_files_changed)
+  - Registered PriorityMatchingService in dependency injection container
+  - Integrated service with FileScanner via optional constructor parameter
+  - Added priority level tracking to file records
+  - Created comprehensive test suite for PriorityMatchingService (11 tests, 43 assertions)
+  - Total test coverage: 49 tests, 142 assertions across priority monitoring system
+
 ## [2.2.2] - 2025-11-02
 ### Added
 - Changelog and View on GitHub action links to plugin list page for quick access to project information
