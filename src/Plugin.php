@@ -31,7 +31,9 @@ use EightyFourEM\FileIntegrityChecker\Services\PriorityMatchingService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\Admin\PluginLinks;
+use EightyFourEM\FileIntegrityChecker\Admin\PriorityRulesPage;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
+use EightyFourEM\FileIntegrityChecker\CLI\PriorityRulesCommand;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 
@@ -113,12 +115,18 @@ class Plugin {
 
             $pluginLinks = $this->container->get( PluginLinks::class );
             $pluginLinks->init();
+
+            $priorityRulesPage = $this->container->get( PriorityRulesPage::class );
+            $priorityRulesPage->init();
         }
 
         // Register WP-CLI commands if available
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             $integrityCommand = $this->container->get( IntegrityCommand::class );
             \WP_CLI::add_command( '84em integrity', $integrityCommand );
+
+            $priorityRulesCommand = $this->container->get( PriorityRulesCommand::class );
+            \WP_CLI::add_command( '84em priority-rules', $priorityRulesCommand );
         }
     }
 
@@ -295,6 +303,13 @@ class Plugin {
             return new PluginLinks();
         } );
 
+        $this->container->register( PriorityRulesPage::class, function ( $container ) {
+            return new PriorityRulesPage(
+                $container->get( PriorityRulesRepository::class ),
+                $container->get( LoggerService::class )
+            );
+        } );
+
         // CLI services
         $this->container->register( IntegrityCommand::class, function ( $container ) {
             return new IntegrityCommand(
@@ -302,6 +317,13 @@ class Plugin {
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
                 $container->get( ScanResultsRepository::class )
+            );
+        } );
+
+        $this->container->register( PriorityRulesCommand::class, function ( $container ) {
+            return new PriorityRulesCommand(
+                $container->get( PriorityRulesRepository::class ),
+                $container->get( VelocityLogRepository::class )
             );
         } );
     }
