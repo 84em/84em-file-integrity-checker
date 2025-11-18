@@ -6,7 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.html).
 
 ## [Unreleased]
+
+## [2.3.0] - 2025-11-18
 ### Added
+- **Tiered Retention Policies for Database Size Optimization**
+  - Three-tier retention system: Tier 1 (baseline forever), Tier 2 (30 days full detail), Tier 3 (90 days summary)
+  - Added `is_baseline` column to scan_results table for permanent baseline preservation
+  - Baseline management through admin UI with "Mark as Baseline" button on scan details page
+  - WP-CLI commands for baseline management: `wp 84em integrity baseline mark/show/clear`
+  - Configurable retention settings in admin settings page
+  - Automated cleanup via Action Scheduler respecting tiered retention
+  - Smart cleanup preserves critical priority files indefinitely
+  - Expected database size reduction: 20-40%
+  - Diff content removal for scans older than 30 days while preserving metadata
+  - Tiered log cleanup: all logs for 30 days, warning/error only for 90 days
+
 - **Priority Monitoring Database Infrastructure** (PR#1: Database Schema + Repository Layer)
   - Created PriorityMonitoringMigration for database schema (version 1.0.0)
   - Added `eightyfourem_integrity_priority_rules` table for priority monitoring rules
