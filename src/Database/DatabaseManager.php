@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Database;
 
 use EightyFourEM\FileIntegrityChecker\Database\Migrations\PriorityMonitoringMigration;
+use EightyFourEM\FileIntegrityChecker\Database\Migrations\TieredRetentionMigration;
 
 /**
  * Manages database schema creation and updates
@@ -168,6 +169,12 @@ class DatabaseManager {
         // Run priority monitoring migration if not already applied
         if ( ! PriorityMonitoringMigration::isApplied() ) {
             $migration = new PriorityMonitoringMigration();
+            $migration->up();
+        }
+
+        // Run tiered retention migration if not already applied
+        if ( ! TieredRetentionMigration::isApplied() ) {
+            $migration = new TieredRetentionMigration();
             $migration->up();
         }
     }

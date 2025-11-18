@@ -276,7 +276,10 @@ class Plugin {
         $this->container->register( ScheduledCacheCleanup::class, function ( $container ) {
             return new ScheduledCacheCleanup(
                 $container->get( ChecksumCacheRepository::class ),
-                $container->get( LoggerService::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( LogRepository::class ),
+                $container->get( LoggerService::class ),
+                $container->get( SettingsService::class )
             );
         } );
 

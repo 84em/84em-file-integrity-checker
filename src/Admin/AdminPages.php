@@ -105,6 +105,7 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_bulk_delete_scans', [ $this, 'ajaxBulkDeleteScans' ] );
         add_action( 'wp_ajax_file_integrity_resend_email', [ $this, 'ajaxResendEmailNotification' ] );
         add_action( 'wp_ajax_file_integrity_resend_slack', [ $this, 'ajaxResendSlackNotification' ] );
+        add_action( 'wp_ajax_file_integrity_mark_baseline', [ $this, 'ajaxMarkBaseline' ] );
     }
 
     /**
@@ -484,6 +485,17 @@ class AdminPages {
         if ( isset( $_POST['retention_period'] ) ) {
             $settings['retention_period'] = (int) $_POST['retention_period'];
         }
+
+        // Tiered retention settings
+        if ( isset( $_POST['retention_tier2_days'] ) ) {
+            $settings['retention_tier2_days'] = (int) $_POST['retention_tier2_days'];
+        }
+
+        if ( isset( $_POST['retention_tier3_days'] ) ) {
+            $settings['retention_tier3_days'] = (int) $_POST['retention_tier3_days'];
+        }
+
+        $settings['retention_keep_baseline'] = isset( $_POST['retention_keep_baseline'] );
 
         // Content retention limit
         if ( isset( $_POST['content_retention_limit'] ) ) {
@@ -1075,6 +1087,52 @@ class AdminPages {
                 ? $result['channels']['slack']['error']
                 : ( $result['error'] ?? 'Failed to send Slack notification' );
             wp_send_json_error( $error_msg );
+        }
+    }
+
+    /**
+     * AJAX handler to mark a scan as baseline
+     */
+    public function ajaxMarkBaseline(): void {
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_mark_baseline', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
+
+        // Check permissions
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( 'Insufficient permissions' );
+        }
+
+        $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
+
+        if ( $scan_id === false ) {
+            wp_send_json_error( 'Invalid scan ID' );
+        }
+
+        // Get scan to validate it exists
+        $scan = $this->scanResultsRepository->getById( $scan_id );
+        if ( ! $scan ) {
+            wp_send_json_error( 'Scan not found' );
+        }
+
+        // Mark as baseline
+        $result = $this->scanResultsRepository->markAsBaseline( $scan_id );
+
+        if ( $result ) {
+            // Log the action
+            $this->logger->info(
+                sprintf( 'Scan #%d marked as baseline by user', $scan_id ),
+                'baseline',
+                [ 'scan_id' => $scan_id ]
+            );
+
+            wp_send_json_success( [
+                'message' => 'Scan marked as baseline successfully',
+                'scan_id' => $scan_id,
+            ] );
+        } else {
+            wp_send_json_error( 'Failed to mark scan as baseline' );
         }
     }
 

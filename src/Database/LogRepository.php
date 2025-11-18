@@ -257,7 +257,7 @@ class LogRepository {
     public function deleteOld( int $days_old = 30 ): int {
         global $wpdb;
 
-        $cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
 
         $result = $wpdb->delete(
             $wpdb->prefix . self::TABLE_NAME,
@@ -272,6 +272,53 @@ class LogRepository {
         );
 
         return $wpdb->query( $query );
+    }
+
+    /**
+     * Delete old logs using tiered retention policy
+     * Tier 2: Keep all logs for tier2_days (30 days default)
+     * Tier 3: Keep only warning/error logs for tier3_days (90 days default)
+     * After tier3_days: Delete all logs
+     *
+     * @param int $tier2_days Days to keep all logs (default 30)
+     * @param int $tier3_days Days to keep warning/error logs (default 90)
+     * @return array Statistics about deleted logs
+     */
+    public function deleteOldWithTiers( int $tier2_days = 30, int $tier3_days = 90 ): array {
+        global $wpdb;
+
+        $stats = [
+            'tier2_deleted' => 0,
+            'tier3_deleted' => 0,
+            'total_deleted' => 0,
+        ];
+
+        $tier2_cutoff = gmdate( 'Y-m-d H:i:s', strtotime( "-{$tier2_days} days" ) );
+        $tier3_cutoff = gmdate( 'Y-m-d H:i:s', strtotime( "-{$tier3_days} days" ) );
+
+        // Tier 2: Delete info/debug logs older than tier2_days but keep warning/error
+        $tier2_sql = $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}" . self::TABLE_NAME .
+            " WHERE created_at < %s
+            AND created_at >= %s
+            AND log_level NOT IN ('warning', 'error')",
+            $tier2_cutoff,
+            $tier3_cutoff
+        );
+
+        $stats['tier2_deleted'] = $wpdb->query( $tier2_sql );
+
+        // Tier 3: Delete all logs older than tier3_days
+        $tier3_sql = $wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}" . self::TABLE_NAME .
+            " WHERE created_at < %s",
+            $tier3_cutoff
+        );
+
+        $stats['tier3_deleted'] = $wpdb->query( $tier3_sql );
+        $stats['total_deleted'] = $stats['tier2_deleted'] + $stats['tier3_deleted'];
+
+        return $stats;
     }
 
     /**

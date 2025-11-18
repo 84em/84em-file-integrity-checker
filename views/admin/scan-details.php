@@ -38,9 +38,21 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
 <div class="wrap">
     <h1>
         Scan Details #<?php echo esc_html( $scan_summary['scan_id'] ); ?>
+        <?php if ( ! empty( $scan_summary['is_baseline'] ) ): ?>
+            <span class="status-badge status-success" title="This is a baseline scan and will be kept indefinitely">Baseline</span>
+        <?php endif; ?>
         <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results' ) ); ?>" class="page-title-action">
             &larr; Back to Results
         </a>
+        <?php if ( empty( $scan_summary['is_baseline'] ) ): ?>
+            <button type="button"
+                    class="page-title-action"
+                    id="mark-baseline-btn"
+                    data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
+                    data-nonce="<?php echo esc_attr( wp_create_nonce( 'ajax_mark_baseline' ) ); ?>">
+                Mark as Baseline
+            </button>
+        <?php endif; ?>
     </h1>
 
     <!-- Scan Summary -->

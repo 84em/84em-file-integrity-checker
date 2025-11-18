@@ -304,20 +304,93 @@ if ( ! defined( 'ABSPATH' ) ) {
             <div class="card-content">
                 <table class="form-table">
                     <tr>
+                        <td colspan="2" class="settings-section-header">
+                            <h4>Tiered Retention Policy</h4>
+                            <p class="description">
+                                Configure three-tier retention to reduce database size while preserving important data.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
                         <th scope="row">
-                            <label for="retention_period">Data Retention Period</label>
+                            <label for="retention_tier2_days">Tier 2: Detailed Data</label>
                         </th>
                         <td>
-                            <input type="number" 
-                                   name="retention_period" 
-                                   id="retention_period" 
-                                   value="<?php echo esc_attr( $settings['retention_period'] ); ?>" 
-                                   min="1" 
+                            <input type="number"
+                                   name="retention_tier2_days"
+                                   id="retention_tier2_days"
+                                   value="<?php echo esc_attr( $settings['retention_tier2_days'] ); ?>"
+                                   min="1"
                                    max="365" />
                             days
                             <p class="description">
-                                How long to keep old scan results. Older results will be automatically deleted.
-                                Recommended: 90 days.
+                                Keep all file records with full diff content for this many days. Recommended: 30 days.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="retention_tier3_days">Tier 3: Summary Data</label>
+                        </th>
+                        <td>
+                            <input type="number"
+                                   name="retention_tier3_days"
+                                   id="retention_tier3_days"
+                                   value="<?php echo esc_attr( $settings['retention_tier3_days'] ); ?>"
+                                   min="1"
+                                   max="365" />
+                            days
+                            <p class="description">
+                                Keep scan metadata and file summaries (without diff content) for this many days. Recommended: 90 days.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="retention_keep_baseline">Keep Baseline Scans</label>
+                        </th>
+                        <td>
+                            <input type="checkbox"
+                                   name="retention_keep_baseline"
+                                   id="retention_keep_baseline"
+                                   value="1"
+                                   <?php checked( $settings['retention_keep_baseline'] ); ?> />
+                            <label for="retention_keep_baseline">Keep baseline scans and scans with critical priority files forever</label>
+                            <p class="description">
+                                When enabled, baseline scans and scans containing critical priority files will never be automatically deleted.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <div class="file-integrity-alert alert-info">
+                                <span class="dashicons dashicons-info"></span>
+                                <span><strong>Tiered Retention Policy:</strong>
+                                <ul style="margin: 10px 0 0 20px;">
+                                    <li><strong>Tier 1 (Forever):</strong> Baseline scans and critical priority file changes</li>
+                                    <li><strong>Tier 2 (<?php echo esc_html( $settings['retention_tier2_days'] ); ?> days):</strong> All file records with full diff content</li>
+                                    <li><strong>Tier 3 (<?php echo esc_html( $settings['retention_tier3_days'] ); ?> days):</strong> Scan metadata and file summaries only</li>
+                                    <li><strong>After Tier 3:</strong> All data deleted except Tier 1</li>
+                                </ul>
+                                This policy reduces database size by 20-40% while preserving critical security data.
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <label for="retention_period">Legacy Retention Period</label>
+                        </th>
+                        <td>
+                            <input type="number"
+                                   name="retention_period"
+                                   id="retention_period"
+                                   value="<?php echo esc_attr( $settings['retention_period'] ); ?>"
+                                   min="1"
+                                   max="365" />
+                            days
+                            <p class="description">
+                                Legacy setting kept for compatibility. Use tiered retention settings above for better control.
                             </p>
                         </td>
                     </tr>

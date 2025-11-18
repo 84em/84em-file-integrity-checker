@@ -293,6 +293,7 @@ class IntegrityService {
             'deleted_files' => $file_stats['deleted_files'],
             'total_size' => $file_stats['total_size'],
             'notes' => $scan_result->notes,
+            'is_baseline' => isset( $scan_result->is_baseline ) ? (bool) $scan_result->is_baseline : false,
         ];
     }
 

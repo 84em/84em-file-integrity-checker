@@ -257,4 +257,182 @@ class ScanResultsRepository {
 
         return $result !== false;
     }
+
+    /**
+     * Mark a scan as baseline
+     *
+     * @param int $scan_id Scan result ID
+     * @return bool True on success, false on failure
+     */
+    public function markAsBaseline( int $scan_id ): bool {
+        global $wpdb;
+
+        // First, unmark any existing baseline scans
+        $wpdb->update(
+            $wpdb->prefix . self::TABLE_NAME,
+            [ 'is_baseline' => 0 ],
+            [ 'is_baseline' => 1 ],
+            [ '%d' ],
+            [ '%d' ]
+        );
+
+        // Then mark the new baseline
+        $result = $wpdb->update(
+            $wpdb->prefix . self::TABLE_NAME,
+            [ 'is_baseline' => 1 ],
+            [ 'id' => $scan_id ],
+            [ '%d' ],
+            [ '%d' ]
+        );
+
+        return $result !== false;
+    }
+
+    /**
+     * Get the current baseline scan ID
+     *
+     * @return int|null Baseline scan ID or null if none set
+     */
+    public function getBaselineScanId(): ?int {
+        global $wpdb;
+
+        $baseline_id = $wpdb->get_var(
+            "SELECT id FROM {$wpdb->prefix}" . self::TABLE_NAME .
+            " WHERE is_baseline = 1 LIMIT 1"
+        );
+
+        return $baseline_id ? (int) $baseline_id : null;
+    }
+
+    /**
+     * Get the baseline scan record
+     *
+     * @return object|null Baseline scan record or null if none set
+     */
+    public function getBaselineScan(): ?object {
+        global $wpdb;
+
+        $result = $wpdb->get_row(
+            "SELECT * FROM {$wpdb->prefix}" . self::TABLE_NAME .
+            " WHERE is_baseline = 1 LIMIT 1"
+        );
+
+        return $result ?: null;
+    }
+
+    /**
+     * Check if a scan is marked as baseline
+     *
+     * @param int $scan_id Scan result ID
+     * @return bool True if baseline, false otherwise
+     */
+    public function isBaseline( int $scan_id ): bool {
+        global $wpdb;
+
+        $is_baseline = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT is_baseline FROM {$wpdb->prefix}" . self::TABLE_NAME . " WHERE id = %d",
+                $scan_id
+            )
+        );
+
+        return (bool) $is_baseline;
+    }
+
+    /**
+     * Get scans with critical priority files
+     *
+     * @return array Array of scan IDs that contain critical priority files
+     */
+    public function getScansWithCriticalFiles(): array {
+        global $wpdb;
+
+        $file_records_table = $wpdb->prefix . 'eightyfourem_integrity_file_records';
+
+        $scan_ids = $wpdb->get_col(
+            "SELECT DISTINCT fr.scan_result_id
+            FROM {$file_records_table} fr
+            WHERE fr.priority_level = 'critical'"
+        );
+
+        return array_map( 'intval', $scan_ids );
+    }
+
+    /**
+     * Delete old scans using tiered retention policy
+     *
+     * @param int  $tier2_days Days to keep detailed data (default 30)
+     * @param int  $tier3_days Days to keep summary data (default 90)
+     * @param bool $keep_baseline Whether to keep baseline scans (default true)
+     * @return array Statistics about deleted scans
+     */
+    public function deleteOldScansWithTiers( int $tier2_days = 30, int $tier3_days = 90, bool $keep_baseline = true ): array {
+        global $wpdb;
+
+        $file_records_table = $wpdb->prefix . 'eightyfourem_integrity_file_records';
+        $stats = [
+            'tier2_removed' => 0,
+            'tier3_diff_removed' => 0,
+            'scans_deleted' => 0,
+        ];
+
+        // Get IDs to protect (baseline and critical)
+        $protected_ids = [];
+
+        if ( $keep_baseline ) {
+            $baseline_id = $this->getBaselineScanId();
+            if ( $baseline_id ) {
+                $protected_ids[] = $baseline_id;
+            }
+        }
+
+        // Get scans with critical files
+        $critical_scan_ids = $this->getScansWithCriticalFiles();
+        $protected_ids = array_merge( $protected_ids, $critical_scan_ids );
+        $protected_ids = array_unique( $protected_ids );
+
+        // Tier 2: Remove full file records for scans older than tier2_days but keep scan metadata
+        // This happens for scans between tier2_days and tier3_days old
+        $tier2_cutoff = gmdate( 'Y-m-d H:i:s', strtotime( "-{$tier2_days} days" ) );
+        $tier3_cutoff = gmdate( 'Y-m-d H:i:s', strtotime( "-{$tier3_days} days" ) );
+
+        // Build exclusion clause for protected scans
+        $exclusion_clause = '';
+        if ( ! empty( $protected_ids ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $protected_ids ), '%d' ) );
+            $exclusion_clause = $wpdb->prepare( " AND sr.id NOT IN ({$placeholders})", $protected_ids );
+        }
+
+        // Tier 3: Remove diff_content from file records for scans between tier2 and tier3
+        $sql = "UPDATE {$file_records_table} fr
+                JOIN {$wpdb->prefix}" . self::TABLE_NAME . " sr ON fr.scan_result_id = sr.id
+                SET fr.diff_content = NULL
+                WHERE sr.scan_date < %s
+                AND sr.scan_date >= %s
+                AND fr.diff_content IS NOT NULL
+                {$exclusion_clause}";
+
+        $params = [ $tier2_cutoff, $tier3_cutoff ];
+        if ( ! empty( $protected_ids ) ) {
+            $params = array_merge( $params, $protected_ids );
+        }
+
+        $stats['tier3_diff_removed'] = $wpdb->query( $wpdb->prepare( $sql, $params ) );
+
+        // Delete scans older than tier3_days (except protected ones)
+        $delete_sql = "DELETE sr, fr
+                      FROM {$wpdb->prefix}" . self::TABLE_NAME . " sr
+                      LEFT JOIN {$file_records_table} fr ON sr.id = fr.scan_result_id
+                      WHERE sr.scan_date < %s
+                      {$exclusion_clause}";
+
+        $delete_params = [ $tier3_cutoff ];
+        if ( ! empty( $protected_ids ) ) {
+            $delete_params = array_merge( $delete_params, $protected_ids );
+        }
+
+        $stats['scans_deleted'] = $wpdb->query( $wpdb->prepare( $delete_sql, $delete_params ) );
+
+        return $stats;
+    }
 }
