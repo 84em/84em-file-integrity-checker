@@ -3,7 +3,76 @@
 All notable changes to the 84EM File Integrity Checker plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.html).
+
+## [Unreleased]
+
+## [2.3.0] - 2025-11-18
+### Added
+- **Tiered Retention Policies for Database Size Optimization**
+  - Three-tier retention system: Tier 1 (baseline forever), Tier 2 (30 days full detail), Tier 3 (90 days summary)
+  - Added `is_baseline` column to scan_results table for permanent baseline preservation
+  - Baseline management through admin UI with "Mark as Baseline" button on scan details page
+  - WP-CLI commands for baseline management: `wp 84em integrity baseline mark/show/clear`
+  - Configurable retention settings in admin settings page
+  - Automated cleanup via Action Scheduler respecting tiered retention
+  - Smart cleanup preserves critical priority files indefinitely
+  - Expected database size reduction: 20-40%
+  - Diff content removal for scans older than 30 days while preserving metadata
+  - Tiered log cleanup: all logs for 30 days, warning/error only for 90 days
+
+- **Priority Monitoring Database Infrastructure** (PR#1: Database Schema + Repository Layer)
+  - Created PriorityMonitoringMigration for database schema (version 1.0.0)
+  - Added `eightyfourem_integrity_priority_rules` table for priority monitoring rules
+  - Added `eightyfourem_integrity_velocity_log` table for change velocity tracking
+  - Modified `eightyfourem_integrity_file_records` table to include priority_level column
+  - Modified `eightyfourem_integrity_scan_results` table to include priority statistics
+  - Implemented PriorityRulesRepository with full CRUD operations
+  - Implemented VelocityLogRepository for change tracking and velocity detection
+  - Added support for 6 pattern matching types: exact, prefix, suffix, contains, glob, regex
+  - Added maintenance window functionality for suppressing alerts
+  - Added notification throttling capabilities
+  - Added WordPress version-specific rule support
+  - Integrated migration into DatabaseManager for automatic execution
+  - Created comprehensive PHPUnit test suite (38 tests, 99 assertions)
+
+- **Priority Monitoring Service Layer** (PR#2: Service Layer + Scanning Integration)
+  - Implemented PriorityMatchingService for rule evaluation and processing
+  - Integrated priority detection into FileScanner during scan comparisons
+  - Added priority level assignment to all scanned files (changed, new, unchanged)
+  - Implemented priority statistics calculation in IntegrityService
+  - Added priority stats to scan results (critical_files_changed, high_priority_files_changed)
+  - Registered PriorityMatchingService in dependency injection container
+  - Integrated service with FileScanner via optional constructor parameter
+  - Added priority level tracking to file records
+  - Created comprehensive test suite for PriorityMatchingService (11 tests, 43 assertions)
+  - Total test coverage: 49 tests, 142 assertions across priority monitoring system
+
+- **Priority Monitoring UI & Management** (PR#3: Admin Interface)
+  - Created Priority Rules admin page with full CRUD interface
+  - Rule list table with filtering and visual priority indicators
+  - Add/Edit forms with all rule configuration options
+  - Support for 6 match types: exact, prefix, suffix, contains, glob, regex
+  - Visual priority badges (critical=red, high=orange, normal=green)
+  - Immediate notification toggle per rule
+  - Velocity threshold configuration UI
+  - Execution order management
+  - Active/inactive status toggles
+  - Default rules installation system (7 recommended rules)
+  - Registered in WordPress admin menu under File Integrity main menu
+  - Proper nonce security and capability checks
+
+- **WP-CLI Commands** (PR#4: Command Line Interface)
+  - Implemented comprehensive WP-CLI commands for priority rules management
+  - `wp 84em priority-rules list` - List all rules with filtering
+  - `wp 84em priority-rules add` - Create new priority rules
+  - `wp 84em priority-rules delete` - Remove rules with confirmation
+  - `wp 84em priority-rules stats` - View velocity statistics for rules
+  - `wp 84em priority-rules alerts` - Check velocity threshold violations
+  - `wp 84em priority-rules toggle` - Activate/deactivate rules
+  - Support for multiple output formats (table, json, csv, yaml)
+  - Comprehensive help documentation for all commands
+  - Automation-friendly for CI/CD pipelines and cron jobs
 
 ## [2.2.2] - 2025-11-02
 ### Added

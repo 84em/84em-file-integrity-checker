@@ -164,8 +164,11 @@ class IntegrityService {
             $scan_duration = time() - $start_time;
             $memory_usage = memory_get_peak_usage() - $start_memory;
 
+            // Calculate priority statistics
+            $priority_stats = $this->calculatePriorityStatistics( $compared_files );
+
             // Update scan result with final data
-            $update_success = $this->scanResultsRepository->update( $scan_id, [
+            $update_data = [
                 'status' => 'completed',
                 'total_files' => $stats['total_files'],
                 'changed_files' => $stats['changed_files'],
@@ -174,7 +177,16 @@ class IntegrityService {
                 'scan_duration' => $scan_duration,
                 'memory_usage' => $memory_usage,
                 'notes' => "Scan completed successfully at " . current_time( 'mysql' ),
-            ] );
+            ];
+
+            // Add priority statistics if available
+            if ( ! empty( $priority_stats ) ) {
+                $update_data['priority_stats'] = wp_json_encode( $priority_stats );
+                $update_data['critical_files_changed'] = $priority_stats['critical_changed'] ?? 0;
+                $update_data['high_priority_files_changed'] = $priority_stats['high_changed'] ?? 0;
+            }
+
+            $update_success = $this->scanResultsRepository->update( $scan_id, $update_data );
 
             if ( ! $update_success ) {
                 $this->logger->error( 
@@ -281,6 +293,7 @@ class IntegrityService {
             'deleted_files' => $file_stats['deleted_files'],
             'total_size' => $file_stats['total_size'],
             'notes' => $scan_result->notes,
+            'is_baseline' => isset( $scan_result->is_baseline ) ? (bool) $scan_result->is_baseline : false,
         ];
     }
 
@@ -352,5 +365,66 @@ class IntegrityService {
         }
 
         return true;
+    }
+
+    /**
+     * Calculate priority statistics for files
+     *
+     * @param array $files Array of file data
+     * @return array Priority statistics
+     */
+    private function calculatePriorityStatistics( array $files ): array {
+        $stats = [
+            'critical_total'   => 0,
+            'critical_changed' => 0,
+            'critical_new'     => 0,
+            'high_total'       => 0,
+            'high_changed'     => 0,
+            'high_new'         => 0,
+            'normal_total'     => 0,
+            'normal_changed'   => 0,
+            'normal_new'       => 0,
+        ];
+
+        foreach ( $files as $file ) {
+            $priority = $file['priority_level'] ?? null;
+            $status = $file['status'] ?? 'unchanged';
+
+            if ( ! $priority ) {
+                continue;
+            }
+
+            // Count totals by priority
+            switch ( $priority ) {
+                case 'critical':
+                    $stats['critical_total']++;
+                    if ( $status === 'changed' ) {
+                        $stats['critical_changed']++;
+                    } elseif ( $status === 'new' ) {
+                        $stats['critical_new']++;
+                    }
+                    break;
+
+                case 'high':
+                    $stats['high_total']++;
+                    if ( $status === 'changed' ) {
+                        $stats['high_changed']++;
+                    } elseif ( $status === 'new' ) {
+                        $stats['high_new']++;
+                    }
+                    break;
+
+                case 'normal':
+                    $stats['normal_total']++;
+                    if ( $status === 'changed' ) {
+                        $stats['normal_changed']++;
+                    } elseif ( $status === 'new' ) {
+                        $stats['normal_new']++;
+                    }
+                    break;
+            }
+        }
+
+        return $stats;
     }
 }

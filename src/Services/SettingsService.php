@@ -323,6 +323,74 @@ class SettingsService {
     }
 
     /**
+     * Get Tier 2 retention period (detailed data)
+     *
+     * @return int Number of days to keep detailed data (default 30)
+     */
+    public function getRetentionTier2Days(): int {
+        return (int) get_option( self::OPTION_PREFIX . 'retention_tier2_days', 30 );
+    }
+
+    /**
+     * Set Tier 2 retention period
+     *
+     * @param int $days Number of days to keep detailed data
+     * @return bool True on success, false on failure
+     */
+    public function setRetentionTier2Days( int $days ): bool {
+        if ( $days < 1 || $days > 365 ) {
+            return false;
+        }
+
+        update_option( self::OPTION_PREFIX . 'retention_tier2_days', $days );
+        return true;
+    }
+
+    /**
+     * Get Tier 3 retention period (summary only)
+     *
+     * @return int Number of days to keep summary data (default 90)
+     */
+    public function getRetentionTier3Days(): int {
+        return (int) get_option( self::OPTION_PREFIX . 'retention_tier3_days', 90 );
+    }
+
+    /**
+     * Set Tier 3 retention period
+     *
+     * @param int $days Number of days to keep summary data
+     * @return bool True on success, false on failure
+     */
+    public function setRetentionTier3Days( int $days ): bool {
+        if ( $days < 1 || $days > 365 ) {
+            return false;
+        }
+
+        update_option( self::OPTION_PREFIX . 'retention_tier3_days', $days );
+        return true;
+    }
+
+    /**
+     * Check if baseline scans should be kept forever
+     *
+     * @return bool True if baseline scans should be kept forever
+     */
+    public function shouldKeepBaseline(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'retention_keep_baseline', true );
+    }
+
+    /**
+     * Set whether to keep baseline scans forever
+     *
+     * @param bool $keep Whether to keep baseline scans
+     * @return bool True on success
+     */
+    public function setKeepBaseline( bool $keep ): bool {
+        update_option( self::OPTION_PREFIX . 'retention_keep_baseline', $keep );
+        return true;
+    }
+
+    /**
      * Check if data should be deleted on uninstall
      *
      * @return bool True if data should be deleted, false otherwise
@@ -538,6 +606,9 @@ class SettingsService {
             'slack_header' => $this->getSlackNotificationHeader(),
             'slack_message_template' => $this->getSlackMessageTemplate(),
             'retention_period' => $this->getRetentionPeriod(),
+            'retention_tier2_days' => $this->getRetentionTier2Days(),
+            'retention_tier3_days' => $this->getRetentionTier3Days(),
+            'retention_keep_baseline' => $this->shouldKeepBaseline(),
             'content_retention_limit' => $this->getContentRetentionLimit(),
             'log_levels' => $this->getEnabledLogLevels(),
             'log_retention_days' => $this->getLogRetentionDays(),
@@ -597,6 +668,15 @@ class SettingsService {
                 case 'retention_period':
                     $results[ $key ] = $this->setRetentionPeriod( $value );
                     break;
+                case 'retention_tier2_days':
+                    $results[ $key ] = $this->setRetentionTier2Days( $value );
+                    break;
+                case 'retention_tier3_days':
+                    $results[ $key ] = $this->setRetentionTier3Days( $value );
+                    break;
+                case 'retention_keep_baseline':
+                    $results[ $key ] = $this->setKeepBaseline( (bool) $value );
+                    break;
                 case 'content_retention_limit':
                     $results[ $key ] = $this->setContentRetentionLimit( $value );
                     break;
@@ -643,6 +723,9 @@ class SettingsService {
             'slack_header',
             'slack_message_template',
             'retention_period',
+            'retention_tier2_days',
+            'retention_tier3_days',
+            'retention_keep_baseline',
             'content_retention_limit',
             'log_levels',
             'log_retention_days',

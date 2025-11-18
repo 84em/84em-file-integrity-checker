@@ -7,6 +7,9 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Database;
 
+use EightyFourEM\FileIntegrityChecker\Database\Migrations\PriorityMonitoringMigration;
+use EightyFourEM\FileIntegrityChecker\Database\Migrations\TieredRetentionMigration;
+
 /**
  * Manages database schema creation and updates
  */
@@ -162,6 +165,18 @@ class DatabaseManager {
         if ( version_compare( $installed_version, EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION, '<' ) ) {
             $this->createTables();
         }
+
+        // Run priority monitoring migration if not already applied
+        if ( ! PriorityMonitoringMigration::isApplied() ) {
+            $migration = new PriorityMonitoringMigration();
+            $migration->up();
+        }
+
+        // Run tiered retention migration if not already applied
+        if ( ! TieredRetentionMigration::isApplied() ) {
+            $migration = new TieredRetentionMigration();
+            $migration->up();
+        }
     }
 
     /**
@@ -175,8 +190,12 @@ class DatabaseManager {
         $scan_schedules_table = $wpdb->prefix . self::TABLE_SCAN_SCHEDULES;
         $checksum_cache_table = $wpdb->prefix . self::TABLE_CHECKSUM_CACHE;
         $logs_table = $wpdb->prefix . self::TABLE_LOGS;
+        $velocity_log_table = $wpdb->prefix . 'eightyfourem_integrity_velocity_log';
+        $priority_rules_table = $wpdb->prefix . 'eightyfourem_integrity_priority_rules';
 
         // Drop tables in reverse order due to foreign key constraints
+        $wpdb->query( "DROP TABLE IF EXISTS $velocity_log_table" );
+        $wpdb->query( "DROP TABLE IF EXISTS $priority_rules_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $file_records_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $checksum_cache_table" );
         $wpdb->query( "DROP TABLE IF EXISTS $scan_schedules_table" );
@@ -185,6 +204,7 @@ class DatabaseManager {
 
         // Remove options
         delete_option( 'eightyfourem_file_integrity_db_version' );
+        delete_option( 'eightyfourem_integrity_db_version' );
     }
 
     /**

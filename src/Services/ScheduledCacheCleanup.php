@@ -8,6 +8,8 @@
 namespace EightyFourEM\FileIntegrityChecker\Services;
 
 use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
+use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
+use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
 
 /**
  * Handles scheduled cleanup of expired cache entries using Action Scheduler
@@ -31,6 +33,20 @@ class ScheduledCacheCleanup {
     private ChecksumCacheRepository $cacheRepository;
 
     /**
+     * Scan results repository
+     *
+     * @var ScanResultsRepository
+     */
+    private ScanResultsRepository $scanResultsRepository;
+
+    /**
+     * Log repository
+     *
+     * @var LogRepository
+     */
+    private LogRepository $logRepository;
+
+    /**
      * Logger service
      *
      * @var LoggerService
@@ -38,14 +54,33 @@ class ScheduledCacheCleanup {
     private LoggerService $logger;
 
     /**
+     * Settings service
+     *
+     * @var SettingsService
+     */
+    private SettingsService $settings;
+
+    /**
      * Constructor
      *
      * @param ChecksumCacheRepository $cacheRepository Cache repository
+     * @param ScanResultsRepository $scanResultsRepository Scan results repository
+     * @param LogRepository $logRepository Log repository
      * @param LoggerService $logger Logger service
+     * @param SettingsService $settings Settings service
      */
-    public function __construct( ChecksumCacheRepository $cacheRepository, LoggerService $logger ) {
+    public function __construct(
+        ChecksumCacheRepository $cacheRepository,
+        ScanResultsRepository $scanResultsRepository,
+        LogRepository $logRepository,
+        LoggerService $logger,
+        SettingsService $settings
+    ) {
         $this->cacheRepository = $cacheRepository;
+        $this->scanResultsRepository = $scanResultsRepository;
+        $this->logRepository = $logRepository;
         $this->logger = $logger;
+        $this->settings = $settings;
     }
 
     /**
@@ -95,11 +130,29 @@ class ScheduledCacheCleanup {
      */
     public function runCleanup(): void {
         try {
+            // Get retention settings
+            $tier2_days = $this->settings->getRetentionTier2Days();
+            $tier3_days = $this->settings->getRetentionTier3Days();
+            $keep_baseline = $this->settings->shouldKeepBaseline();
+
             // Get statistics before cleanup
             $stats_before = $this->cacheRepository->getStatistics();
 
-            // Clean up expired entries
+            // Clean up expired cache entries
             $deleted_count = $this->cacheRepository->cleanupExpired();
+
+            // Run tiered retention cleanup on scans
+            $scan_stats = $this->scanResultsRepository->deleteOldScansWithTiers(
+                tier2_days: $tier2_days,
+                tier3_days: $tier3_days,
+                keep_baseline: $keep_baseline
+            );
+
+            // Run tiered retention cleanup on logs
+            $log_stats = $this->logRepository->deleteOldWithTiers(
+                tier2_days: $tier2_days,
+                tier3_days: $tier3_days
+            );
 
             // Get statistics after cleanup
             $stats_after = $this->cacheRepository->getStatistics();
@@ -107,18 +160,25 @@ class ScheduledCacheCleanup {
             // Log cleanup results
             $this->logger->info(
                 sprintf(
-                    'Cache cleanup completed: %d expired entries removed, %d entries remaining',
+                    'Tiered retention cleanup completed: %d cache entries removed, %d scans deleted, %d diffs removed, %d logs deleted',
                     $deleted_count,
-                    $stats_after['total_entries']
+                    $scan_stats['scans_deleted'],
+                    $scan_stats['tier3_diff_removed'],
+                    $log_stats['total_deleted']
                 ),
                 'cache_cleanup',
                 [
-                    'deleted_entries' => $deleted_count,
-                    'size_before' => $stats_before['total_size'],
-                    'size_after' => $stats_after['total_size'],
-                    'size_freed' => $stats_before['total_size'] - $stats_after['total_size'],
-                    'entries_before' => $stats_before['total_entries'],
-                    'entries_after' => $stats_after['total_entries'],
+                    'cache_deleted_entries' => $deleted_count,
+                    'cache_size_before' => $stats_before['total_size'],
+                    'cache_size_after' => $stats_after['total_size'],
+                    'cache_size_freed' => $stats_before['total_size'] - $stats_after['total_size'],
+                    'cache_entries_before' => $stats_before['total_entries'],
+                    'cache_entries_after' => $stats_after['total_entries'],
+                    'scans_deleted' => $scan_stats['scans_deleted'],
+                    'diffs_removed' => $scan_stats['tier3_diff_removed'],
+                    'logs_tier2_deleted' => $log_stats['tier2_deleted'],
+                    'logs_tier3_deleted' => $log_stats['tier3_deleted'],
+                    'logs_total_deleted' => $log_stats['total_deleted'],
                 ]
             );
 
@@ -129,7 +189,7 @@ class ScheduledCacheCleanup {
 
         } catch ( \Exception $e ) {
             $this->logger->error(
-                'Cache cleanup failed: ' . $e->getMessage(),
+                'Tiered retention cleanup failed: ' . $e->getMessage(),
                 'cache_cleanup',
                 [
                     'error' => $e->getMessage(),

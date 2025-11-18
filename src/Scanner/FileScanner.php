@@ -8,6 +8,7 @@
 namespace EightyFourEM\FileIntegrityChecker\Scanner;
 
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
+use EightyFourEM\FileIntegrityChecker\Services\PriorityMatchingService;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
 use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
@@ -51,25 +52,35 @@ class FileScanner {
     private DiffGenerator $diffGenerator;
 
     /**
+     * Priority matching service
+     * @var PriorityMatchingService|null
+     */
+    private ?PriorityMatchingService $priorityMatchingService = null;
+
+    /**
      * Constructor
      *
      * @param ChecksumGenerator $checksumGenerator Checksum generator
      * @param SettingsService   $settingsService   Settings service
      * @param FileAccessSecurity $fileAccessSecurity File access security service
      * @param ChecksumCacheRepository $cacheRepository Cache repository
+     * @param DiffGenerator $diffGenerator Diff generator
+     * @param PriorityMatchingService|null $priorityMatchingService Priority matching service (optional)
      */
     public function __construct(
         ChecksumGenerator $checksumGenerator,
         SettingsService $settingsService,
         FileAccessSecurity $fileAccessSecurity,
         ChecksumCacheRepository $cacheRepository,
-        DiffGenerator $diffGenerator
+        DiffGenerator $diffGenerator,
+        ?PriorityMatchingService $priorityMatchingService = null
     ) {
         $this->checksumGenerator = $checksumGenerator;
         $this->settingsService   = $settingsService;
         $this->fileAccessSecurity = $fileAccessSecurity;
         $this->cacheRepository = $cacheRepository;
         $this->diffGenerator = $diffGenerator;
+        $this->priorityMatchingService = $priorityMatchingService;
     }
 
     /**
@@ -164,6 +175,12 @@ class FileScanner {
             $security_check = $this->fileAccessSecurity->isFileAccessible( $file_path );
             $is_sensitive = ! $security_check['allowed'];
 
+            // Get priority level if priority matching service is available
+            $priority_level = null;
+            if ( $this->priorityMatchingService ) {
+                $priority_level = $this->priorityMatchingService->getPriorityForFile( $file_path );
+            }
+
             if ( isset( $previous_lookup[ $file_path ] ) ) {
                 $previous_record = $previous_lookup[ $file_path ];
 
@@ -172,6 +189,7 @@ class FileScanner {
                     $file_data['status'] = 'changed';
                     $file_data['previous_checksum'] = $previous_record->checksum;
                     $file_data['is_sensitive'] = $is_sensitive ? 1 : 0;
+                    $file_data['priority_level'] = $priority_level;
 
                     if ( $is_sensitive ) {
                         // Sensitive file - no diff generation
@@ -188,11 +206,13 @@ class FileScanner {
                     // File is unchanged
                     $file_data['status'] = 'unchanged';
                     $file_data['is_sensitive'] = $is_sensitive ? 1 : 0;
+                    $file_data['priority_level'] = $priority_level;
                 }
             } else {
                 // New file
                 $file_data['status'] = 'new';
                 $file_data['is_sensitive'] = $is_sensitive ? 1 : 0;
+                $file_data['priority_level'] = $priority_level;
 
                 if ( ! $is_sensitive ) {
                     // Cache content for future comparisons (non-sensitive files only)

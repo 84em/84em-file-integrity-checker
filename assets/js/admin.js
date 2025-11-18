@@ -45,6 +45,7 @@
             $(document).on('click', '.delete-scan-details', this.handleDeleteScanDetails.bind(this));
             $(document).on('click', '.resend-email-notification', this.handleResendEmailNotification.bind(this));
             $(document).on('click', '.resend-slack-notification', this.handleResendSlackNotification.bind(this));
+            $(document).on('click', '#mark-baseline-btn', this.handleMarkBaseline.bind(this));
             
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
@@ -924,20 +925,20 @@
         showNotice: function(message, type, autoHide = true) {
             const alertClass = 'alert-' + type;
             const iconClass = type === 'error' ? 'warning' : type;
-            
+
             const notice = $(`
                 <div class="file-integrity-alert ${alertClass}">
                     <span class="dashicons dashicons-${iconClass}"></span>
                     <span>${message}</span>
                 </div>
             `);
-            
+
             // Remove existing notices
             $('.file-integrity-alert').remove();
-            
+
             // Add new notice
             $('.wrap > h1').after(notice);
-            
+
             // Auto-remove success messages if requested
             if (autoHide && (type === 'success' || type === 'info')) {
                 setTimeout(() => {
@@ -946,9 +947,50 @@
                     });
                 }, 5000);
             }
-            
+
             // Scroll to top to ensure notice is visible
             $('html, body').animate({ scrollTop: 0 }, 500);
+        },
+
+        // Handle mark baseline button click
+        handleMarkBaseline: function(e) {
+            e.preventDefault();
+
+            const $btn = $(e.currentTarget);
+            const scanId = $btn.data('scan-id');
+            const nonce = $btn.data('nonce');
+
+            if (!confirm('Mark this scan as the baseline? The current baseline (if any) will be replaced.')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('Marking...');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'file_integrity_mark_baseline',
+                    scan_id: scanId,
+                    _wpnonce: nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.showSuccess('Scan marked as baseline successfully');
+                        // Reload page to show baseline badge
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        this.showError(response.data || 'Failed to mark scan as baseline');
+                        $btn.prop('disabled', false).text('Mark as Baseline');
+                    }
+                },
+                error: () => {
+                    this.showError('Network error occurred');
+                    $btn.prop('disabled', false).text('Mark as Baseline');
+                }
+            });
         }
     };
 

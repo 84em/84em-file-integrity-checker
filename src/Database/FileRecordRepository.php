@@ -292,7 +292,7 @@ class FileRecordRepository {
 
         $count = $wpdb->get_var(
             $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_NAME . 
+                "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_NAME .
                 " WHERE scan_result_id = %d AND file_path = %s",
                 $scan_result_id,
                 $file_path
@@ -300,5 +300,69 @@ class FileRecordRepository {
         );
 
         return (int) $count > 0;
+    }
+
+    /**
+     * Remove diff content from file records for scans older than specified days
+     * This is used for tiered retention to keep file metadata but remove large diff content
+     *
+     * @param int $days_old Remove diff content for records in scans older than this many days
+     * @return int Number of records updated
+     */
+    public function removeDiffContentForOldScans( int $days_old ): int {
+        global $wpdb;
+
+        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
+
+        $sql = "UPDATE {$wpdb->prefix}" . self::TABLE_NAME . " fr
+                JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
+                SET fr.diff_content = NULL
+                WHERE sr.scan_date < %s
+                AND fr.diff_content IS NOT NULL";
+
+        $result = $wpdb->query( $wpdb->prepare( $sql, $cutoff_date ) );
+
+        return (int) $result;
+    }
+
+    /**
+     * Get count of file records with diff content
+     *
+     * @param int $scan_result_id Scan result ID
+     * @return int Number of records with diff content
+     */
+    public function getCountWithDiffContent( int $scan_result_id ): int {
+        global $wpdb;
+
+        $count = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_NAME .
+                " WHERE scan_result_id = %d AND diff_content IS NOT NULL",
+                $scan_result_id
+            )
+        );
+
+        return (int) $count;
+    }
+
+    /**
+     * Get total size of diff content for a scan
+     *
+     * @param int $scan_result_id Scan result ID
+     * @return int Total size in bytes
+     */
+    public function getDiffContentSize( int $scan_result_id ): int {
+        global $wpdb;
+
+        $size = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT SUM(LENGTH(diff_content)) FROM {$wpdb->prefix}" . self::TABLE_NAME .
+                " WHERE scan_result_id = %d AND diff_content IS NOT NULL",
+                $scan_result_id
+            )
+        );
+
+        return (int) $size;
     }
 }

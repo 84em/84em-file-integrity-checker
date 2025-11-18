@@ -767,15 +767,144 @@ class IntegrityCommand {
         $schedules_repo = new \EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository(
             new \EightyFourEM\FileIntegrityChecker\Database\DatabaseManager()
         );
-        
+
         \WP_CLI::line( 'Recalculating next run times for all active schedules...' );
-        
+
         $updated = $schedules_repo->recalculateAllNextRuns();
-        
+
         if ( $updated > 0 ) {
             \WP_CLI::success( "Updated $updated schedule(s)." );
         } else {
             \WP_CLI::line( 'No schedules needed updating.' );
+        }
+    }
+
+    /**
+     * Mark a scan as baseline
+     *
+     * ## OPTIONS
+     *
+     * <scan-id>
+     * : The scan ID to mark as baseline
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity baseline mark 123
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function baseline( array $args, array $assoc_args ): void {
+        if ( empty( $args[0] ) ) {
+            \WP_CLI::error( 'Please specify a subcommand: mark, show, or clear' );
+        }
+
+        $subcommand = $args[0];
+
+        switch ( $subcommand ) {
+            case 'mark':
+                $this->markBaseline( $args, $assoc_args );
+                break;
+            case 'show':
+                $this->showBaseline( $args, $assoc_args );
+                break;
+            case 'clear':
+                $this->clearBaseline( $args, $assoc_args );
+                break;
+            default:
+                \WP_CLI::error( "Unknown subcommand: $subcommand. Use mark, show, or clear." );
+        }
+    }
+
+    /**
+     * Mark a scan as baseline
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    private function markBaseline( array $args, array $assoc_args ): void {
+        if ( empty( $args[1] ) ) {
+            \WP_CLI::error( 'Please specify a scan ID' );
+        }
+
+        $scan_id = (int) $args[1];
+
+        // Validate scan exists
+        $scan = $this->scanResultsRepository->getById( $scan_id );
+        if ( ! $scan ) {
+            \WP_CLI::error( "Scan #$scan_id not found" );
+        }
+
+        // Mark as baseline
+        $result = $this->scanResultsRepository->markAsBaseline( $scan_id );
+
+        if ( $result ) {
+            \WP_CLI::success( "Scan #$scan_id marked as baseline" );
+        } else {
+            \WP_CLI::error( "Failed to mark scan #$scan_id as baseline" );
+        }
+    }
+
+    /**
+     * Show the current baseline scan
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    private function showBaseline( array $args, array $assoc_args ): void {
+        $baseline_scan = $this->scanResultsRepository->getBaselineScan();
+
+        if ( ! $baseline_scan ) {
+            \WP_CLI::line( 'No baseline scan is currently set' );
+            return;
+        }
+
+        $format = $assoc_args['format'] ?? 'table';
+
+        $data = [
+            [
+                'Scan ID'       => $baseline_scan->id,
+                'Date'          => $baseline_scan->scan_date,
+                'Status'        => $baseline_scan->status,
+                'Total Files'   => $baseline_scan->total_files,
+                'Changed Files' => $baseline_scan->changed_files,
+                'New Files'     => $baseline_scan->new_files,
+                'Deleted Files' => $baseline_scan->deleted_files,
+            ],
+        ];
+
+        \WP_CLI\Utils\format_items( $format, $data, array_keys( $data[0] ) );
+    }
+
+    /**
+     * Clear the baseline scan
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    private function clearBaseline( array $args, array $assoc_args ): void {
+        $baseline_id = $this->scanResultsRepository->getBaselineScanId();
+
+        if ( ! $baseline_id ) {
+            \WP_CLI::line( 'No baseline scan is currently set' );
+            return;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+
+        $result = $wpdb->update(
+            $table,
+            [ 'is_baseline' => 0 ],
+            [ 'id' => $baseline_id ],
+            [ '%d' ],
+            [ '%d' ]
+        );
+
+        if ( $result !== false ) {
+            \WP_CLI::success( "Baseline cleared (scan #$baseline_id is no longer baseline)" );
+        } else {
+            \WP_CLI::error( 'Failed to clear baseline' );
         }
     }
 }

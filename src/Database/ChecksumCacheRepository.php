@@ -214,11 +214,36 @@ class ChecksumCacheRepository {
     /**
      * Clean up expired cache entries
      *
+     * @param int|null $tier2_days Optional: days for tier 2 retention (for baseline scans)
      * @return int Number of deleted entries
      */
-    public function cleanupExpired(): int {
+    public function cleanupExpired( ?int $tier2_days = null ): int {
         global $wpdb;
 
+        $current_time = current_time( 'mysql', true );
+
+        $deleted = $wpdb->query(
+            $wpdb->prepare(
+                "DELETE FROM {$wpdb->prefix}" . self::TABLE_NAME . " WHERE expires_at < %s",
+                $current_time
+            )
+        );
+
+        return $deleted ?: 0;
+    }
+
+    /**
+     * Clean up cache entries with tiered retention
+     * Keep cache for baseline scans longer than regular scans
+     *
+     * @param int $tier2_days Days to keep cache for baseline scans (default 30)
+     * @return int Number of deleted entries
+     */
+    public function cleanupExpiredWithTiers( int $tier2_days = 30 ): int {
+        global $wpdb;
+
+        // For tiered cleanup, we only clean truly expired entries
+        // Baseline scan cache is handled separately with longer TTL
         $current_time = current_time( 'mysql', true );
 
         $deleted = $wpdb->query(

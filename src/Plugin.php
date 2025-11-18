@@ -16,6 +16,8 @@ use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 use EightyFourEM\FileIntegrityChecker\Database\ScanSchedulesRepository;
 use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
 use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
+use EightyFourEM\FileIntegrityChecker\Database\PriorityRulesRepository;
+use EightyFourEM\FileIntegrityChecker\Database\VelocityLogRepository;
 use EightyFourEM\FileIntegrityChecker\Scanner\FileScanner;
 use EightyFourEM\FileIntegrityChecker\Scanner\ChecksumGenerator;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
@@ -25,10 +27,13 @@ use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 use EightyFourEM\FileIntegrityChecker\Services\ScheduledCacheCleanup;
 use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Services\EncryptionService;
+use EightyFourEM\FileIntegrityChecker\Services\PriorityMatchingService;
 use EightyFourEM\FileIntegrityChecker\Admin\AdminPages;
 use EightyFourEM\FileIntegrityChecker\Admin\DashboardWidget;
 use EightyFourEM\FileIntegrityChecker\Admin\PluginLinks;
+use EightyFourEM\FileIntegrityChecker\Admin\PriorityRulesPage;
 use EightyFourEM\FileIntegrityChecker\CLI\IntegrityCommand;
+use EightyFourEM\FileIntegrityChecker\CLI\PriorityRulesCommand;
 use EightyFourEM\FileIntegrityChecker\Security\FileAccessSecurity;
 use EightyFourEM\FileIntegrityChecker\Utils\DiffGenerator;
 
@@ -110,12 +115,18 @@ class Plugin {
 
             $pluginLinks = $this->container->get( PluginLinks::class );
             $pluginLinks->init();
+
+            $priorityRulesPage = $this->container->get( PriorityRulesPage::class );
+            $priorityRulesPage->init();
         }
 
         // Register WP-CLI commands if available
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             $integrityCommand = $this->container->get( IntegrityCommand::class );
             \WP_CLI::add_command( '84em integrity', $integrityCommand );
+
+            $priorityRulesCommand = $this->container->get( PriorityRulesCommand::class );
+            \WP_CLI::add_command( '84em priority-rules', $priorityRulesCommand );
         }
     }
 
@@ -164,6 +175,14 @@ class Plugin {
             return new LogRepository();
         } );
 
+        $this->container->register( PriorityRulesRepository::class, function () {
+            return new PriorityRulesRepository();
+        } );
+
+        $this->container->register( VelocityLogRepository::class, function () {
+            return new VelocityLogRepository();
+        } );
+
         // Security services
         $this->container->register( FileAccessSecurity::class, function () {
             return new FileAccessSecurity();
@@ -180,13 +199,22 @@ class Plugin {
             return new DiffGenerator();
         } );
 
+        $this->container->register( PriorityMatchingService::class, function ( $container ) {
+            return new PriorityMatchingService(
+                $container->get( PriorityRulesRepository::class ),
+                $container->get( VelocityLogRepository::class ),
+                $container->get( LoggerService::class )
+            );
+        } );
+
         $this->container->register( FileScanner::class, function ( $container ) {
             return new FileScanner(
                 $container->get( ChecksumGenerator::class ),
                 $container->get( SettingsService::class ),
                 $container->get( FileAccessSecurity::class ),
                 $container->get( ChecksumCacheRepository::class ),
-                $container->get( DiffGenerator::class )
+                $container->get( DiffGenerator::class ),
+                $container->get( PriorityMatchingService::class )
             );
         } );
 
@@ -248,7 +276,10 @@ class Plugin {
         $this->container->register( ScheduledCacheCleanup::class, function ( $container ) {
             return new ScheduledCacheCleanup(
                 $container->get( ChecksumCacheRepository::class ),
-                $container->get( LoggerService::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( LogRepository::class ),
+                $container->get( LoggerService::class ),
+                $container->get( SettingsService::class )
             );
         } );
 
@@ -275,6 +306,13 @@ class Plugin {
             return new PluginLinks();
         } );
 
+        $this->container->register( PriorityRulesPage::class, function ( $container ) {
+            return new PriorityRulesPage(
+                $container->get( PriorityRulesRepository::class ),
+                $container->get( LoggerService::class )
+            );
+        } );
+
         // CLI services
         $this->container->register( IntegrityCommand::class, function ( $container ) {
             return new IntegrityCommand(
@@ -282,6 +320,13 @@ class Plugin {
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
                 $container->get( ScanResultsRepository::class )
+            );
+        } );
+
+        $this->container->register( PriorityRulesCommand::class, function ( $container ) {
+            return new PriorityRulesCommand(
+                $container->get( PriorityRulesRepository::class ),
+                $container->get( VelocityLogRepository::class )
             );
         } );
     }

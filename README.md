@@ -50,6 +50,15 @@ A modern WordPress plugin for monitoring file integrity across your WordPress in
 - Pre-generated diffs for better performance
 - Sensitive file protection (wp-config.php, .env, etc.)
 
+### 🎯 Priority Monitoring (Coming Soon)
+- **Three-tier Priority System**: Critical, High, Normal classifications
+- **Pattern Matching**: Exact, prefix, suffix, contains, glob, and regex patterns
+- **Change Velocity Tracking**: Detect files changing too frequently
+- **Maintenance Windows**: Suppress alerts during scheduled maintenance
+- **Immediate Notifications**: Instant alerts for critical file changes
+- **Rule Inheritance**: Directory-level priority cascading
+- **Throttling**: Prevent notification spam with time-based limits
+
 ### 🔐 Security & Data Protection
 - AES-256-GCM encryption for all stored file content
 - Authenticated encryption with tamper detection
