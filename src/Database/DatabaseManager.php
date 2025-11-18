@@ -9,11 +9,18 @@ namespace EightyFourEM\FileIntegrityChecker\Database;
 
 use EightyFourEM\FileIntegrityChecker\Database\Migrations\PriorityMonitoringMigration;
 use EightyFourEM\FileIntegrityChecker\Database\Migrations\TieredRetentionMigration;
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 
 /**
  * Manages database schema creation and updates
  */
 class DatabaseManager {
+    /**
+     * Logger service
+     *
+     * @var LoggerService|null
+     */
+    private ?LoggerService $loggerService = null;
     /**
      * Table names
      */
@@ -22,6 +29,15 @@ class DatabaseManager {
     private const TABLE_SCAN_SCHEDULES = 'eightyfourem_integrity_scan_schedules';
     private const TABLE_CHECKSUM_CACHE = 'eightyfourem_integrity_checksum_cache';
     private const TABLE_LOGS = 'eightyfourem_integrity_logs';
+
+    /**
+     * Set logger service
+     *
+     * @param LoggerService $loggerService Logger service
+     */
+    public function setLoggerService( LoggerService $loggerService ): void {
+        $this->loggerService = $loggerService;
+    }
 
     /**
      * Initialize database tables
@@ -165,17 +181,97 @@ class DatabaseManager {
         if ( version_compare( $installed_version, EIGHTYFOUREM_FILE_INTEGRITY_CHECKER_VERSION, '<' ) ) {
             $this->createTables();
         }
+    }
 
-        // Run priority monitoring migration if not already applied
-        if ( ! PriorityMonitoringMigration::isApplied() ) {
-            $migration = new PriorityMonitoringMigration();
-            $migration->up();
+    /**
+     * Run database migrations
+     *
+     * This method applies any pending migrations that haven't been run yet.
+     * It should be called during plugin activation, not on init hook.
+     *
+     * @return bool True on success, false on failure
+     */
+    public function runMigrations(): bool {
+        try {
+            // Run priority monitoring migration if not already applied
+            if ( ! PriorityMonitoringMigration::isApplied() ) {
+                $migration = new PriorityMonitoringMigration();
+                $migration->up();
+            }
+
+            // Run tiered retention migration if not already applied
+            if ( ! TieredRetentionMigration::isApplied() ) {
+                $migration = new TieredRetentionMigration();
+                if ( $this->loggerService ) {
+                    $migration->setLoggerService( $this->loggerService );
+                }
+                $result = $migration->up();
+                if ( ! $result ) {
+                    if ( $this->loggerService ) {
+                        $this->loggerService->error(
+                            message: 'Tiered retention migration failed',
+                            context: LoggerService::CONTEXT_DATABASE
+                        );
+                    }
+                    return false;
+                }
+            }
+
+            return true;
+        } catch ( \Exception $e ) {
+            if ( $this->loggerService ) {
+                $this->loggerService->error(
+                    message: 'Migration failed: ' . $e->getMessage(),
+                    context: LoggerService::CONTEXT_DATABASE,
+                    data: [ 'exception' => $e->getTrace() ]
+                );
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Run database migrations asynchronously
+     *
+     * This method is called by Action Scheduler to run migrations in the background.
+     * It ensures migrations only run once and logs success/failure.
+     */
+    public function runMigrationsAsync(): void {
+        // Check if migrations are already applied
+        if ( PriorityMonitoringMigration::isApplied() && TieredRetentionMigration::isApplied() ) {
+            if ( $this->loggerService ) {
+                $this->loggerService->info(
+                    message: 'Database migrations already applied, skipping',
+                    context: LoggerService::CONTEXT_DATABASE
+                );
+            }
+            return;
         }
 
-        // Run tiered retention migration if not already applied
-        if ( ! TieredRetentionMigration::isApplied() ) {
-            $migration = new TieredRetentionMigration();
-            $migration->up();
+        if ( $this->loggerService ) {
+            $this->loggerService->info(
+                message: 'Starting background database migrations',
+                context: LoggerService::CONTEXT_DATABASE
+            );
+        }
+
+        // Run migrations
+        $result = $this->runMigrations();
+
+        if ( $result ) {
+            if ( $this->loggerService ) {
+                $this->loggerService->info(
+                    message: 'Database migrations completed successfully in background',
+                    context: LoggerService::CONTEXT_DATABASE
+                );
+            }
+        } else {
+            if ( $this->loggerService ) {
+                $this->loggerService->error(
+                    message: 'Background database migrations failed',
+                    context: LoggerService::CONTEXT_DATABASE
+                );
+            }
         }
     }
 

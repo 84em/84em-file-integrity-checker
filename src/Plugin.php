@@ -95,7 +95,14 @@ class Plugin {
     private function initializeComponents(): void {
         // Initialize database manager
         $databaseManager = $this->container->get( DatabaseManager::class );
+        $databaseManager->setLoggerService( $this->container->get( LoggerService::class ) );
         $databaseManager->init();
+
+        // Register Action Scheduler hook for async database migrations
+        add_action(
+            hook_name: 'eightyfourem_file_integrity_run_migrations',
+            callback: [ $databaseManager, 'runMigrationsAsync' ]
+        );
 
         // Initialize scheduler service
         $schedulerService = $this->container->get( SchedulerService::class );
@@ -142,7 +149,8 @@ class Plugin {
         $this->container->register( Activator::class, function ( $container ) {
             return new Activator(
                 $container->get( DatabaseManager::class ),
-                $container->get( SchedulerService::class )
+                $container->get( SchedulerService::class ),
+                $container->get( LoggerService::class )
             );
         } );
 
@@ -319,7 +327,8 @@ class Plugin {
                 $container->get( IntegrityService::class ),
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
-                $container->get( ScanResultsRepository::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( LogRepository::class )
             );
         } );
 

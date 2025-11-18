@@ -55,6 +55,13 @@ wp 84em integrity recalculate_schedules  # Recalculate all schedule next run tim
 wp 84em integrity config list
 wp 84em integrity config get notification_email
 wp 84em integrity config set notification_email admin@example.com
+
+# Log viewing
+wp 84em integrity logs                              # View recent logs
+wp 84em integrity logs --level=error                # Filter by log level
+wp 84em integrity logs --context=database           # Filter by context
+wp 84em integrity logs --search="migration"         # Search log messages
+wp 84em integrity logs --limit=100 --format=json    # Custom limit and format
 ```
 
 ## Architecture Overview

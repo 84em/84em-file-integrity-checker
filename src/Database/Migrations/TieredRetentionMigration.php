@@ -7,6 +7,8 @@
 
 namespace EightyFourEM\FileIntegrityChecker\Database\Migrations;
 
+use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
+
 /**
  * Migration to add is_baseline column for tiered retention
  */
@@ -20,6 +22,22 @@ class TieredRetentionMigration {
      * Option key for tracking migration status
      */
     private const MIGRATION_OPTION = 'eightyfourem_file_integrity_tiered_retention_migration';
+
+    /**
+     * Logger service
+     *
+     * @var LoggerService|null
+     */
+    private ?LoggerService $loggerService = null;
+
+    /**
+     * Set logger service
+     *
+     * @param LoggerService $loggerService Logger service
+     */
+    public function setLoggerService( LoggerService $loggerService ): void {
+        $this->loggerService = $loggerService;
+    }
 
     /**
      * Check if migration has been applied
@@ -62,7 +80,12 @@ class TieredRetentionMigration {
 
             // Check if column was added successfully
             if ( $wpdb->last_error ) {
-                error_log( 'Tiered Retention Migration failed: ' . $wpdb->last_error );
+                if ( $this->loggerService ) {
+                    $this->loggerService->error(
+                        message: 'Tiered Retention Migration failed: ' . $wpdb->last_error,
+                        context: LoggerService::CONTEXT_DATABASE
+                    );
+                }
                 return false;
             }
         }
