@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.3.1] - 2025-11-18
+### Fixed
+- **Plugin Activation Hang Issue**
+  - Deferred database migrations to Action Scheduler to prevent activation timeouts on production
+  - Migrations now run asynchronously in the background via `eightyfourem_file_integrity_run_migrations` hook
+  - Added duplicate task prevention: checks if migrations already applied before scheduling
+  - Added Action Scheduler queue check to prevent duplicate pending tasks
+  - Maintains fallback to synchronous execution when Action Scheduler unavailable
+  - Enhanced logging throughout activation and migration process
+  - Created ActivatorTest unit test suite (5 tests, 8 assertions)
+
+- **Logging Infrastructure**
+  - Replaced all `error_log()` calls with built-in LoggerService
+  - Added LoggerService dependency injection to Activator, DatabaseManager, and TieredRetentionMigration
+  - All logging now uses proper context (DATABASE, GENERAL, etc.) for better tracking
+  - Improved error handling and logging for migration failures
+
+### Added
+- **WP-CLI Logs Command**
+  - New `wp 84em integrity logs` command for viewing system logs from CLI
+  - Filter by log level: `--level=success|error|warning|info|debug`
+  - Filter by context: `--context=scanner|scheduler|database|etc`
+  - Search log messages: `--search="migration"`
+  - Multiple output formats: `--format=table|csv|json`
+  - Customizable result limit: `--limit=100`
+  - Added LogRepository dependency to IntegrityCommand
+
+### Changed
+- Updated DatabaseManager with `runMigrationsAsync()` method for background execution
+- Updated Plugin.php to register Action Scheduler hook for async migrations
+- Enhanced activation process with comprehensive logging at each decision point
+
 ## [2.3.0] - 2025-11-18
 ### Added
 - **Tiered Retention Policies for Database Size Optimization**

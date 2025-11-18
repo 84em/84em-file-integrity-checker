@@ -11,6 +11,7 @@ use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
+use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
 
 /**
  * WP-CLI commands for file integrity checking
@@ -45,23 +46,33 @@ class IntegrityCommand {
     private ScanResultsRepository $scanResultsRepository;
 
     /**
+     * Log repository
+     *
+     * @var LogRepository
+     */
+    private LogRepository $logRepository;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
      * @param SettingsService       $settingsService       Settings service
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
+     * @param LogRepository         $logRepository         Log repository
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
         SchedulerService $schedulerService,
-        ScanResultsRepository $scanResultsRepository
+        ScanResultsRepository $scanResultsRepository,
+        LogRepository $logRepository
     ) {
         $this->integrityService      = $integrityService;
         $this->settingsService       = $settingsService;
         $this->schedulerService      = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
+        $this->logRepository         = $logRepository;
     }
 
     /**
@@ -906,5 +917,102 @@ class IntegrityCommand {
         } else {
             \WP_CLI::error( 'Failed to clear baseline' );
         }
+    }
+
+    /**
+     * View system logs
+     *
+     * ## OPTIONS
+     *
+     * [--level=<level>]
+     * : Filter by log level
+     * ---
+     * options:
+     *   - success
+     *   - error
+     *   - warning
+     *   - info
+     *   - debug
+     * ---
+     *
+     * [--context=<context>]
+     * : Filter by context (e.g., scanner, scheduler, notifications, admin, cli, settings, database, security, general, cache_cleanup)
+     *
+     * [--search=<search>]
+     * : Search in log messages
+     *
+     * [--limit=<limit>]
+     * : Number of logs to display
+     * ---
+     * default: 50
+     * ---
+     *
+     * [--format=<format>]
+     * : Output format
+     * ---
+     * default: table
+     * options:
+     *   - table
+     *   - csv
+     *   - json
+     * ---
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity logs
+     *     wp 84em integrity logs --level=error
+     *     wp 84em integrity logs --context=database
+     *     wp 84em integrity logs --search="migration"
+     *     wp 84em integrity logs --limit=100 --format=json
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function logs( array $args, array $assoc_args ): void {
+        $query_args = [
+            'limit' => isset( $assoc_args['limit'] ) ? (int) $assoc_args['limit'] : 50,
+        ];
+
+        if ( isset( $assoc_args['level'] ) ) {
+            $query_args['log_level'] = $assoc_args['level'];
+        }
+
+        if ( isset( $assoc_args['context'] ) ) {
+            $query_args['context'] = $assoc_args['context'];
+        }
+
+        if ( isset( $assoc_args['search'] ) ) {
+            $query_args['search'] = $assoc_args['search'];
+        }
+
+        $logs = $this->logRepository->getAll( $query_args );
+
+        if ( empty( $logs ) ) {
+            \WP_CLI::warning( 'No logs found' );
+            return;
+        }
+
+        $format = isset( $assoc_args['format'] ) ? $assoc_args['format'] : 'table';
+
+        // Format logs for display
+        $formatted_logs = array_map(
+            function ( $log ) {
+                return [
+                    'ID' => $log['id'],
+                    'Date' => $log['created_at'],
+                    'Level' => strtoupper( $log['log_level'] ),
+                    'Context' => $log['context'],
+                    'Message' => $log['message'],
+                    'User ID' => $log['user_id'] ?: 'N/A',
+                ];
+            },
+            $logs
+        );
+
+        \WP_CLI\Utils\format_items(
+            format: $format,
+            items: $formatted_logs,
+            fields: [ 'ID', 'Date', 'Level', 'Context', 'Message', 'User ID' ]
+        );
     }
 }
