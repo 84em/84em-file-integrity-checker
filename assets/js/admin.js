@@ -48,6 +48,7 @@
             $(document).on('click', '#mark-baseline-btn', this.handleMarkBaseline.bind(this));
             $(document).on('click', '#clear-baseline-btn', this.handleClearBaseline.bind(this));
             $(document).on('click', '#set-baseline-btn', this.handleSetBaseline.bind(this));
+            $(document).on('click', '#refresh-database-health', this.handleRefreshDatabaseHealth.bind(this));
             
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
@@ -811,6 +812,36 @@
                 }
             }).catch((error) => {
                 this.showError('Failed to set baseline');
+            });
+        },
+
+        // Handle database health refresh
+        handleRefreshDatabaseHealth: function(e) {
+            e.preventDefault();
+
+            const $btn = $(e.currentTarget);
+            const $icon = $btn.find('.dashicons');
+
+            // Add spinning animation
+            $icon.addClass('dashicons-update-alt');
+            $btn.css('pointer-events', 'none');
+
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_refresh_database_health',
+                nonce: fileIntegrityChecker.nonce
+            }).then((response) => {
+                if (response.success) {
+                    // Reload the page to show fresh data
+                    location.reload();
+                } else {
+                    this.showError('Failed to refresh database health');
+                    $btn.css('pointer-events', 'auto');
+                    $icon.removeClass('dashicons-update-alt');
+                }
+            }).catch((error) => {
+                this.showError('Failed to refresh database health');
+                $btn.css('pointer-events', 'auto');
+                $icon.removeClass('dashicons-update-alt');
             });
         },
 

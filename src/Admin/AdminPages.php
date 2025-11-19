@@ -123,6 +123,7 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_set_baseline', [ $this, 'handleSetBaseline' ] );
         add_action( 'wp_ajax_file_integrity_dismiss_baseline_suggestion', [ $this, 'handleDismissBaselineSuggestion' ] );
         add_action( 'wp_ajax_file_integrity_dismiss_plugin_changes', [ $this, 'handleDismissPluginChanges' ] );
+        add_action( 'wp_ajax_file_integrity_refresh_database_health', [ $this, 'ajaxRefreshDatabaseHealth' ] );
 
         // Register admin notices
         add_action( 'admin_notices', [ $this, 'displayBaselineRefreshNotice' ] );
@@ -1411,6 +1412,22 @@ class AdminPages {
 
         delete_transient( 'eightyfourem_plugin_changes_for_baseline' );
         wp_send_json_success();
+    }
+
+    /**
+     * AJAX handler to refresh database health statistics
+     */
+    public function ajaxRefreshDatabaseHealth(): void {
+        check_ajax_referer( 'file_integrity_admin', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Insufficient permissions' ] );
+        }
+
+        // Clear the cached table statistics
+        $this->fileRecordRepository->clearTableStatisticsCache();
+
+        wp_send_json_success( [ 'message' => 'Database health cache cleared' ] );
     }
 
     /**

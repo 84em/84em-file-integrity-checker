@@ -262,7 +262,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
         <!-- Database Health Card -->
         <div class="file-integrity-card">
-            <h3>Database Health</h3>
+            <h3>
+                Database Health
+                <a href="#" id="refresh-database-health" class="page-title-action" style="font-size: 13px; margin-left: 10px;">
+                    <span class="dashicons dashicons-update" style="font-size: 13px; margin-top: 3px;"></span> Refresh
+                </a>
+            </h3>
             <div class="card-content">
                 <table class="widefat">
                     <tr>
