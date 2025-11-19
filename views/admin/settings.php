@@ -703,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = new FormData();
             data.append('action', 'file_integrity_test_slack');
             data.append('webhook_url', webhookUrl);
-            data.append('_wpnonce', '<?php echo esc_js( wp_create_nonce('file_integrity_test_slack') ); ?>');
+            data.append('_wpnonce', '<?php echo esc_js( \EightyFourEM\FileIntegrityChecker\Utils\Security::create_nonce('test_slack') ); ?>');
             
             testSlackBtn.disabled = true;
             testSlackBtn.textContent = 'Testing...';

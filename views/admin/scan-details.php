@@ -49,7 +49,7 @@ $files_total_pages = ceil( $file_results['total_count'] / $files_per_page );
                     class="page-title-action"
                     id="mark-baseline-btn"
                     data-scan-id="<?php echo esc_attr( $scan_summary['scan_id'] ); ?>"
-                    data-nonce="<?php echo esc_attr( wp_create_nonce( 'ajax_mark_baseline' ) ); ?>">
+                    data-nonce="<?php echo esc_attr( \EightyFourEM\FileIntegrityChecker\Utils\Security::create_nonce( 'ajax_mark_baseline' ) ); ?>">
                 Mark as Baseline
             </button>
         <?php endif; ?>
