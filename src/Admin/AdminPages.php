@@ -294,6 +294,8 @@ class AdminPages {
                 'test_slack' => Security::create_nonce( 'ajax_test_slack' ),
                 'resend_email' => Security::create_nonce( 'ajax_resend_email' ),
                 'resend_slack' => Security::create_nonce( 'ajax_resend_slack' ),
+                'clear_baseline' => Security::create_nonce( 'ajax_clear_baseline' ),
+                'set_baseline' => Security::create_nonce( 'ajax_set_baseline' ),
             ],
         ] );
     }
@@ -1187,7 +1189,10 @@ class AdminPages {
      * Handle clear baseline AJAX request
      */
     public function handleClearBaseline(): void {
-        Security::verifyNonce();
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_clear_baseline', '_wpnonce', false ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid security token' ] );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( [ 'message' => 'Insufficient permissions' ] );
@@ -1215,7 +1220,10 @@ class AdminPages {
      * Handle set baseline AJAX request
      */
     public function handleSetBaseline(): void {
-        Security::verifyNonce();
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_set_baseline', '_wpnonce', false ) ) {
+            wp_send_json_error( [ 'message' => 'Invalid security token' ] );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( [ 'message' => 'Insufficient permissions' ] );

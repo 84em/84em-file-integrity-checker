@@ -771,7 +771,7 @@
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_clear_baseline',
                 scan_id: scanId,
-                _wpnonce: fileIntegrityChecker.nonces.baseline || wp.ajax.settings.nonce
+                _wpnonce: fileIntegrityChecker.nonces.clear_baseline || wp.ajax.settings.nonce
             }).then((response) => {
                 if (response.success) {
                     this.showSuccess('Baseline designation cleared');
@@ -799,7 +799,7 @@
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_set_baseline',
                 scan_id: scanId,
-                _wpnonce: fileIntegrityChecker.nonces.baseline || wp.ajax.settings.nonce
+                _wpnonce: fileIntegrityChecker.nonces.set_baseline || wp.ajax.settings.nonce
             }).then((response) => {
                 if (response.success) {
                     this.showSuccess('Scan marked as baseline');
