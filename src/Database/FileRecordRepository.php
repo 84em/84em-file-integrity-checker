@@ -457,6 +457,9 @@ class FileRecordRepository {
         // Cache miss or forced refresh - calculate statistics
         $stats = $this->calculateTableStatistics();
 
+        // Add timestamp to cache
+        $stats['cached_at'] = current_time( 'timestamp' );
+
         // Store in cache
         set_transient( $cache_key, $stats, $cache_duration );
 

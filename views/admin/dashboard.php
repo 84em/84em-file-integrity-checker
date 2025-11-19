@@ -285,6 +285,16 @@ if ( ! defined( 'ABSPATH' ) ) {
                             <?php endif; ?>
                         </td>
                     </tr>
+                    <?php if ( isset( $table_stats['cached_at'] ) ): ?>
+                    <tr>
+                        <td><strong>Last Updated:</strong></td>
+                        <td>
+                            <span style="color: #666; font-size: 12px;">
+                                <?php echo esc_html( human_time_diff( $table_stats['cached_at'], current_time( 'timestamp' ) ) ); ?> ago
+                            </span>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
                 </table>
 
                 <?php if ( $has_bloat ): ?>
