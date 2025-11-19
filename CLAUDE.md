@@ -62,6 +62,13 @@ wp 84em integrity logs --level=error                # Filter by log level
 wp 84em integrity logs --context=database           # Filter by context
 wp 84em integrity logs --search="migration"         # Search log messages
 wp 84em integrity logs --limit=100 --format=json    # Custom limit and format
+
+# Database bloat analysis and cleanup
+wp 84em integrity analyze-bloat                     # Analyze file_records table bloat
+wp 84em integrity analyze-bloat --format=json       # Output bloat analysis as JSON
+wp 84em integrity cleanup --dry-run                 # Preview cleanup without deleting
+wp 84em integrity cleanup --days=30                 # Delete file_records older than 30 days
+wp 84em integrity cleanup --days=60 --force         # Force cleanup without confirmation
 ```
 
 ## Architecture Overview
@@ -164,6 +171,66 @@ The `build.sh` script creates production-ready ZIP files:
 - Prepared statements for all database queries
 - File access validation through FileAccessSecurity service
 
+## Database Bloat Prevention & Cleanup
+
+The plugin implements aggressive retention policies to prevent database bloat in the `file_records` table:
+
+### Tiered Retention Strategy
+
+- **Tier 1 (Baseline)**: Baseline scans are kept forever (configurable)
+- **Tier 2 (Full Detail)**: Keep full file records with diffs for 30 days (default, configurable)
+- **Tier 3 (Summary Only)**: Keep scan metadata only for 90 days (default, configurable)
+- **Beyond Tier 3**: Delete scan results and all file records after 90 days
+
+### Automatic Cleanup
+
+The `ScheduledCacheCleanup` service runs every 6 hours and:
+1. Deletes file_records for scans older than Tier 2 retention (30 days)
+2. Removes diff_content from file_records for scans between Tier 2 and Tier 3 (30-90 days)
+3. Deletes entire scan results older than Tier 3 (90 days)
+4. Protects baseline scans and scans with critical priority files from deletion
+5. Logs cleanup statistics including file_records deleted and database size
+
+### Manual Cleanup Commands
+
+Use WP-CLI commands for analysis and manual cleanup:
+
+```bash
+# Analyze current bloat and get recommendations
+wp 84em integrity analyze-bloat
+
+# Preview what would be deleted (dry run)
+wp 84em integrity cleanup --dry-run
+
+# Delete file_records older than 30 days (respects protected scans)
+wp 84em integrity cleanup --days=30
+
+# Force cleanup without confirmation
+wp 84em integrity cleanup --days=60 --force
+```
+
+### Monitoring Database Health
+
+The Dashboard Widget displays database health metrics:
+- Total file_records row count
+- Table size in MB
+- Warning indicator if bloat detected (>100k rows or >500MB)
+- Recommendation to run cleanup commands if bloat is present
+
+### Protected Scans
+
+The following scans are protected from automatic cleanup:
+- **Baseline scans**: Marked with `is_baseline = 1`
+- **Critical priority scans**: Scans containing files with `priority_level = 'critical'`
+
+### Performance Impact
+
+Proper retention prevents:
+- Database queries slowing down due to large table size
+- Excessive storage consumption (40M+ rows can consume 20+ GB)
+- Backup/restore operations taking excessive time
+- Index bloat affecting query performance
+
 ## Additional Features Not in README
 
 - **Checksum Caching**: File checksums are cached with TTL for improved performance on subsequent scans
@@ -177,3 +244,5 @@ The `build.sh` script creates production-ready ZIP files:
 - **Scan Queueing**: Scans are queued with status 'queued' and processed asynchronously with user-friendly feedback
 - **Rate Limiting**: AJAX endpoints include rate limiting to prevent abuse
 - **Memory Efficient Scanning**: Streaming file reads for checksum generation to handle large files
+- **Database Bloat Analysis**: WP-CLI commands to analyze and cleanup excessive file_records
+- **Tiered Data Retention**: Automatic cleanup based on configurable retention tiers

@@ -286,6 +286,7 @@ class Plugin {
                 $container->get( ChecksumCacheRepository::class ),
                 $container->get( ScanResultsRepository::class ),
                 $container->get( LogRepository::class ),
+                $container->get( FileRecordRepository::class ),
                 $container->get( LoggerService::class ),
                 $container->get( SettingsService::class )
             );
@@ -306,7 +307,8 @@ class Plugin {
         $this->container->register( DashboardWidget::class, function ( $container ) {
             return new DashboardWidget(
                 $container->get( IntegrityService::class ),
-                $container->get( ScanResultsRepository::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( FileRecordRepository::class )
             );
         } );
 
@@ -328,7 +330,8 @@ class Plugin {
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
                 $container->get( ScanResultsRepository::class ),
-                $container->get( LogRepository::class )
+                $container->get( LogRepository::class ),
+                $container->get( FileRecordRepository::class )
             );
         } );
 

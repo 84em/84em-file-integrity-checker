@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.3.2] - 2025-11-18
+### Fixed
+- **Database Bloat Table Statistics Bug**
+  - Fixed `getTableStatistics()` query that returned incorrect row count (showed 1 row instead of actual count)
+  - Fixed percentage calculations in `analyze-bloat` command status breakdown
+  - Fixed average row size calculation (was showing 0.00 bytes)
+  - Now correctly counts actual rows from file_records table instead of information_schema metadata
+
+### Added
+- **Database Bloat Detection & Cleanup Tools**
+  - New `wp 84em integrity analyze-bloat` command for comprehensive bloat analysis
+  - New `wp 84em integrity cleanup` command with `--dry-run`, `--days`, and `--force` options
+  - Added `FileRecordRepository::getTableStatistics()` for accurate table size reporting
+  - Added `FileRecordRepository::getRecordDistributionByAge()` for age-based analysis
+  - Added `FileRecordRepository::getLargestDiffRecords()` to identify space hogs
+  - Added `FileRecordRepository::getRecordCountByStatus()` for status breakdown
+  - Added `FileRecordRepository::deleteFileRecordsForOldScans()` for aggressive cleanup
+  - Added Database Health indicator in admin dashboard widget showing row count and table size
+  - Automated cleanup now runs every 6 hours via Action Scheduler
+
+### Changed
+- Enhanced `ScheduledCacheCleanup::runCleanup()` to aggressively delete file_records older than 30 days
+- Protected scans (baseline and critical priority) are preserved during cleanup
+- Updated CLAUDE.md with comprehensive database bloat prevention documentation
+
 ## [2.3.1] - 2025-11-18
 ### Fixed
 - **Plugin Activation Hang Issue**
