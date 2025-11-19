@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.1] - 2025-11-19
+### Fixed
+- Fixed `Security::verifyNonce()` method name error in AJAX handlers (should be `Security::check_ajax_referer()`)
+- Fixed JavaScript nonce references for baseline management AJAX calls
+- Corrected nonce property names in JavaScript (clear_baseline, set_baseline)
+
 ## [2.4.0] - 2025-11-19
 ### Added
 - **Phase 1: Core Baseline Management & Storage Optimization (98% Database Reduction)**
@@ -55,8 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 ### Fixed
 - Comparison logic now correctly handles files missing from recent scans by falling back to baseline
 - Prevented accidental baseline deletion through improved protection mechanisms
-- Fixed `Security::verifyNonce()` method name error in AJAX handlers (should be `Security::check_ajax_referer()`)
-- Fixed JavaScript nonce references for baseline management AJAX calls
 
 ## [2.3.2] - 2025-11-18
 ### Fixed
