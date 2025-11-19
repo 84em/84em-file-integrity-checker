@@ -828,7 +828,7 @@
 
             $.post(fileIntegrityChecker.ajaxUrl, {
                 action: 'file_integrity_refresh_database_health',
-                nonce: fileIntegrityChecker.nonce
+                _wpnonce: fileIntegrityChecker.nonces.refresh_database_health
             }).then((response) => {
                 if (response.success) {
                     // Reload the page to show fresh data

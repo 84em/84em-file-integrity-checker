@@ -285,6 +285,7 @@ class AdminPages {
         // Localize script with AJAX data
         wp_localize_script( 'file-integrity-checker-admin', 'fileIntegrityChecker', [
             'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce' => Security::create_nonce( 'file_integrity_admin' ),
             'nonces' => [
                 'start_scan' => Security::create_nonce( 'ajax_start_scan' ),
                 'check_progress' => Security::create_nonce( 'ajax_check_progress' ),
@@ -297,6 +298,7 @@ class AdminPages {
                 'resend_slack' => Security::create_nonce( 'ajax_resend_slack' ),
                 'clear_baseline' => Security::create_nonce( 'ajax_clear_baseline' ),
                 'set_baseline' => Security::create_nonce( 'ajax_set_baseline' ),
+                'refresh_database_health' => Security::create_nonce( 'ajax_refresh_database_health' ),
             ],
         ] );
     }
@@ -1418,7 +1420,10 @@ class AdminPages {
      * AJAX handler to refresh database health statistics
      */
     public function ajaxRefreshDatabaseHealth(): void {
-        check_ajax_referer( 'file_integrity_admin', 'nonce' );
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_refresh_database_health', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( [ 'message' => 'Insufficient permissions' ] );
