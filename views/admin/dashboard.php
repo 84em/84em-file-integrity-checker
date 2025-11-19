@@ -5,6 +5,8 @@
  * @var array $stats Dashboard statistics
  * @var object|null $next_scan Next scheduled scan
  * @var bool $scheduler_available Whether Action Scheduler is available
+ * @var array $table_stats Database table statistics
+ * @var bool $has_bloat Whether database bloat is detected
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -255,6 +257,37 @@ if ( ! defined( 'ABSPATH' ) ) {
                         Cleanup Old Scans
                     </button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Database Health Card -->
+        <div class="file-integrity-card">
+            <h3>Database Health</h3>
+            <div class="card-content">
+                <table class="widefat">
+                    <tr>
+                        <td><strong>File Records:</strong></td>
+                        <td><?php echo esc_html( number_format( $table_stats['total_rows'] ) ); ?> rows</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Table Size:</strong></td>
+                        <td>
+                            <?php echo esc_html( number_format( $table_stats['total_size_mb'], 2 ) ); ?> MB
+                            <?php if ( $has_bloat ): ?>
+                                <span class="status-badge status-failed" style="margin-left: 5px;">High</span>
+                            <?php else: ?>
+                                <span class="status-badge status-completed" style="margin-left: 5px;">Normal</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+
+                <?php if ( $has_bloat ): ?>
+                    <div class="file-integrity-alert alert-warning" style="margin-top: 15px;">
+                        <span class="dashicons dashicons-warning"></span>
+                        <span><strong>Bloat Detected:</strong> Consider running cleanup to optimize database size. Run: <code>wp 84em integrity analyze-bloat</code></span>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 

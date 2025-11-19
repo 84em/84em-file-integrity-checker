@@ -12,6 +12,7 @@ use EightyFourEM\FileIntegrityChecker\Services\SettingsService;
 use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
+use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 
 /**
  * WP-CLI commands for file integrity checking
@@ -53,6 +54,13 @@ class IntegrityCommand {
     private LogRepository $logRepository;
 
     /**
+     * File record repository
+     *
+     * @var FileRecordRepository
+     */
+    private FileRecordRepository $fileRecordRepository;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
@@ -60,19 +68,22 @@ class IntegrityCommand {
      * @param SchedulerService      $schedulerService      Scheduler service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
      * @param LogRepository         $logRepository         Log repository
+     * @param FileRecordRepository  $fileRecordRepository  File record repository
      */
     public function __construct(
         IntegrityService $integrityService,
         SettingsService $settingsService,
         SchedulerService $schedulerService,
         ScanResultsRepository $scanResultsRepository,
-        LogRepository $logRepository
+        LogRepository $logRepository,
+        FileRecordRepository $fileRecordRepository
     ) {
         $this->integrityService      = $integrityService;
         $this->settingsService       = $settingsService;
         $this->schedulerService      = $schedulerService;
         $this->scanResultsRepository = $scanResultsRepository;
         $this->logRepository         = $logRepository;
+        $this->fileRecordRepository  = $fileRecordRepository;
     }
 
     /**
@@ -822,8 +833,11 @@ class IntegrityCommand {
             case 'clear':
                 $this->clearBaseline( $args, $assoc_args );
                 break;
+            case 'refresh':
+                $this->refreshBaseline( $args, $assoc_args );
+                break;
             default:
-                \WP_CLI::error( "Unknown subcommand: $subcommand. Use mark, show, or clear." );
+                \WP_CLI::error( "Unknown subcommand: $subcommand. Use mark, show, clear, or refresh." );
         }
     }
 
@@ -916,6 +930,71 @@ class IntegrityCommand {
             \WP_CLI::success( "Baseline cleared (scan #$baseline_id is no longer baseline)" );
         } else {
             \WP_CLI::error( 'Failed to clear baseline' );
+        }
+    }
+
+    /**
+     * Run a new scan and set it as the baseline
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    private function refreshBaseline( array $args, array $assoc_args ): void {
+        $skip_confirm = isset( $assoc_args['yes'] ) && $assoc_args['yes'];
+
+        if ( ! $skip_confirm ) {
+            \WP_CLI::confirm( 'This will run a new scan and set it as the baseline. Any existing baseline will be replaced. Continue?' );
+        }
+
+        \WP_CLI::log( 'Starting new baseline scan...' );
+
+        $progress = \WP_CLI\Utils\make_progress_bar( 'Scanning files', 1000 );
+
+        $scan_result = $this->integrityService->runScan( 'manual', function ( $message, $current_file ) use ( $progress ) {
+            $progress->tick();
+            if ( strpos( $message, 'Scanning files:' ) === 0 ) {
+                preg_match( '/Scanning files: (\d+) processed/', $message, $matches );
+                if ( isset( $matches[1] ) ) {
+                    $count = (int) $matches[1];
+                    $progress->current = min( $count, $progress->total );
+                }
+            }
+        } );
+
+        $progress->finish();
+
+        if ( ! $scan_result || ! isset( $scan_result['scan_id'] ) ) {
+            \WP_CLI::error( 'Scan failed. Check logs for details.' );
+        }
+
+        $scan_id = $scan_result['scan_id'];
+
+        $success = $this->scanResultsRepository->markAsBaseline( $scan_id );
+
+        if ( ! $success ) {
+            \WP_CLI::error( 'Failed to mark scan as baseline.' );
+        }
+
+        $scan = $this->scanResultsRepository->getById( $scan_id );
+
+        \WP_CLI::success( sprintf(
+            'New baseline created: Scan #%d with %s files scanned',
+            $scan_id,
+            number_format( $scan->total_files )
+        ) );
+
+        $changes = $scan->changed_files + $scan->new_files + $scan->deleted_files;
+        if ( $changes > 0 ) {
+            \WP_CLI::warning( sprintf(
+                'Changes detected: %d changed, %d new, %d deleted',
+                $scan->changed_files,
+                $scan->new_files,
+                $scan->deleted_files
+            ) );
+            \WP_CLI::log( sprintf(
+                'View details: wp 84em integrity results %d',
+                $scan_id
+            ) );
         }
     }
 
@@ -1014,5 +1093,280 @@ class IntegrityCommand {
             items: $formatted_logs,
             fields: [ 'ID', 'Date', 'Level', 'Context', 'Message', 'User ID' ]
         );
+    }
+
+    /**
+     * Analyze database bloat in file_records table
+     *
+     * ## OPTIONS
+     *
+     * [--format=<format>]
+     * : Output format
+     * ---
+     * default: table
+     * options:
+     *   - table
+     *   - csv
+     *   - json
+     * ---
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity analyze-bloat
+     *     wp 84em integrity analyze_bloat
+     *     wp 84em integrity analyze-bloat --format=json
+     *
+     * @subcommand analyze-bloat
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function analyze_bloat( array $args, array $assoc_args ): void {
+        \WP_CLI::line( 'Analyzing file_records table bloat...' );
+        \WP_CLI::line( '' );
+
+        $format = $assoc_args['format'] ?? 'table';
+
+        // Get table statistics
+        $table_stats = $this->fileRecordRepository->getTableStatistics();
+
+        \WP_CLI::line( '=== TABLE SIZE STATISTICS ===' );
+        \WP_CLI::line( sprintf( 'Total Rows: %s', number_format( $table_stats['total_rows'] ) ) );
+        \WP_CLI::line( sprintf( 'Total Size: %.2f MB', $table_stats['total_size_mb'] ) );
+        \WP_CLI::line( sprintf( 'Data Size: %.2f MB', $table_stats['data_size_mb'] ) );
+        \WP_CLI::line( sprintf( 'Index Size: %.2f MB', $table_stats['index_size_mb'] ) );
+        \WP_CLI::line( sprintf( 'Avg Row Size: %.2f bytes', $table_stats['avg_row_size_bytes'] ) );
+        \WP_CLI::line( '' );
+
+        // Get distribution by age
+        \WP_CLI::line( '=== RECORD DISTRIBUTION BY AGE ===' );
+        $distribution = $this->fileRecordRepository->getRecordDistributionByAge();
+
+        if ( $format === 'table' ) {
+            \WP_CLI\Utils\format_items(
+                format: 'table',
+                items: $distribution,
+                fields: [ 'age_range', 'scan_count', 'record_count' ]
+            );
+        } else {
+            \WP_CLI\Utils\format_items(
+                format: $format,
+                items: $distribution,
+                fields: [ 'age_range', 'scan_count', 'record_count' ]
+            );
+        }
+
+        \WP_CLI::line( '' );
+
+        // Get status counts
+        \WP_CLI::line( '=== RECORD COUNT BY STATUS ===' );
+        $status_counts = $this->fileRecordRepository->getRecordCountByStatus();
+
+        // Calculate total records from status counts
+        $total_records = array_sum( $status_counts );
+
+        $status_data = [];
+        foreach ( $status_counts as $status => $count ) {
+            $status_data[] = [
+                'Status' => $status,
+                'Count' => number_format( $count ),
+                'Percentage' => $total_records > 0 ? sprintf( '%.2f%%', ( $count / $total_records ) * 100 ) : '0.00%',
+            ];
+        }
+
+        \WP_CLI\Utils\format_items(
+            format: $format,
+            items: $status_data,
+            fields: [ 'Status', 'Count', 'Percentage' ]
+        );
+
+        \WP_CLI::line( '' );
+
+        // Get largest diffs
+        \WP_CLI::line( '=== TOP 10 LARGEST DIFF RECORDS ===' );
+        $largest_diffs = $this->fileRecordRepository->getLargestDiffRecords( limit: 10 );
+
+        if ( empty( $largest_diffs ) ) {
+            \WP_CLI::line( 'No diff content found.' );
+        } else {
+            $diff_data = [];
+            foreach ( $largest_diffs as $record ) {
+                $diff_data[] = [
+                    'Scan ID' => $record['scan_result_id'],
+                    'File Path' => substr( $record['file_path'], 0, 50 ) . ( strlen( $record['file_path'] ) > 50 ? '...' : '' ),
+                    'Scan Date' => $record['scan_date'],
+                    'Diff Size' => sprintf( '%.2f KB', $record['diff_size_kb'] ),
+                ];
+            }
+
+            \WP_CLI\Utils\format_items(
+                format: $format,
+                items: $diff_data,
+                fields: [ 'Scan ID', 'File Path', 'Scan Date', 'Diff Size' ]
+            );
+        }
+
+        \WP_CLI::line( '' );
+
+        // Get retention settings
+        $tier2_days = $this->settingsService->getRetentionTier2Days();
+        $tier3_days = $this->settingsService->getRetentionTier3Days();
+
+        \WP_CLI::line( '=== CURRENT RETENTION POLICY ===' );
+        \WP_CLI::line( sprintf( 'Tier 2 (full detail): %d days', $tier2_days ) );
+        \WP_CLI::line( sprintf( 'Tier 3 (summary only): %d days', $tier3_days ) );
+        \WP_CLI::line( sprintf( 'Keep baseline: %s', $this->settingsService->shouldKeepBaseline() ? 'Yes' : 'No' ) );
+        \WP_CLI::line( '' );
+
+        // Calculate potential savings
+        $records_older_than_tier2 = 0;
+        foreach ( $distribution as $range ) {
+            if ( in_array( $range['age_range'], [ '31-90 days', '91-180 days', '180+ days' ], true ) ) {
+                $records_older_than_tier2 += $range['record_count'];
+            }
+        }
+
+        if ( $records_older_than_tier2 > 0 ) {
+            $estimated_savings_mb = ( $records_older_than_tier2 * $table_stats['avg_row_size_bytes'] ) / 1024 / 1024;
+
+            \WP_CLI::warning( sprintf(
+                'BLOAT DETECTED: %s records older than %d days could be cleaned up',
+                number_format( $records_older_than_tier2 ),
+                $tier2_days
+            ) );
+            \WP_CLI::line( sprintf( 'Estimated space savings: %.2f MB', $estimated_savings_mb ) );
+            \WP_CLI::line( '' );
+            \WP_CLI::line( 'Run cleanup with: wp 84em integrity cleanup --dry-run' );
+        } else {
+            \WP_CLI::success( 'No significant bloat detected. Table is within retention policy.' );
+        }
+    }
+
+    /**
+     * Clean up old file_records to reduce database bloat
+     *
+     * ## OPTIONS
+     *
+     * [--days=<days>]
+     * : Delete file_records for scans older than this many days (default: 30)
+     * ---
+     * default: 30
+     * ---
+     *
+     * [--dry-run]
+     * : Show what would be deleted without actually deleting
+     *
+     * [--force]
+     * : Skip confirmation prompt
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity cleanup --dry-run
+     *     wp 84em integrity cleanup --days=30
+     *     wp 84em integrity cleanup --days=60 --force
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function cleanup( array $args, array $assoc_args ): void {
+        $days = isset( $assoc_args['days'] ) ? (int) $assoc_args['days'] : 30;
+        $dry_run = isset( $assoc_args['dry-run'] );
+        $force = isset( $assoc_args['force'] );
+
+        if ( $days < 1 ) {
+            \WP_CLI::error( 'Days must be at least 1' );
+            return;
+        }
+
+        \WP_CLI::line( sprintf( 'Analyzing file_records older than %d days...', $days ) );
+        \WP_CLI::line( '' );
+
+        // Get protected scan IDs (baseline and critical)
+        $protected_ids = [];
+
+        if ( $this->settingsService->shouldKeepBaseline() ) {
+            $baseline_id = $this->scanResultsRepository->getBaselineScanId();
+            if ( $baseline_id ) {
+                $protected_ids[] = $baseline_id;
+                \WP_CLI::line( sprintf( 'Protecting baseline scan #%d', $baseline_id ) );
+            }
+        }
+
+        $critical_scan_ids = $this->scanResultsRepository->getScansWithCriticalFiles();
+        if ( ! empty( $critical_scan_ids ) ) {
+            $protected_ids = array_merge( $protected_ids, $critical_scan_ids );
+            \WP_CLI::line( sprintf( 'Protecting %d scan(s) with critical priority files', count( $critical_scan_ids ) ) );
+        }
+
+        $protected_ids = array_unique( $protected_ids );
+
+        if ( ! empty( $protected_ids ) ) {
+            \WP_CLI::line( sprintf( 'Total protected scans: %d', count( $protected_ids ) ) );
+        }
+
+        \WP_CLI::line( '' );
+
+        // Calculate what would be deleted using repository method
+        $records_to_delete = $this->fileRecordRepository->countFileRecordsForOldScans(
+            days_old: $days,
+            protected_ids: $protected_ids
+        );
+
+        if ( $records_to_delete < 1 ) {
+            \WP_CLI::success( 'No file_records found matching criteria. Nothing to clean up.' );
+            return;
+        }
+
+        // Get size estimate
+        $table_stats = $this->fileRecordRepository->getTableStatistics();
+        $estimated_size_mb = ( $records_to_delete * $table_stats['avg_row_size_bytes'] ) / 1024 / 1024;
+
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+
+        \WP_CLI::line( sprintf( 'Records to delete: %s', number_format( $records_to_delete ) ) );
+        \WP_CLI::line( sprintf( 'Estimated space freed: %.2f MB', $estimated_size_mb ) );
+        \WP_CLI::line( sprintf( 'Cutoff date: %s', $cutoff_date ) );
+        \WP_CLI::line( '' );
+
+        if ( $dry_run ) {
+            \WP_CLI::success( 'DRY RUN: No records were deleted. Remove --dry-run to perform actual cleanup.' );
+            return;
+        }
+
+        // Confirm before deletion
+        if ( ! $force ) {
+            \WP_CLI::confirm( sprintf(
+                'Are you sure you want to delete %s file_records?',
+                number_format( $records_to_delete )
+            ) );
+        }
+
+        // Perform cleanup
+        \WP_CLI::line( 'Starting cleanup...' );
+
+        $deleted = $this->fileRecordRepository->deleteFileRecordsForOldScans(
+            days_old: $days,
+            protected_ids: $protected_ids
+        );
+
+        if ( $deleted > 0 ) {
+            // Clear table statistics cache after cleanup
+            $this->fileRecordRepository->clearTableStatisticsCache();
+
+            \WP_CLI::success( sprintf(
+                'Cleanup complete! Deleted %s file_records (freed approximately %.2f MB)',
+                number_format( $deleted ),
+                $estimated_size_mb
+            ) );
+
+            // Show updated stats
+            \WP_CLI::line( '' );
+            \WP_CLI::line( 'Updated table statistics:' );
+            $new_stats = $this->fileRecordRepository->getTableStatistics( force_refresh: true );
+            \WP_CLI::line( sprintf( 'Total Rows: %s', number_format( $new_stats['total_rows'] ) ) );
+            \WP_CLI::line( sprintf( 'Total Size: %.2f MB', $new_stats['total_size_mb'] ) );
+        } else {
+            \WP_CLI::warning( 'No records were deleted. Check your parameters.' );
+        }
     }
 }

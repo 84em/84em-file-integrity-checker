@@ -46,6 +46,8 @@
             $(document).on('click', '.resend-email-notification', this.handleResendEmailNotification.bind(this));
             $(document).on('click', '.resend-slack-notification', this.handleResendSlackNotification.bind(this));
             $(document).on('click', '#mark-baseline-btn', this.handleMarkBaseline.bind(this));
+            $(document).on('click', '#clear-baseline-btn', this.handleClearBaseline.bind(this));
+            $(document).on('click', '#set-baseline-btn', this.handleSetBaseline.bind(this));
             
             // Settings form validation
             $(document).on('submit', '.file-integrity-settings form', this.validateSettingsForm.bind(this));
@@ -717,6 +719,98 @@
             }).catch((error) => {
                 this.showError('Failed to send Slack notification');
                 button.prop('disabled', false).html(originalHtml);
+            });
+        },
+
+        // Handle mark baseline button
+        handleMarkBaseline: function(e) {
+            e.preventDefault();
+
+            const button = $(e.currentTarget);
+            const scanId = button.data('scan-id');
+            const nonce = button.data('nonce');
+
+            if (!confirm('Are you sure you want to set this scan as the baseline? This will clear any existing baseline designation.')) {
+                return;
+            }
+
+            const originalText = button.text();
+            button.prop('disabled', true).text('Setting baseline...');
+
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_mark_baseline',
+                scan_id: scanId,
+                _wpnonce: nonce
+            }).then((response) => {
+                if (response.success) {
+                    this.showSuccess('Scan marked as baseline successfully');
+                    // Reload page to show updated baseline status
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    this.showError('Failed to mark scan as baseline: ' + (response.data || 'Unknown error'));
+                    button.prop('disabled', false).text(originalText);
+                }
+            }).catch((error) => {
+                this.showError('Failed to mark scan as baseline');
+                button.prop('disabled', false).text(originalText);
+            });
+        },
+
+        // Handle clear baseline button (from Settings page)
+        handleClearBaseline: function(e) {
+            e.preventDefault();
+
+            if (!confirm('Are you sure you want to clear the baseline designation? The scan will remain, but will no longer be protected from deletion.')) {
+                return;
+            }
+
+            const scanId = $('#clear-baseline-btn').data('scan-id');
+
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_clear_baseline',
+                scan_id: scanId,
+                _wpnonce: fileIntegrityChecker.nonces.baseline || wp.ajax.settings.nonce
+            }).then((response) => {
+                if (response.success) {
+                    this.showSuccess('Baseline designation cleared');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    this.showError('Failed to clear baseline: ' + (response.data.message || 'Unknown error'));
+                }
+            }).catch((error) => {
+                this.showError('Failed to clear baseline');
+            });
+        },
+
+        // Handle set baseline button (from Settings page)
+        handleSetBaseline: function(e) {
+            e.preventDefault();
+
+            if (!confirm('Are you sure you want to set this scan as the baseline? This will clear any existing baseline designation.')) {
+                return;
+            }
+
+            const scanId = $('#set-baseline-btn').data('scan-id');
+
+            $.post(fileIntegrityChecker.ajaxUrl, {
+                action: 'file_integrity_set_baseline',
+                scan_id: scanId,
+                _wpnonce: fileIntegrityChecker.nonces.baseline || wp.ajax.settings.nonce
+            }).then((response) => {
+                if (response.success) {
+                    this.showSuccess('Scan marked as baseline');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    this.showError('Failed to set baseline: ' + (response.data.message || 'Unknown error'));
+                }
+            }).catch((error) => {
+                this.showError('Failed to set baseline');
             });
         },
 

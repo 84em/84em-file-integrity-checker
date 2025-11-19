@@ -112,6 +112,9 @@ class Plugin {
         $cacheCleanup = $this->container->get( ScheduledCacheCleanup::class );
         $cacheCleanup->init();
 
+        // Register plugin change hooks
+        $this->registerPluginChangeHooks();
+
         // Initialize admin interface
         if ( is_admin() ) {
             $adminPages = $this->container->get( AdminPages::class );
@@ -286,6 +289,7 @@ class Plugin {
                 $container->get( ChecksumCacheRepository::class ),
                 $container->get( ScanResultsRepository::class ),
                 $container->get( LogRepository::class ),
+                $container->get( FileRecordRepository::class ),
                 $container->get( LoggerService::class ),
                 $container->get( SettingsService::class )
             );
@@ -299,14 +303,16 @@ class Plugin {
                 $container->get( SchedulerService::class ),
                 $container->get( ScanResultsRepository::class ),
                 $container->get( LoggerService::class ),
-                $container->get( NotificationService::class )
+                $container->get( NotificationService::class ),
+                $container->get( FileRecordRepository::class )
             );
         } );
 
         $this->container->register( DashboardWidget::class, function ( $container ) {
             return new DashboardWidget(
                 $container->get( IntegrityService::class ),
-                $container->get( ScanResultsRepository::class )
+                $container->get( ScanResultsRepository::class ),
+                $container->get( FileRecordRepository::class )
             );
         } );
 
@@ -328,7 +334,8 @@ class Plugin {
                 $container->get( SettingsService::class ),
                 $container->get( SchedulerService::class ),
                 $container->get( ScanResultsRepository::class ),
-                $container->get( LogRepository::class )
+                $container->get( LogRepository::class ),
+                $container->get( FileRecordRepository::class )
             );
         } );
 
@@ -365,5 +372,70 @@ class Plugin {
         $instance    = self::getInstance();
         $deactivator = $instance->getContainer()->get( Deactivator::class );
         $deactivator->deactivate();
+    }
+
+    /**
+     * Track plugin activations and suggest baseline refresh
+     */
+    private function registerPluginChangeHooks(): void {
+        add_action(
+            hook_name: 'activated_plugin',
+            callback: [ $this, 'handlePluginActivated' ]
+        );
+        add_action(
+            hook_name: 'deactivated_plugin',
+            callback: [ $this, 'handlePluginDeactivated' ]
+        );
+    }
+
+    /**
+     * Handle plugin activation
+     *
+     * @param string $plugin Plugin basename
+     */
+    public function handlePluginActivated( string $plugin ): void {
+        if ( strpos( $plugin, '84em-file-integrity-checker' ) !== false ) {
+            return;
+        }
+
+        $this->suggestBaselineRefreshForPluginChange( 'activated', $plugin );
+    }
+
+    /**
+     * Handle plugin deactivation
+     *
+     * @param string $plugin Plugin basename
+     */
+    public function handlePluginDeactivated( string $plugin ): void {
+        if ( strpos( $plugin, '84em-file-integrity-checker' ) !== false ) {
+            return;
+        }
+
+        $this->suggestBaselineRefreshForPluginChange( 'deactivated', $plugin );
+    }
+
+    /**
+     * Suggest baseline refresh after plugin change
+     *
+     * @param string $action 'activated' or 'deactivated'
+     * @param string $plugin Plugin basename
+     */
+    private function suggestBaselineRefreshForPluginChange( string $action, string $plugin ): void {
+        $suggestion = get_transient( 'eightyfourem_plugin_changes_for_baseline' );
+
+        if ( ! $suggestion ) {
+            $suggestion = [
+                'changes' => [],
+                'first_change' => time(),
+            ];
+        }
+
+        $suggestion['changes'][] = [
+            'action' => $action,
+            'plugin' => $plugin,
+            'time' => time(),
+        ];
+
+        set_transient( 'eightyfourem_plugin_changes_for_baseline', $suggestion, 7 * DAY_IN_SECONDS );
     }
 }

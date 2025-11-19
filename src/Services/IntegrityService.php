@@ -126,13 +126,8 @@ class IntegrityService {
         );
 
         try {
-            // Get the latest completed scan for comparison
-            $latest_scan = $this->scanResultsRepository->getLatestCompleted();
-            $previous_files = [];
-            
-            if ( $latest_scan ) {
-                $previous_files = $this->fileRecordRepository->getByScanId( $latest_scan->id );
-            }
+            // Get previous files using hybrid approach (latest + baseline)
+            $previous_files = $this->getPreviousFilesForComparison();
 
             // Progress callback for directory scanning
             $scan_progress_callback = null;
@@ -189,12 +184,15 @@ class IntegrityService {
             $update_success = $this->scanResultsRepository->update( $scan_id, $update_data );
 
             if ( ! $update_success ) {
-                $this->logger->error( 
+                $this->logger->error(
                     "Failed to update scan result with final statistics for scan ID: $scan_id",
                     LoggerService::CONTEXT_SCANNER,
                     [ 'scan_id' => $scan_id ]
                 );
             }
+
+            // After scan completion, ensure baseline exists
+            $this->ensureBaselineExists( $scan_id );
 
             if ( $progress_callback ) {
                 call_user_func( $progress_callback, "Scan completed successfully!", '' );
@@ -341,17 +339,50 @@ class IntegrityService {
     }
 
     /**
-     * Save file records to database
+     * Save file records for a scan, filtering unchanged files after baseline
      *
      * @param int   $scan_id Scan result ID
-     * @param array $files   Array of file data
-     * @return bool True on success, false on failure
+     * @param array $files   File data array
+     * @return bool Success status
      */
     private function saveFileRecords( int $scan_id, array $files ): bool {
+        // Check if this is the baseline scan
+        $is_baseline = $this->scanResultsRepository->getBaselineScanId() === null;
+
+        if ( ! $is_baseline ) {
+            // Filter out unchanged files for all non-baseline scans
+            $original_count = count( $files );
+            $files = array_filter( $files, function( $file ) {
+                return $file['status'] !== 'unchanged';
+            });
+            $filtered_count = $original_count - count( $files );
+
+            if ( $filtered_count > 0 ) {
+                $this->logger->debug(
+                    message: sprintf( 'Filtered %d unchanged files from storage (baseline optimization)', $filtered_count ),
+                    context: LoggerService::CONTEXT_SCANNER,
+                    data: [ 'original_count' => $original_count, 'stored_count' => count( $files ) ]
+                );
+            }
+        } else {
+            $this->logger->info(
+                message: sprintf( 'Storing all %d files (baseline scan)', count( $files ) ),
+                context: LoggerService::CONTEXT_SCANNER
+            );
+        }
+
         // Prepare records for batch insert
         $records = [];
         foreach ( $files as $file_data ) {
             $records[] = array_merge( $file_data, [ 'scan_result_id' => $scan_id ] );
+        }
+
+        if ( empty( $records ) ) {
+            $this->logger->info(
+                message: 'No file records to save',
+                context: LoggerService::CONTEXT_SCANNER
+            );
+            return true;
         }
 
         // Save in batches to avoid memory issues
@@ -365,6 +396,78 @@ class IntegrityService {
         }
 
         return true;
+    }
+
+    /**
+     * Ensure a baseline scan exists, creating one if necessary
+     *
+     * @param int $scan_id Current scan ID
+     */
+    private function ensureBaselineExists( int $scan_id ): void {
+        // Check if a baseline already exists
+        $baseline_id = $this->scanResultsRepository->getBaselineScanId();
+
+        if ( ! $baseline_id ) {
+            // No baseline exists - mark this scan as baseline
+            $this->scanResultsRepository->markAsBaseline( $scan_id );
+
+            $this->logger->success(
+                message: 'Automatically marked scan as baseline (first scan)',
+                context: LoggerService::CONTEXT_SCANNER,
+                data: [ 'scan_id' => $scan_id ]
+            );
+        }
+    }
+
+    /**
+     * Get previous files for comparison using hybrid approach
+     * Combines latest scan with baseline for complete file history
+     *
+     * @return array Previous file records
+     */
+    private function getPreviousFilesForComparison(): array {
+        $previous_files = [];
+
+        // Get latest completed scan
+        $latest_scan = $this->scanResultsRepository->getLatestCompleted();
+
+        if ( ! $latest_scan ) {
+            return [];
+        }
+
+        // Get files from latest scan
+        $previous_files = $this->fileRecordRepository->getByScanId( $latest_scan->id );
+
+        // If latest scan is not baseline, merge with baseline for complete picture
+        $baseline_id = $this->scanResultsRepository->getBaselineScanId();
+
+        if ( $baseline_id && $baseline_id !== $latest_scan->id ) {
+            $baseline_files = $this->fileRecordRepository->getByScanId( $baseline_id );
+
+            // Build lookup of files already in latest scan
+            $latest_lookup = [];
+            foreach ( $previous_files as $file ) {
+                $latest_lookup[ $file->file_path ] = true;
+            }
+
+            // Add baseline files that aren't in latest scan
+            $baseline_count = 0;
+            foreach ( $baseline_files as $baseline_file ) {
+                if ( ! isset( $latest_lookup[ $baseline_file->file_path ] ) ) {
+                    $previous_files[] = $baseline_file;
+                    $baseline_count++;
+                }
+            }
+
+            if ( $baseline_count > 0 ) {
+                $this->logger->debug(
+                    message: sprintf( 'Merged %d files from baseline into comparison set', $baseline_count ),
+                    context: LoggerService::CONTEXT_SCANNER
+                );
+            }
+        }
+
+        return $previous_files;
     }
 
     /**

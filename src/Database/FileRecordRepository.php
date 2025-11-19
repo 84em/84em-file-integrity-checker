@@ -365,4 +365,274 @@ class FileRecordRepository {
 
         return (int) $size;
     }
+
+    /**
+     * Count file records for scans older than specified days, excluding protected scans
+     * Used to preview how many records would be deleted before cleanup
+     *
+     * @param int   $days_old      Count file records for scans older than this many days
+     * @param array $protected_ids Scan IDs to protect from deletion (baseline, critical)
+     * @return int Number of file records that would be deleted
+     */
+    public function countFileRecordsForOldScans( int $days_old, array $protected_ids = [] ): int {
+        global $wpdb;
+
+        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
+
+        $exclusion_clause = '';
+        $params = [ $cutoff_date ];
+
+        if ( ! empty( $protected_ids ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $protected_ids ), '%d' ) );
+            $exclusion_clause = " AND sr.id NOT IN ({$placeholders})";
+            $params = array_merge( $params, $protected_ids );
+        }
+
+        $sql = "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_NAME . " fr
+                JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
+                WHERE sr.scan_date < %s
+                {$exclusion_clause}";
+
+        $count = $wpdb->get_var( $wpdb->prepare( $sql, $params ) );
+
+        return (int) $count;
+    }
+
+    /**
+     * Delete file records for scans older than specified days, preserving protected scans
+     * This is more aggressive than just removing diff_content
+     *
+     * @param int   $days_old      Delete file records for scans older than this many days
+     * @param array $protected_ids Scan IDs to protect from deletion (baseline, critical)
+     * @return int Number of file records deleted
+     */
+    public function deleteFileRecordsForOldScans( int $days_old, array $protected_ids = [] ): int {
+        global $wpdb;
+
+        $file_records_table = $wpdb->prefix . self::TABLE_NAME;
+        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
+
+        // Build WHERE clause and prepare parameters
+        $where_conditions = [ 'sr.scan_date < %s' ];
+        $params = [ $cutoff_date ];
+
+        if ( ! empty( $protected_ids ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $protected_ids ), '%d' ) );
+            $where_conditions[] = "sr.id NOT IN ({$placeholders})";
+            $params = array_merge( $params, $protected_ids );
+        }
+
+        $where_clause = implode( ' AND ', $where_conditions );
+
+        // Build and execute DELETE query with JOIN
+        $sql = "DELETE fr FROM {$file_records_table} fr
+                INNER JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
+                WHERE {$where_clause}";
+
+        $result = $wpdb->query( $wpdb->prepare( $sql, $params ) );
+
+        return (int) $result;
+    }
+
+    /**
+     * Get table size statistics with caching
+     *
+     * @param bool $force_refresh Force refresh cache (default: false)
+     * @return array Statistics including total rows, data size, index size
+     */
+    public function getTableStatistics( bool $force_refresh = false ): array {
+        $cache_key = 'eightyfourem_integrity_table_stats';
+        $cache_duration = 6 * HOUR_IN_SECONDS;
+
+        // Try to get cached statistics unless forced refresh
+        if ( ! $force_refresh ) {
+            $cached_stats = get_transient( $cache_key );
+            if ( false !== $cached_stats && is_array( $cached_stats ) ) {
+                return $cached_stats;
+            }
+        }
+
+        // Cache miss or forced refresh - calculate statistics
+        $stats = $this->calculateTableStatistics();
+
+        // Store in cache
+        set_transient( $cache_key, $stats, $cache_duration );
+
+        return $stats;
+    }
+
+    /**
+     * Clear table statistics cache
+     * Call this after operations that modify table size (cleanup, bulk delete, etc)
+     */
+    public function clearTableStatisticsCache(): void {
+        delete_transient( 'eightyfourem_integrity_table_stats' );
+    }
+
+    /**
+     * Calculate table size statistics (uncached)
+     *
+     * @return array Statistics including total rows, data size, index size
+     */
+    private function calculateTableStatistics(): array {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . self::TABLE_NAME;
+
+        // Get actual row count from the table
+        $total_rows = $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$table_name}"
+        );
+
+        // Get table size information from information_schema
+        $size_stats = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT
+                    ROUND(((data_length + index_length) / 1024 / 1024), 2) AS total_size_mb,
+                    ROUND((data_length / 1024 / 1024), 2) AS data_size_mb,
+                    ROUND((index_length / 1024 / 1024), 2) AS index_size_mb
+                FROM information_schema.TABLES
+                WHERE table_schema = %s
+                AND table_name = %s",
+                DB_NAME,
+                $table_name
+            )
+        );
+
+        // Calculate average row size (convert MB back to bytes)
+        $avg_row_size = $total_rows > 0 && $size_stats && $size_stats->data_size_mb > 0
+            ? round( ( $size_stats->data_size_mb * 1024 * 1024 ) / $total_rows, 2 )
+            : 0;
+
+        $stats = (object) [
+            'total_rows' => (int) $total_rows,
+            'total_size_mb' => $size_stats ? (float) $size_stats->total_size_mb : 0,
+            'data_size_mb' => $size_stats ? (float) $size_stats->data_size_mb : 0,
+            'index_size_mb' => $size_stats ? (float) $size_stats->index_size_mb : 0,
+            'avg_row_size_bytes' => $avg_row_size,
+        ];
+
+        return [
+            'total_rows' => (int) $stats->total_rows,
+            'total_size_mb' => (float) $stats->total_size_mb,
+            'data_size_mb' => (float) $stats->data_size_mb,
+            'index_size_mb' => (float) $stats->index_size_mb,
+            'avg_row_size_bytes' => (float) $stats->avg_row_size_bytes,
+        ];
+    }
+
+    /**
+     * Get file record distribution by scan age
+     *
+     * @return array Array of age ranges and their record counts
+     */
+    public function getRecordDistributionByAge(): array {
+        global $wpdb;
+
+        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+
+        $distribution = $wpdb->get_results(
+            "SELECT
+                CASE
+                    WHEN DATEDIFF(NOW(), sr.scan_date) <= 7 THEN '0-7 days'
+                    WHEN DATEDIFF(NOW(), sr.scan_date) <= 30 THEN '8-30 days'
+                    WHEN DATEDIFF(NOW(), sr.scan_date) <= 90 THEN '31-90 days'
+                    WHEN DATEDIFF(NOW(), sr.scan_date) <= 180 THEN '91-180 days'
+                    ELSE '180+ days'
+                END AS age_range,
+                COUNT(*) as record_count,
+                COUNT(DISTINCT fr.scan_result_id) as scan_count
+            FROM {$wpdb->prefix}" . self::TABLE_NAME . " fr
+            JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
+            GROUP BY age_range
+            ORDER BY
+                CASE age_range
+                    WHEN '0-7 days' THEN 1
+                    WHEN '8-30 days' THEN 2
+                    WHEN '31-90 days' THEN 3
+                    WHEN '91-180 days' THEN 4
+                    ELSE 5
+                END"
+        );
+
+        $results = [];
+        foreach ( $distribution as $row ) {
+            $results[] = [
+                'age_range' => $row->age_range,
+                'record_count' => (int) $row->record_count,
+                'scan_count' => (int) $row->scan_count,
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get records with largest diff_content
+     *
+     * @param int $limit Number of records to return
+     * @return array Array of records with large diff content
+     */
+    public function getLargestDiffRecords( int $limit = 10 ): array {
+        global $wpdb;
+
+        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT
+                    fr.id,
+                    fr.scan_result_id,
+                    fr.file_path,
+                    sr.scan_date,
+                    LENGTH(fr.diff_content) as diff_size_bytes,
+                    ROUND(LENGTH(fr.diff_content) / 1024, 2) as diff_size_kb
+                FROM {$wpdb->prefix}" . self::TABLE_NAME . " fr
+                JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
+                WHERE fr.diff_content IS NOT NULL
+                ORDER BY diff_size_bytes DESC
+                LIMIT %d",
+                $limit
+            )
+        );
+
+        $records = [];
+        foreach ( $results as $row ) {
+            $records[] = [
+                'id' => (int) $row->id,
+                'scan_result_id' => (int) $row->scan_result_id,
+                'file_path' => $row->file_path,
+                'scan_date' => $row->scan_date,
+                'diff_size_bytes' => (int) $row->diff_size_bytes,
+                'diff_size_kb' => (float) $row->diff_size_kb,
+            ];
+        }
+
+        return $records;
+    }
+
+    /**
+     * Count records by status
+     *
+     * @return array Status counts
+     */
+    public function getRecordCountByStatus(): array {
+        global $wpdb;
+
+        $results = $wpdb->get_results(
+            "SELECT status, COUNT(*) as count
+            FROM {$wpdb->prefix}" . self::TABLE_NAME . "
+            GROUP BY status
+            ORDER BY count DESC"
+        );
+
+        $counts = [];
+        foreach ( $results as $row ) {
+            $counts[ $row->status ] = (int) $row->count;
+        }
+
+        return $counts;
+    }
 }

@@ -10,6 +10,7 @@ namespace EightyFourEM\FileIntegrityChecker\Services;
 use EightyFourEM\FileIntegrityChecker\Database\ChecksumCacheRepository;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
 use EightyFourEM\FileIntegrityChecker\Database\LogRepository;
+use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 
 /**
  * Handles scheduled cleanup of expired cache entries using Action Scheduler
@@ -18,7 +19,7 @@ class ScheduledCacheCleanup {
     /**
      * Action hook name for cache cleanup
      */
-    public const CLEANUP_ACTION = 'file_integrity_cleanup_cache';
+    public const CLEANUP_ACTION = 'eightyfourem_file_integrity_cleanup_cache';
 
     /**
      * Cleanup interval in seconds (6 hours)
@@ -47,6 +48,13 @@ class ScheduledCacheCleanup {
     private LogRepository $logRepository;
 
     /**
+     * File record repository
+     *
+     * @var FileRecordRepository
+     */
+    private FileRecordRepository $fileRecordRepository;
+
+    /**
      * Logger service
      *
      * @var LoggerService
@@ -66,6 +74,7 @@ class ScheduledCacheCleanup {
      * @param ChecksumCacheRepository $cacheRepository Cache repository
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
      * @param LogRepository $logRepository Log repository
+     * @param FileRecordRepository $fileRecordRepository File record repository
      * @param LoggerService $logger Logger service
      * @param SettingsService $settings Settings service
      */
@@ -73,12 +82,14 @@ class ScheduledCacheCleanup {
         ChecksumCacheRepository $cacheRepository,
         ScanResultsRepository $scanResultsRepository,
         LogRepository $logRepository,
+        FileRecordRepository $fileRecordRepository,
         LoggerService $logger,
         SettingsService $settings
     ) {
         $this->cacheRepository = $cacheRepository;
         $this->scanResultsRepository = $scanResultsRepository;
         $this->logRepository = $logRepository;
+        $this->fileRecordRepository = $fileRecordRepository;
         $this->logger = $logger;
         $this->settings = $settings;
     }
@@ -154,16 +165,40 @@ class ScheduledCacheCleanup {
                 tier3_days: $tier3_days
             );
 
+            // CRITICAL: Aggressive file_records cleanup to prevent bloat
+            // Delete file_records for scans older than tier2_days, preserving baseline and critical
+            $protected_ids = [];
+            if ( $keep_baseline ) {
+                $baseline_id = $this->scanResultsRepository->getBaselineScanId();
+                if ( $baseline_id ) {
+                    $protected_ids[] = $baseline_id;
+                }
+            }
+
+            $critical_scan_ids = $this->scanResultsRepository->getScansWithCriticalFiles();
+            $protected_ids = array_merge( $protected_ids, $critical_scan_ids );
+            $protected_ids = array_unique( $protected_ids );
+
+            $file_records_deleted = $this->fileRecordRepository->deleteFileRecordsForOldScans(
+                days_old: $tier2_days,
+                protected_ids: $protected_ids
+            );
+
+            // Clear table statistics cache after cleanup
+            $this->fileRecordRepository->clearTableStatisticsCache();
+
             // Get statistics after cleanup
             $stats_after = $this->cacheRepository->getStatistics();
+            $file_record_stats = $this->fileRecordRepository->getTableStatistics( force_refresh: true );
 
             // Log cleanup results
             $this->logger->info(
                 sprintf(
-                    'Tiered retention cleanup completed: %d cache entries removed, %d scans deleted, %d diffs removed, %d logs deleted',
+                    'Tiered retention cleanup completed: %d cache entries removed, %d scans deleted, %d diffs removed, %d file_records deleted, %d logs deleted',
                     $deleted_count,
                     $scan_stats['scans_deleted'],
                     $scan_stats['tier3_diff_removed'],
+                    $file_records_deleted,
                     $log_stats['total_deleted']
                 ),
                 'cache_cleanup',
@@ -176,6 +211,9 @@ class ScheduledCacheCleanup {
                     'cache_entries_after' => $stats_after['total_entries'],
                     'scans_deleted' => $scan_stats['scans_deleted'],
                     'diffs_removed' => $scan_stats['tier3_diff_removed'],
+                    'file_records_deleted' => $file_records_deleted,
+                    'file_records_total_rows' => $file_record_stats['total_rows'],
+                    'file_records_table_size_mb' => $file_record_stats['total_size_mb'],
                     'logs_tier2_deleted' => $log_stats['tier2_deleted'],
                     'logs_tier3_deleted' => $log_stats['tier3_deleted'],
                     'logs_total_deleted' => $log_stats['total_deleted'],

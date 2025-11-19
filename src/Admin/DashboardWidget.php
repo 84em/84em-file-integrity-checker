@@ -9,6 +9,7 @@ namespace EightyFourEM\FileIntegrityChecker\Admin;
 
 use EightyFourEM\FileIntegrityChecker\Services\IntegrityService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
+use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 
 /**
  * WordPress dashboard widget for file integrity status
@@ -29,14 +30,23 @@ class DashboardWidget {
     private ScanResultsRepository $scanResultsRepository;
 
     /**
+     * File record repository
+     *
+     * @var FileRecordRepository
+     */
+    private FileRecordRepository $fileRecordRepository;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
+     * @param FileRecordRepository  $fileRecordRepository  File record repository
      */
-    public function __construct( IntegrityService $integrityService, ScanResultsRepository $scanResultsRepository ) {
+    public function __construct( IntegrityService $integrityService, ScanResultsRepository $scanResultsRepository, FileRecordRepository $fileRecordRepository ) {
         $this->integrityService      = $integrityService;
         $this->scanResultsRepository = $scanResultsRepository;
+        $this->fileRecordRepository  = $fileRecordRepository;
     }
 
     /**
@@ -144,47 +154,6 @@ class DashboardWidget {
                     </p>
                 </div>
             <?php endif; ?>
-
-<!--            <div class="widget-stats">-->
-<!--                <h4>Overview</h4>-->
-<!--                <div class="stats-grid">-->
-<!--                    <div class="stat-item">-->
-<!--                        <div class="stat-number">--><?php //echo number_format( $stats['total_scans'] ); ?><!--</div>-->
-<!--                        <div class="stat-label">Total Scans</div>-->
-<!--                    </div>-->
-<!--                    <div class="stat-item">-->
-<!--                        <div class="stat-number">--><?php //echo number_format( $stats['completed_scans'] ); ?><!--</div>-->
-<!--                        <div class="stat-label">Completed</div>-->
-<!--                    </div>-->
-<!--                    --><?php //if ( $stats['failed_scans'] > 0 ): ?>
-<!--                    <div class="stat-item">-->
-<!--                        <div class="stat-number error">--><?php //echo number_format( $stats['failed_scans'] ); ?><!--</div>-->
-<!--                        <div class="stat-label">Failed</div>-->
-<!--                    </div>-->
-<!--                    --><?php //endif; ?>
-<!--                </div>-->
-<!--            </div>-->
-
-<!--            --><?php //if ( ! empty( $recent_scans ) ): ?>
-<!--                <div class="recent-scans">-->
-<!--                    <h4>Recent Scans</h4>-->
-<!--                    <ul class="scan-list">-->
-<!--                        --><?php //foreach ( $recent_scans as $scan ): ?>
-<!--                            <li>-->
-<!--                                <span class="scan-date">--><?php //echo esc_html( date( 'M j, H:i', strtotime( $scan->scan_date ) ) ); ?><!--</span>-->
-<!--                                <span class="status-badge status---><?php //echo esc_attr( $scan->status ); ?><!--">-->
-<!--                                    --><?php //echo esc_html( ucfirst( $scan->status ) ); ?>
-<!--                                </span>-->
-<!--                                --><?php //if ( $scan->status === 'completed' && $scan->changed_files > 0 ): ?>
-<!--                                    <span class="changes-count">--><?php //echo number_format( $scan->changed_files ); ?><!-- changes</span>-->
-<!--                                --><?php //endif; ?>
-<!--                                <a href="--><?php //echo admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $scan->id ); ?><!--"-->
-<!--                                   class="scan-link">View</a>-->
-<!--                            </li>-->
-<!--                        --><?php //endforeach; ?>
-<!--                    </ul>-->
-<!--                </div>-->
-<!--            --><?php //endif; ?>
 
             <div class="widget-actions">
                 <p>
