@@ -370,7 +370,21 @@ class AdminPages {
 
         // Get database health statistics
         $table_stats = $this->fileRecordRepository->getTableStatistics();
-        $has_bloat = $table_stats['total_rows'] > 100000 || $table_stats['total_size_mb'] > 500;
+
+        // Check for bloat using same logic as analyze-bloat command
+        // Bloat exists if there are records older than Tier 2 retention period
+        $tier2_days = $this->settingsService->getRetentionTier2Days();
+        $distribution = $this->fileRecordRepository->getRecordDistributionByAge();
+
+        $records_older_than_tier2 = 0;
+        foreach ( $distribution as $range ) {
+            // Count records in ranges beyond tier2_days (default 30 days)
+            if ( in_array( $range['age_range'], [ '31-90 days', '91-180 days', '180+ days' ], true ) ) {
+                $records_older_than_tier2 += $range['record_count'];
+            }
+        }
+
+        $has_bloat = $records_older_than_tier2 > 0;
 
         // Note: Scan completion notifications are handled entirely by JavaScript
         // to avoid duplicate notices. The JS checkScanCompletion() method in admin.js
