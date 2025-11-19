@@ -147,7 +147,10 @@ class Activator {
         $tiered_retention_applied = class_exists( 'EightyFourEM\FileIntegrityChecker\Database\Migrations\TieredRetentionMigration' )
             && \EightyFourEM\FileIntegrityChecker\Database\Migrations\TieredRetentionMigration::isApplied();
 
-        return $priority_monitoring_applied && $tiered_retention_applied;
+        $cleanup_action_applied = class_exists( 'EightyFourEM\FileIntegrityChecker\Database\Migrations\CleanupActionMigration' )
+            && \EightyFourEM\FileIntegrityChecker\Database\Migrations\CleanupActionMigration::isApplied();
+
+        return $priority_monitoring_applied && $tiered_retention_applied && $cleanup_action_applied;
     }
 
     /**

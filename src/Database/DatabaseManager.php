@@ -9,6 +9,7 @@ namespace EightyFourEM\FileIntegrityChecker\Database;
 
 use EightyFourEM\FileIntegrityChecker\Database\Migrations\PriorityMonitoringMigration;
 use EightyFourEM\FileIntegrityChecker\Database\Migrations\TieredRetentionMigration;
+use EightyFourEM\FileIntegrityChecker\Database\Migrations\CleanupActionMigration;
 use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 
 /**
@@ -217,6 +218,24 @@ class DatabaseManager {
                 }
             }
 
+            // Run cleanup action migration if not already applied
+            if ( ! CleanupActionMigration::isApplied() ) {
+                $migration = new CleanupActionMigration();
+                if ( $this->loggerService ) {
+                    $migration->setLoggerService( $this->loggerService );
+                }
+                $result = $migration->up();
+                if ( ! $result ) {
+                    if ( $this->loggerService ) {
+                        $this->loggerService->error(
+                            message: 'Cleanup action migration failed',
+                            context: LoggerService::CONTEXT_DATABASE
+                        );
+                    }
+                    return false;
+                }
+            }
+
             return true;
         } catch ( \Exception $e ) {
             if ( $this->loggerService ) {
@@ -238,7 +257,7 @@ class DatabaseManager {
      */
     public function runMigrationsAsync(): void {
         // Check if migrations are already applied
-        if ( PriorityMonitoringMigration::isApplied() && TieredRetentionMigration::isApplied() ) {
+        if ( PriorityMonitoringMigration::isApplied() && TieredRetentionMigration::isApplied() && CleanupActionMigration::isApplied() ) {
             if ( $this->loggerService ) {
                 $this->loggerService->info(
                     message: 'Database migrations already applied, skipping',
