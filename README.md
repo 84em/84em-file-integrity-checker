@@ -245,6 +245,108 @@ wp 84em integrity config set notification_email admin@example.com
 wp 84em integrity config set max_file_size 10485760
 ```
 
+## Baseline Management
+
+### What is a Baseline Scan?
+
+The baseline scan is your reference point for file integrity monitoring. It represents a known-good state of your WordPress installation that all future scans are compared against.
+
+### How Baselines Work
+
+1. **Automatic Creation**: Your first completed scan is automatically marked as the baseline
+2. **Storage Optimization**: Only the baseline contains all files. Subsequent scans only store changed, new, and deleted files (98% storage reduction)
+3. **Protected Retention**: Baseline scans are exempt from automatic deletion and retention policies
+4. **Hybrid Comparison**: New scans compare against the most recent scan, falling back to the baseline for complete file history
+
+### When to Refresh Your Baseline
+
+Consider creating a new baseline when:
+
+- WordPress core has been updated to a new major version
+- Multiple plugins have been installed, updated, or removed
+- You've verified that all file changes detected are legitimate
+- Your current baseline is older than 6 months
+- You receive a suggestion notice after WordPress or plugin updates
+
+### Baseline Management Commands
+
+**View current baseline:**
+```bash
+wp 84em integrity baseline show
+```
+
+**Set a specific scan as baseline:**
+```bash
+wp 84em integrity baseline mark <scan-id>
+
+# Example: Set scan #42 as baseline
+wp 84em integrity baseline mark 42
+```
+
+**Create new baseline (run scan and set as baseline):**
+```bash
+wp 84em integrity baseline refresh
+
+# Skip confirmation prompt
+wp 84em integrity baseline refresh --yes
+```
+
+**Clear baseline designation:**
+```bash
+wp 84em integrity baseline clear
+```
+
+**View baseline details:**
+```bash
+# Show baseline scan information
+wp 84em integrity baseline show
+
+# View full baseline scan results
+wp 84em integrity results <baseline-scan-id>
+```
+
+### Baseline Protection Features
+
+Baseline scans are automatically protected:
+
+- **Cannot be deleted** through the admin interface or bulk operations
+- **Exempt from retention policies** - never automatically cleaned up
+- **Preserved during cleanup** operations via WP-CLI
+- **Included in database optimization** but file records are never removed
+
+To delete a baseline scan, you must first clear the baseline designation using the Settings page or WP-CLI command.
+
+### Automated Suggestions
+
+The plugin will automatically suggest creating a new baseline when:
+
+- **WordPress core is updated** - A notice appears for 7 days after version change
+- **Plugins are activated/deactivated** - Cumulative notice for plugin file changes
+- **Baseline age exceeds 6 months** - Warning shown in Settings page
+
+These suggestions can be dismissed and will automatically expire after 7 days.
+
+### Best Practices
+
+1. **Review before baseline creation**: Always review scan results before marking as baseline to ensure all changes are legitimate
+2. **Regular baseline updates**: Refresh your baseline after major WordPress or plugin updates
+3. **Keep baselines relevant**: If your baseline is very old, comparison accuracy decreases
+4. **Use WP-CLI for automation**: Integrate baseline refresh into your deployment workflow:
+   ```bash
+   # After WordPress update in staging
+   wp 84em integrity baseline refresh --yes
+   ```
+
+### Database Storage Impact
+
+The baseline system dramatically reduces database storage requirements:
+
+- **Before optimization**: ~9.4 million rows for 30 days of hourly scans
+- **After optimization**: ~188,000 rows for 30 days of hourly scans
+- **Reduction**: 98% storage savings
+
+Only the baseline scan stores all file records. Subsequent scans only store files that have changed, are new, or were deleted.
+
 ## Usage Guide
 
 ### First Time Setup

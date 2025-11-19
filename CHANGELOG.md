@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.0] - 2025-11-19
+### Added
+- **Phase 1: Core Baseline Management & Storage Optimization (98% Database Reduction)**
+  - Implemented intelligent baseline scan system with automatic creation and protection
+  - Added hybrid comparison logic combining latest scan with baseline for complete file history
+  - Modified `saveFileRecords()` to filter unchanged files after baseline (stores only changed/new/deleted)
+  - Expected storage reduction: 9.4M rows → 188K rows over 30 days (98% savings)
+  - Added `ensureBaselineExists()` method to IntegrityService for automatic baseline creation
+  - Added `getPreviousFilesForComparison()` method for hybrid baseline + latest scan comparison
+  - Baseline scans are automatically protected from deletion in all cleanup operations
+  - Added baseline deletion prevention to AJAX handlers (single and bulk delete)
+  - Added `isBaseline()` method to ScanResultsRepository for baseline status checking
+  - Added `clearBaseline()` method to ScanResultsRepository
+  - Added baseline section to Settings page showing current baseline details and age warnings
+  - Added "Set as Baseline" button to scan results page with AJAX functionality
+  - Added "Clear Baseline Designation" button in Settings page
+  - Baseline age warning displayed when baseline exceeds 6 months
+  - JavaScript handlers for baseline management (mark, clear, set)
+
+- **Phase 2: User Experience Enhancements**
+  - WordPress update detection system with automatic baseline refresh suggestions
+  - Plugin activation/deactivation tracking with cumulative change notifications
+  - Dismissible admin notices for WordPress updates (7-day expiration)
+  - Dismissible admin notices for plugin changes (7-day expiration)
+  - New WP-CLI command: `wp 84em integrity baseline refresh` with `--yes` flag for automation
+  - Added contextual help tabs to Settings page:
+    - "Baseline Management" tab with complete baseline documentation
+    - "Retention Policy" tab explaining three-tier retention system
+  - Help sidebar with links to plugin documentation and issue reporting
+  - Comprehensive README.md "Baseline Management" section (100+ lines)
+  - Best practices guide for baseline management in README
+  - Database storage impact metrics documentation
+
+- **Database Health Widget Reorganization**
+  - Moved Database Health from WordPress Dashboard widget to File Integrity Dashboard
+  - Added dedicated Database Health card widget showing row count, table size, and bloat status
+  - Maintains transient caching (6-hour TTL) for performance
+
+### Changed
+- WordPress Dashboard widget now only displays Latest Scan information (cleaner, more focused)
+- AdminPages now requires FileRecordRepository dependency for table statistics
+- File Integrity Dashboard displays Database Health alongside other monitoring widgets
+- Baseline scans exempt from all retention policies and cleanup operations
+- First scan automatically becomes baseline if none exists (self-healing system)
+
+### Fixed
+- Comparison logic now correctly handles files missing from recent scans by falling back to baseline
+- Prevented accidental baseline deletion through improved protection mechanisms
+
 ## [2.3.2] - 2025-11-18
 ### Fixed
 - **Database Bloat Table Statistics Bug**

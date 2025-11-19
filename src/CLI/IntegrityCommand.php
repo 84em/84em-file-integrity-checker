@@ -833,8 +833,11 @@ class IntegrityCommand {
             case 'clear':
                 $this->clearBaseline( $args, $assoc_args );
                 break;
+            case 'refresh':
+                $this->refreshBaseline( $args, $assoc_args );
+                break;
             default:
-                \WP_CLI::error( "Unknown subcommand: $subcommand. Use mark, show, or clear." );
+                \WP_CLI::error( "Unknown subcommand: $subcommand. Use mark, show, clear, or refresh." );
         }
     }
 
@@ -927,6 +930,71 @@ class IntegrityCommand {
             \WP_CLI::success( "Baseline cleared (scan #$baseline_id is no longer baseline)" );
         } else {
             \WP_CLI::error( 'Failed to clear baseline' );
+        }
+    }
+
+    /**
+     * Run a new scan and set it as the baseline
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    private function refreshBaseline( array $args, array $assoc_args ): void {
+        $skip_confirm = isset( $assoc_args['yes'] ) && $assoc_args['yes'];
+
+        if ( ! $skip_confirm ) {
+            \WP_CLI::confirm( 'This will run a new scan and set it as the baseline. Any existing baseline will be replaced. Continue?' );
+        }
+
+        \WP_CLI::log( 'Starting new baseline scan...' );
+
+        $progress = \WP_CLI\Utils\make_progress_bar( 'Scanning files', 1000 );
+
+        $scan_result = $this->integrityService->runScan( 'manual', function ( $message, $current_file ) use ( $progress ) {
+            $progress->tick();
+            if ( strpos( $message, 'Scanning files:' ) === 0 ) {
+                preg_match( '/Scanning files: (\d+) processed/', $message, $matches );
+                if ( isset( $matches[1] ) ) {
+                    $count = (int) $matches[1];
+                    $progress->current = min( $count, $progress->total );
+                }
+            }
+        } );
+
+        $progress->finish();
+
+        if ( ! $scan_result || ! isset( $scan_result['scan_id'] ) ) {
+            \WP_CLI::error( 'Scan failed. Check logs for details.' );
+        }
+
+        $scan_id = $scan_result['scan_id'];
+
+        $success = $this->scanResultsRepository->markAsBaseline( $scan_id );
+
+        if ( ! $success ) {
+            \WP_CLI::error( 'Failed to mark scan as baseline.' );
+        }
+
+        $scan = $this->scanResultsRepository->getById( $scan_id );
+
+        \WP_CLI::success( sprintf(
+            'New baseline created: Scan #%d with %s files scanned',
+            $scan_id,
+            number_format( $scan->total_files )
+        ) );
+
+        $changes = $scan->changed_files + $scan->new_files + $scan->deleted_files;
+        if ( $changes > 0 ) {
+            \WP_CLI::warning( sprintf(
+                'Changes detected: %d changed, %d new, %d deleted',
+                $scan->changed_files,
+                $scan->new_files,
+                $scan->deleted_files
+            ) );
+            \WP_CLI::log( sprintf(
+                'View details: wp 84em integrity results %d',
+                $scan_id
+            ) );
         }
     }
 
@@ -1282,6 +1350,9 @@ class IntegrityCommand {
         );
 
         if ( $deleted > 0 ) {
+            // Clear table statistics cache after cleanup
+            $this->fileRecordRepository->clearTableStatisticsCache();
+
             \WP_CLI::success( sprintf(
                 'Cleanup complete! Deleted %s file_records (freed approximately %.2f MB)',
                 number_format( $deleted ),
@@ -1291,7 +1362,7 @@ class IntegrityCommand {
             // Show updated stats
             \WP_CLI::line( '' );
             \WP_CLI::line( 'Updated table statistics:' );
-            $new_stats = $this->fileRecordRepository->getTableStatistics();
+            $new_stats = $this->fileRecordRepository->getTableStatistics( force_refresh: true );
             \WP_CLI::line( sprintf( 'Total Rows: %s', number_format( $new_stats['total_rows'] ) ) );
             \WP_CLI::line( sprintf( 'Total Size: %.2f MB', $new_stats['total_size_mb'] ) );
         } else {

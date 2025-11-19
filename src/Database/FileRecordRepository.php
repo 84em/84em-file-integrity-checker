@@ -437,11 +437,46 @@ class FileRecordRepository {
     }
 
     /**
-     * Get table size statistics
+     * Get table size statistics with caching
+     *
+     * @param bool $force_refresh Force refresh cache (default: false)
+     * @return array Statistics including total rows, data size, index size
+     */
+    public function getTableStatistics( bool $force_refresh = false ): array {
+        $cache_key = 'eightyfourem_integrity_table_stats';
+        $cache_duration = 6 * HOUR_IN_SECONDS;
+
+        // Try to get cached statistics unless forced refresh
+        if ( ! $force_refresh ) {
+            $cached_stats = get_transient( $cache_key );
+            if ( false !== $cached_stats && is_array( $cached_stats ) ) {
+                return $cached_stats;
+            }
+        }
+
+        // Cache miss or forced refresh - calculate statistics
+        $stats = $this->calculateTableStatistics();
+
+        // Store in cache
+        set_transient( $cache_key, $stats, $cache_duration );
+
+        return $stats;
+    }
+
+    /**
+     * Clear table statistics cache
+     * Call this after operations that modify table size (cleanup, bulk delete, etc)
+     */
+    public function clearTableStatisticsCache(): void {
+        delete_transient( 'eightyfourem_integrity_table_stats' );
+    }
+
+    /**
+     * Calculate table size statistics (uncached)
      *
      * @return array Statistics including total rows, data size, index size
      */
-    public function getTableStatistics(): array {
+    private function calculateTableStatistics(): array {
         global $wpdb;
 
         $table_name = $wpdb->prefix . self::TABLE_NAME;

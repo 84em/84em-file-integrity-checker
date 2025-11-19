@@ -155,40 +155,6 @@ class DashboardWidget {
                 </div>
             <?php endif; ?>
 
-            <?php
-            // Add database health indicator
-            $table_stats = $this->fileRecordRepository->getTableStatistics();
-            $total_rows = $table_stats['total_rows'];
-            $total_size_mb = $table_stats['total_size_mb'];
-
-            // Calculate if bloat is present (rough heuristic: >100k rows or >500MB)
-            $has_bloat = $total_rows > 100000 || $total_size_mb > 500;
-            ?>
-            <div class="database-health" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
-                <h4 style="margin-bottom: 10px;">Database Health</h4>
-                <table class="widefat">
-                    <tr>
-                        <td><strong>File Records:</strong></td>
-                        <td><?php echo number_format( $total_rows ); ?> rows</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Table Size:</strong></td>
-                        <td>
-                            <?php echo number_format( $total_size_mb, 2 ); ?> MB
-                            <?php if ( $has_bloat ): ?>
-                                <span class="status-badge status-failed" style="margin-left: 5px; font-size: 11px;">High</span>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                </table>
-                <?php if ( $has_bloat ): ?>
-                    <p style="margin-top: 10px; padding: 8px; background: #fff3cd; border-left: 3px solid #ffc107; font-size: 12px;">
-                        <strong>Bloat Detected:</strong> Consider running cleanup to optimize database size.
-                        Run: <code>wp 84em integrity analyze-bloat</code>
-                    </p>
-                <?php endif; ?>
-            </div>
-
             <div class="widget-actions">
                 <p>
                     <a href="<?php echo admin_url( 'admin.php?page=file-integrity-checker' ); ?>" class="button">

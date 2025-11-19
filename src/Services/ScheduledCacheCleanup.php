@@ -184,9 +184,12 @@ class ScheduledCacheCleanup {
                 protected_ids: $protected_ids
             );
 
+            // Clear table statistics cache after cleanup
+            $this->fileRecordRepository->clearTableStatisticsCache();
+
             // Get statistics after cleanup
             $stats_after = $this->cacheRepository->getStatistics();
-            $file_record_stats = $this->fileRecordRepository->getTableStatistics();
+            $file_record_stats = $this->fileRecordRepository->getTableStatistics( force_refresh: true );
 
             // Log cleanup results
             $this->logger->info(

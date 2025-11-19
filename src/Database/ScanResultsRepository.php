@@ -226,11 +226,17 @@ class ScanResultsRepository {
 
         $result = $wpdb->query(
             $wpdb->prepare(
-                "DELETE FROM {$wpdb->prefix}" . self::TABLE_NAME . 
+                "DELETE FROM {$wpdb->prefix}" . self::TABLE_NAME .
                 " WHERE scan_date < DATE_SUB(NOW(), INTERVAL %d DAY)",
                 $days_old
             )
         );
+
+        // Clear table statistics cache after deleting scans
+        if ( $result > 0 ) {
+            $file_record_repo = new FileRecordRepository();
+            $file_record_repo->clearTableStatisticsCache();
+        }
 
         return (int) $result;
     }
@@ -247,6 +253,9 @@ class ScanResultsRepository {
         // First delete associated file records
         $file_record_repo = new FileRecordRepository();
         $file_record_repo->deleteByScanId( $id );
+
+        // Clear table statistics cache after deleting file records
+        $file_record_repo->clearTableStatisticsCache();
 
         // Then delete the scan result
         $result = $wpdb->delete(
@@ -337,6 +346,25 @@ class ScanResultsRepository {
         );
 
         return (bool) $is_baseline;
+    }
+
+    /**
+     * Clear baseline designation from all scans
+     *
+     * @return bool True on success, false on failure
+     */
+    public function clearBaseline(): bool {
+        global $wpdb;
+
+        $result = $wpdb->update(
+            $wpdb->prefix . self::TABLE_NAME,
+            [ 'is_baseline' => 0 ],
+            [ 'is_baseline' => 1 ],
+            [ '%d' ],
+            [ '%d' ]
+        );
+
+        return $result !== false;
     }
 
     /**
@@ -432,6 +460,12 @@ class ScanResultsRepository {
         }
 
         $stats['scans_deleted'] = $wpdb->query( $wpdb->prepare( $delete_sql, $delete_params ) );
+
+        // Clear table statistics cache after cleanup operations
+        if ( $stats['tier3_diff_removed'] > 0 || $stats['scans_deleted'] > 0 ) {
+            $file_record_repo = new FileRecordRepository();
+            $file_record_repo->clearTableStatisticsCache();
+        }
 
         return $stats;
     }

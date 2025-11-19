@@ -418,6 +418,55 @@ if ( ! defined( 'ABSPATH' ) ) {
             </div>
         </div>
 
+        <!-- Baseline Management -->
+        <div class="file-integrity-card">
+            <h3>Baseline Management</h3>
+            <div class="card-content">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">
+                            <label>Current Baseline</label>
+                        </th>
+                        <td>
+                            <?php
+                            $baseline_scan = $this->scanResultsRepository->getBaselineScan();
+                            if ( $baseline_scan ):
+                                $baseline_age_days = ( time() - strtotime( $baseline_scan->scan_date ) ) / DAY_IN_SECONDS;
+                                ?>
+                                <p>
+                                    <strong>Scan #<?php echo esc_html( $baseline_scan->id ); ?></strong><br>
+                                    Date: <?php echo esc_html( wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $baseline_scan->scan_date ) ) ); ?><br>
+                                    Age: <?php echo esc_html( round( $baseline_age_days ) ); ?> days<br>
+                                    Files: <?php echo number_format( $baseline_scan->total_files ); ?><br>
+                                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker-results&scan_id=' . $baseline_scan->id ) ); ?>">View Details</a>
+                                </p>
+
+                                <?php if ( $baseline_age_days > 180 ): ?>
+                                    <div class="notice notice-warning inline" style="margin: 10px 0; padding: 10px;">
+                                        <p><strong>Notice:</strong> Your baseline scan is over 6 months old. Consider creating a new baseline for optimal accuracy.</p>
+                                    </div>
+                                <?php endif; ?>
+
+                                <p>
+                                    <button type="button" class="button" id="clear-baseline-btn" data-scan-id="<?php echo esc_attr( $baseline_scan->id ); ?>">
+                                        Clear Baseline Designation
+                                    </button>
+                                </p>
+                                <p class="description">
+                                    The baseline scan is your reference point for all file integrity comparisons. It is protected from automatic deletion and retained forever.
+                                </p>
+                            <?php else: ?>
+                                <p><em>No baseline scan set. The next completed scan will automatically become the baseline.</em></p>
+                                <p class="description">
+                                    The baseline scan represents a known-good state of your WordPress installation.
+                                </p>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
         <!-- Logging Configuration -->
         <div class="file-integrity-card">
             <h3>Logging Configuration</h3>

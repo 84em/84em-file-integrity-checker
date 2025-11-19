@@ -13,6 +13,7 @@ use EightyFourEM\FileIntegrityChecker\Services\SchedulerService;
 use EightyFourEM\FileIntegrityChecker\Services\LoggerService;
 use EightyFourEM\FileIntegrityChecker\Services\NotificationService;
 use EightyFourEM\FileIntegrityChecker\Database\ScanResultsRepository;
+use EightyFourEM\FileIntegrityChecker\Database\FileRecordRepository;
 use EightyFourEM\FileIntegrityChecker\Utils\Security;
 
 /**
@@ -62,6 +63,13 @@ class AdminPages {
     private NotificationService $notificationService;
 
     /**
+     * File record repository
+     *
+     * @var FileRecordRepository
+     */
+    private FileRecordRepository $fileRecordRepository;
+
+    /**
      * Constructor
      *
      * @param IntegrityService      $integrityService      Integrity service
@@ -70,6 +78,7 @@ class AdminPages {
      * @param ScanResultsRepository $scanResultsRepository Scan results repository
      * @param LoggerService         $logger                Logger service
      * @param NotificationService   $notificationService   Notification service
+     * @param FileRecordRepository  $fileRecordRepository  File record repository
      */
     public function __construct(
         IntegrityService $integrityService,
@@ -77,7 +86,8 @@ class AdminPages {
         SchedulerService $schedulerService,
         ScanResultsRepository $scanResultsRepository,
         LoggerService $logger,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        FileRecordRepository $fileRecordRepository
     ) {
         $this->integrityService = $integrityService;
         $this->settingsService  = $settingsService;
@@ -85,6 +95,9 @@ class AdminPages {
         $this->scanResultsRepository = $scanResultsRepository;
         $this->logger = $logger;
         $this->notificationService = $notificationService;
+        $this->fileRecordRepository = $fileRecordRepository;
+
+        $this->checkWordPressUpdateAndSuggestBaseline();
     }
 
     /**
@@ -106,6 +119,14 @@ class AdminPages {
         add_action( 'wp_ajax_file_integrity_resend_email', [ $this, 'ajaxResendEmailNotification' ] );
         add_action( 'wp_ajax_file_integrity_resend_slack', [ $this, 'ajaxResendSlackNotification' ] );
         add_action( 'wp_ajax_file_integrity_mark_baseline', [ $this, 'ajaxMarkBaseline' ] );
+        add_action( 'wp_ajax_file_integrity_clear_baseline', [ $this, 'handleClearBaseline' ] );
+        add_action( 'wp_ajax_file_integrity_set_baseline', [ $this, 'handleSetBaseline' ] );
+        add_action( 'wp_ajax_file_integrity_dismiss_baseline_suggestion', [ $this, 'handleDismissBaselineSuggestion' ] );
+        add_action( 'wp_ajax_file_integrity_dismiss_plugin_changes', [ $this, 'handleDismissPluginChanges' ] );
+
+        // Register admin notices
+        add_action( 'admin_notices', [ $this, 'displayBaselineRefreshNotice' ] );
+        add_action( 'admin_notices', [ $this, 'displayPluginChangeNotice' ] );
     }
 
     /**
@@ -344,7 +365,11 @@ class AdminPages {
         
         $scheduler_available = $this->schedulerService->isAvailable();
         $scheduler_service = $this->schedulerService;
-        
+
+        // Get database health statistics
+        $table_stats = $this->fileRecordRepository->getTableStatistics();
+        $has_bloat = $table_stats['total_rows'] > 100000 || $table_stats['total_size_mb'] > 500;
+
         // Note: Scan completion notifications are handled entirely by JavaScript
         // to avoid duplicate notices. The JS checkScanCompletion() method in admin.js
         // uses sessionStorage to display the success message when scan_completed=1 is in URL
@@ -383,6 +408,8 @@ class AdminPages {
      * Render settings page
      */
     public function renderSettingsPage(): void {
+        $this->addSettingsContextualHelp();
+
         $settings = $this->settingsService->getAllSettings();
         $scheduler_available = $this->schedulerService->isAvailable();
 
@@ -646,22 +673,27 @@ class AdminPages {
         if ( ! Security::check_ajax_referer( 'ajax_delete_scan', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
-        
+
         // Check permissions
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( 'Insufficient permissions' );
         }
-        
+
         $scan_id = isset( $_POST['scan_id'] ) ? filter_var( $_POST['scan_id'], FILTER_VALIDATE_INT, [ 'options' => [ 'min_range' => 1 ] ] ) : false;
-        
+
         if ( $scan_id === false ) {
             wp_send_json_error( 'Invalid scan ID' );
         }
-        
+
+        // Prevent baseline deletion
+        if ( $this->scanResultsRepository->isBaseline( $scan_id ) ) {
+            wp_send_json_error( 'Cannot delete baseline scan. Use "Clear Baseline" from Settings to remove baseline designation first.' );
+        }
+
         try {
             // Delete scan and all associated file records
             $deleted = $this->scanResultsRepository->delete( $scan_id );
-            
+
             if ( $deleted ) {
                 wp_send_json_success( [
                     'message' => 'Scan deleted successfully',
@@ -759,21 +791,34 @@ class AdminPages {
         if ( ! Security::check_ajax_referer( 'ajax_bulk_delete_scans', '_wpnonce', false ) ) {
             wp_send_json_error( 'Invalid security token' );
         }
-        
+
         // Check permissions
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_send_json_error( 'Insufficient permissions' );
         }
-        
+
         $scan_ids = isset( $_POST['scan_ids'] ) ? array_map( 'intval', $_POST['scan_ids'] ) : [];
-        
+
         if ( empty( $scan_ids ) ) {
             wp_send_json_error( 'No scan IDs provided' );
         }
-        
+
+        // Remove baseline from deletion list if present
+        $baseline_id = $this->scanResultsRepository->getBaselineScanId();
+        $baseline_skipped = false;
+
+        if ( $baseline_id && in_array( $baseline_id, $scan_ids, true ) ) {
+            $scan_ids = array_diff( $scan_ids, [ $baseline_id ] );
+            $baseline_skipped = true;
+
+            if ( empty( $scan_ids ) ) {
+                wp_send_json_error( sprintf( 'Cannot delete baseline scan #%d. No other scans were selected.', $baseline_id ) );
+            }
+        }
+
         $deleted_count = 0;
         $failed_count = 0;
-        
+
         foreach ( $scan_ids as $scan_id ) {
             if ( $scan_id > 0 ) {
                 try {
@@ -793,18 +838,20 @@ class AdminPages {
                 }
             }
         }
-        
+
         if ( $deleted_count > 0 ) {
-            $message = sprintf( 
-                'Successfully deleted %d scan%s', 
-                $deleted_count, 
+            $message = sprintf(
+                'Successfully deleted %d scan%s',
+                $deleted_count,
                 $deleted_count === 1 ? '' : 's'
             );
-            
-            if ( $failed_count > 0 ) {
+
+            if ( $baseline_skipped ) {
+                $message = sprintf( 'Deleted %d scan(s). Baseline scan #%d was skipped (protected from deletion).', $deleted_count, $baseline_id );
+            } elseif ( $failed_count > 0 ) {
                 $message .= sprintf( ' (%d failed)', $failed_count );
             }
-            
+
             wp_send_json_success( [
                 'message' => $message,
                 'deleted' => $deleted_count,
@@ -1134,6 +1181,314 @@ class AdminPages {
         } else {
             wp_send_json_error( 'Failed to mark scan as baseline' );
         }
+    }
+
+    /**
+     * Handle clear baseline AJAX request
+     */
+    public function handleClearBaseline(): void {
+        Security::verifyNonce();
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Insufficient permissions' ] );
+        }
+
+        $scan_id = (int) $_POST['scan_id'];
+
+        // Clear baseline
+        $success = $this->scanResultsRepository->clearBaseline();
+
+        if ( $success ) {
+            $this->logger->info(
+                message: sprintf( 'Baseline cleared for scan #%d', $scan_id ),
+                context: LoggerService::CONTEXT_GENERAL,
+                data: [ 'scan_id' => $scan_id ]
+            );
+
+            wp_send_json_success( [ 'message' => 'Baseline designation cleared' ] );
+        } else {
+            wp_send_json_error( [ 'message' => 'Failed to clear baseline' ] );
+        }
+    }
+
+    /**
+     * Handle set baseline AJAX request
+     */
+    public function handleSetBaseline(): void {
+        Security::verifyNonce();
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Insufficient permissions' ] );
+        }
+
+        $scan_id = (int) $_POST['scan_id'];
+
+        // Verify scan exists
+        $scan = $this->scanResultsRepository->getById( $scan_id );
+        if ( ! $scan ) {
+            wp_send_json_error( [ 'message' => 'Scan not found' ] );
+        }
+
+        // Set as baseline
+        $success = $this->scanResultsRepository->markAsBaseline( $scan_id );
+
+        if ( $success ) {
+            $this->logger->info(
+                message: sprintf( 'Scan #%d marked as baseline', $scan_id ),
+                context: LoggerService::CONTEXT_GENERAL,
+                data: [ 'scan_id' => $scan_id ]
+            );
+
+            wp_send_json_success( [ 'message' => 'Scan marked as baseline' ] );
+        } else {
+            wp_send_json_error( [ 'message' => 'Failed to set baseline' ] );
+        }
+    }
+
+    /**
+     * Check if WordPress was recently updated and suggest baseline refresh
+     */
+    private function checkWordPressUpdateAndSuggestBaseline(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        $stored_wp_version = get_option( 'eightyfourem_last_wp_version', '' );
+        $current_wp_version = get_bloginfo( 'version' );
+
+        if ( $stored_wp_version !== $current_wp_version && ! empty( $stored_wp_version ) ) {
+            $baseline_scan = $this->scanResultsRepository->getBaselineScan();
+
+            if ( $baseline_scan ) {
+                set_transient( 'eightyfourem_suggest_baseline_refresh', [
+                    'old_version' => $stored_wp_version,
+                    'new_version' => $current_wp_version,
+                    'baseline_date' => $baseline_scan->scan_date,
+                    'baseline_id' => $baseline_scan->id,
+                ], 7 * DAY_IN_SECONDS );
+            }
+        }
+
+        if ( $stored_wp_version !== $current_wp_version ) {
+            update_option( 'eightyfourem_last_wp_version', $current_wp_version );
+        }
+    }
+
+    /**
+     * Display baseline refresh suggestion notice
+     */
+    public function displayBaselineRefreshNotice(): void {
+        $suggestion = get_transient( 'eightyfourem_suggest_baseline_refresh' );
+
+        if ( ! $suggestion ) {
+            return;
+        }
+
+        $screen = get_current_screen();
+        if ( ! $screen || strpos( $screen->id, 'file-integrity-checker' ) === false ) {
+            return;
+        }
+
+        ?>
+        <div class="notice notice-info is-dismissible" id="baseline-refresh-notice">
+            <p>
+                <strong>File Integrity Checker:</strong> WordPress has been updated from
+                <?php echo esc_html( $suggestion['old_version'] ); ?> to
+                <?php echo esc_html( $suggestion['new_version'] ); ?>.
+                Your current baseline scan is from <?php echo esc_html( date( 'M j, Y', strtotime( $suggestion['baseline_date'] ) ) ); ?>.
+            </p>
+            <p>
+                Consider creating a new baseline scan after verifying all changes are legitimate.
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button button-secondary">
+                    Run New Scan
+                </a>
+                <button type="button" class="button" id="dismiss-baseline-suggestion">Dismiss</button>
+            </p>
+        </div>
+        <script>
+        jQuery(document).ready(function($) {
+            $('#dismiss-baseline-suggestion').on('click', function() {
+                $.post(ajaxurl, {
+                    action: 'file_integrity_dismiss_baseline_suggestion',
+                    nonce: '<?php echo wp_create_nonce( 'dismiss_baseline_suggestion' ); ?>'
+                });
+                $('#baseline-refresh-notice').fadeOut();
+            });
+        });
+        </script>
+        <?php
+    }
+
+    /**
+     * Handle dismissing baseline refresh suggestion
+     */
+    public function handleDismissBaselineSuggestion(): void {
+        check_ajax_referer( 'dismiss_baseline_suggestion', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error();
+        }
+
+        delete_transient( 'eightyfourem_suggest_baseline_refresh' );
+        wp_send_json_success();
+    }
+
+    /**
+     * Display plugin change baseline suggestion
+     */
+    public function displayPluginChangeNotice(): void {
+        $changes = get_transient( 'eightyfourem_plugin_changes_for_baseline' );
+
+        if ( ! $changes || empty( $changes['changes'] ) ) {
+            return;
+        }
+
+        $screen = get_current_screen();
+        if ( ! $screen || strpos( $screen->id, 'file-integrity-checker' ) === false ) {
+            return;
+        }
+
+        $count = count( $changes['changes'] );
+        ?>
+        <div class="notice notice-info is-dismissible" id="plugin-change-notice">
+            <p>
+                <strong>File Integrity Checker:</strong>
+                <?php echo esc_html( $count ); ?> plugin<?php echo $count > 1 ? 's have' : ' has'; ?> been
+                activated or deactivated recently. Consider creating a new baseline scan.
+            </p>
+            <p>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button button-secondary">
+                    Run New Scan
+                </a>
+                <button type="button" class="button" id="dismiss-plugin-changes">Dismiss</button>
+            </p>
+        </div>
+        <script>
+        jQuery(document).ready(function($) {
+            $('#dismiss-plugin-changes').on('click', function() {
+                $.post(ajaxurl, {
+                    action: 'file_integrity_dismiss_plugin_changes',
+                    nonce: '<?php echo wp_create_nonce( 'dismiss_plugin_changes' ); ?>'
+                });
+                $('#plugin-change-notice').fadeOut();
+            });
+        });
+        </script>
+        <?php
+    }
+
+    /**
+     * Handle dismissing plugin change suggestion
+     */
+    public function handleDismissPluginChanges(): void {
+        check_ajax_referer( 'dismiss_plugin_changes', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error();
+        }
+
+        delete_transient( 'eightyfourem_plugin_changes_for_baseline' );
+        wp_send_json_success();
+    }
+
+    /**
+     * Register contextual help for settings page
+     */
+    private function addSettingsContextualHelp(): void {
+        $screen = get_current_screen();
+
+        if ( ! $screen ) {
+            return;
+        }
+
+        $screen->add_help_tab( [
+            'id' => 'baseline-management',
+            'title' => 'Baseline Management',
+            'content' => '
+                <h3>What is a Baseline Scan?</h3>
+                <p>The baseline scan serves as the reference point for all file integrity comparisons. It represents a known-good state of your WordPress installation.</p>
+
+                <h3>How Baselines Work</h3>
+                <ul>
+                    <li>Your first scan automatically becomes the baseline</li>
+                    <li>Baseline scans are protected from automatic deletion</li>
+                    <li>All subsequent scans are compared against the most recent scan, falling back to baseline for missing files</li>
+                    <li>Only changed, new, and deleted files are stored after the baseline (98% storage reduction)</li>
+                </ul>
+
+                <h3>When to Create a New Baseline</h3>
+                <ul>
+                    <li>After major WordPress core updates</li>
+                    <li>After installing or removing multiple plugins</li>
+                    <li>After verifying and accepting legitimate file changes</li>
+                    <li>If baseline is more than 6 months old</li>
+                </ul>
+
+                <h3>How to Create a New Baseline</h3>
+                <ol>
+                    <li>Run a new scan from the Dashboard page</li>
+                    <li>Review scan results to ensure all changes are legitimate</li>
+                    <li>Click "Set as Baseline" on the scan results page</li>
+                </ol>
+
+                <h3>WP-CLI Commands</h3>
+                <ul>
+                    <li><code>wp 84em integrity baseline show</code> - View current baseline</li>
+                    <li><code>wp 84em integrity baseline mark &lt;scan-id&gt;</code> - Set a specific scan as baseline</li>
+                    <li><code>wp 84em integrity baseline refresh</code> - Run new scan and set as baseline</li>
+                    <li><code>wp 84em integrity baseline clear</code> - Clear baseline designation</li>
+                </ul>
+            '
+        ] );
+
+        $screen->add_help_tab( [
+            'id' => 'retention-policy',
+            'title' => 'Retention Policy',
+            'content' => '
+                <h3>Tiered Retention System</h3>
+                <p>The plugin uses a three-tier retention system to optimize database size while maintaining historical data:</p>
+
+                <h4>Tier 1: Baseline Scan</h4>
+                <ul>
+                    <li>Retained forever</li>
+                    <li>Protected from all cleanup operations</li>
+                    <li>Contains complete file records for all files</li>
+                </ul>
+
+                <h4>Tier 2: Recent Scans (30 days)</h4>
+                <ul>
+                    <li>Full scan details retained</li>
+                    <li>Only changed/new/deleted files stored</li>
+                    <li>Diff content available for changed files</li>
+                </ul>
+
+                <h4>Tier 3: Historical Scans (31-90 days)</h4>
+                <ul>
+                    <li>Summary metadata retained</li>
+                    <li>Diff content removed to save space</li>
+                    <li>File change counts preserved</li>
+                </ul>
+
+                <h4>Deleted: Old Scans (90+ days)</h4>
+                <ul>
+                    <li>Automatically deleted during cleanup</li>
+                    <li>Exception: Scans with critical priority files are retained</li>
+                </ul>
+
+                <h3>Database Optimization</h3>
+                <p>Automated cleanup runs every 6 hours to maintain optimal database size. You can also manually run cleanup using:</p>
+                <ul>
+                    <li><code>wp 84em integrity cleanup</code> - Clean old scan records</li>
+                    <li><code>wp 84em integrity analyze-bloat</code> - Analyze database bloat</li>
+                </ul>
+            '
+        ] );
+
+        $screen->set_help_sidebar(
+            '<p><strong>For More Information:</strong></p>' .
+            '<p><a href="https://github.com/84emllc/84em-file-integrity-checker" target="_blank">Plugin Documentation</a></p>' .
+            '<p><a href="https://github.com/84emllc/84em-file-integrity-checker/issues" target="_blank">Report Issues</a></p>'
+        );
     }
 
 }
