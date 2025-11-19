@@ -88,7 +88,8 @@ if ( function_exists( 'as_unschedule_all_actions' ) ) {
     as_unschedule_all_actions( 'eightyfourem_file_integrity_scan' );
     as_unschedule_all_actions( 'eightyfourem_check_scan_schedules' );
     as_unschedule_all_actions( 'eightyfourem_file_integrity_log_cleanup' );
-    as_unschedule_all_actions( 'file_integrity_cleanup_cache' ); // Cache cleanup action
+    as_unschedule_all_actions( 'file_integrity_cleanup_cache' ); // Legacy cache cleanup action
+    as_unschedule_all_actions( 'eightyfourem_file_integrity_cleanup_cache' ); // Current cache cleanup action
     as_unschedule_all_actions( 'file_integrity_cleanup_legacy_content_table' ); // Legacy cleanup
 
     // Remove all actions in our group

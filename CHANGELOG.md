@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.2] - 2025-11-19
+### Added
+- CleanupActionMigration to automatically unschedule legacy Action Scheduler cleanup actions
+- Duplicate action detection and cleanup in ScheduledCacheCleanup service
+- Static guard in scheduleCleanup() to prevent multiple hook registrations
+
+### Fixed
+- Action Scheduler failures for legacy 'file_integrity_cleanup_cache' hook (claim ID 784490)
+- Multiple cleanup actions being scheduled due to missing duplicate validation
+- Orphaned scheduled actions from pre-v2.3.2 when cleanup hook was renamed
+
+### Changed
+- Updated uninstall.php to handle both legacy and current cleanup hook names
+- Enhanced defensive logic to automatically remove duplicate pending actions on initialization
+
 ## [2.4.1] - 2025-11-19
 ### Fixed
 - Fixed `Security::verifyNonce()` method name error in AJAX handlers (should be `Security::check_ajax_referer()`)
