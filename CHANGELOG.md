@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.4] - 2025-11-19
+### Fixed
+- Invalid security token error when clicking Mark as Baseline button
+- Invalid security token error when clicking Test Slack Notification button
+- Nonce verification for dismiss baseline suggestion notices
+- Nonce verification for dismiss plugin change notices
+
+### Changed
+- Standardized all AJAX handlers to use Security::create_nonce() and Security::check_ajax_referer()
+- Unified nonce parameter name to _wpnonce across all AJAX requests
+- Added ajax_ prefix to all nonce action names for consistency
+
 ## [2.4.3] - 2025-11-19
 ### Added
 - Refresh button to Database Health widget for clearing cached statistics on demand
