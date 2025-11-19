@@ -1335,7 +1335,7 @@ class AdminPages {
             $('#dismiss-baseline-suggestion').on('click', function() {
                 $.post(ajaxurl, {
                     action: 'file_integrity_dismiss_baseline_suggestion',
-                    nonce: '<?php echo wp_create_nonce( 'dismiss_baseline_suggestion' ); ?>'
+                    _wpnonce: '<?php echo \EightyFourEM\FileIntegrityChecker\Utils\Security::create_nonce( 'ajax_dismiss_baseline_suggestion' ); ?>'
                 });
                 $('#baseline-refresh-notice').fadeOut();
             });
@@ -1348,10 +1348,13 @@ class AdminPages {
      * Handle dismissing baseline refresh suggestion
      */
     public function handleDismissBaselineSuggestion(): void {
-        check_ajax_referer( 'dismiss_baseline_suggestion', 'nonce' );
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_dismiss_baseline_suggestion', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error();
+            wp_send_json_error( 'Insufficient permissions' );
         }
 
         delete_transient( 'eightyfourem_suggest_baseline_refresh' );
@@ -1393,7 +1396,7 @@ class AdminPages {
             $('#dismiss-plugin-changes').on('click', function() {
                 $.post(ajaxurl, {
                     action: 'file_integrity_dismiss_plugin_changes',
-                    nonce: '<?php echo wp_create_nonce( 'dismiss_plugin_changes' ); ?>'
+                    _wpnonce: '<?php echo \EightyFourEM\FileIntegrityChecker\Utils\Security::create_nonce( 'ajax_dismiss_plugin_changes' ); ?>'
                 });
                 $('#plugin-change-notice').fadeOut();
             });
@@ -1406,10 +1409,13 @@ class AdminPages {
      * Handle dismissing plugin change suggestion
      */
     public function handleDismissPluginChanges(): void {
-        check_ajax_referer( 'dismiss_plugin_changes', 'nonce' );
+        // Check action-specific nonce
+        if ( ! Security::check_ajax_referer( 'ajax_dismiss_plugin_changes', '_wpnonce', false ) ) {
+            wp_send_json_error( 'Invalid security token' );
+        }
 
         if ( ! current_user_can( 'manage_options' ) ) {
-            wp_send_json_error();
+            wp_send_json_error( 'Insufficient permissions' );
         }
 
         delete_transient( 'eightyfourem_plugin_changes_for_baseline' );
