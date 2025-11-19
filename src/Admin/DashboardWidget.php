@@ -184,9 +184,7 @@ class DashboardWidget {
                 <?php if ( $has_bloat ): ?>
                     <p style="margin-top: 10px; padding: 8px; background: #fff3cd; border-left: 3px solid #ffc107; font-size: 12px;">
                         <strong>Bloat Detected:</strong> Consider running cleanup to optimize database size.
-                        <?php if ( defined( 'WP_CLI' ) ): ?>
-                            Run: <code>wp 84em integrity analyze-bloat</code>
-                        <?php endif; ?>
+                        Run: <code>wp 84em integrity analyze-bloat</code>
                     </p>
                 <?php endif; ?>
             </div>

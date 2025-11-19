@@ -1238,29 +1238,13 @@ class IntegrityCommand {
 
         \WP_CLI::line( '' );
 
-        // Calculate what would be deleted
-        global $wpdb;
-        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
-        $file_records_table = $wpdb->prefix . 'eightyfourem_integrity_file_records';
-        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+        // Calculate what would be deleted using repository method
+        $records_to_delete = $this->fileRecordRepository->countFileRecordsForOldScans(
+            days_old: $days,
+            protected_ids: $protected_ids
+        );
 
-        $exclusion_clause = '';
-        $params = [ $cutoff_date ];
-
-        if ( ! empty( $protected_ids ) ) {
-            $placeholders = implode( ',', array_fill( 0, count( $protected_ids ), '%d' ) );
-            $exclusion_clause = " AND sr.id NOT IN ({$placeholders})";
-            $params = array_merge( $params, $protected_ids );
-        }
-
-        $count_query = "SELECT COUNT(*) FROM {$file_records_table} fr
-                       JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
-                       WHERE sr.scan_date < %s
-                       {$exclusion_clause}";
-
-        $records_to_delete = $wpdb->get_var( $wpdb->prepare( $count_query, $params ) );
-
-        if ( ! $records_to_delete || $records_to_delete == 0 ) {
+        if ( $records_to_delete < 1 ) {
             \WP_CLI::success( 'No file_records found matching criteria. Nothing to clean up.' );
             return;
         }
@@ -1268,6 +1252,8 @@ class IntegrityCommand {
         // Get size estimate
         $table_stats = $this->fileRecordRepository->getTableStatistics();
         $estimated_size_mb = ( $records_to_delete * $table_stats['avg_row_size_bytes'] ) / 1024 / 1024;
+
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
 
         \WP_CLI::line( sprintf( 'Records to delete: %s', number_format( $records_to_delete ) ) );
         \WP_CLI::line( sprintf( 'Estimated space freed: %.2f MB', $estimated_size_mb ) );

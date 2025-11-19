@@ -367,14 +367,14 @@ class FileRecordRepository {
     }
 
     /**
-     * Delete file records for scans older than specified days, preserving protected scans
-     * This is more aggressive than just removing diff_content
+     * Count file records for scans older than specified days, excluding protected scans
+     * Used to preview how many records would be deleted before cleanup
      *
-     * @param int   $days_old      Delete file records for scans older than this many days
+     * @param int   $days_old      Count file records for scans older than this many days
      * @param array $protected_ids Scan IDs to protect from deletion (baseline, critical)
-     * @return int Number of file records deleted
+     * @return int Number of file records that would be deleted
      */
-    public function deleteFileRecordsForOldScans( int $days_old, array $protected_ids = [] ): int {
+    public function countFileRecordsForOldScans( int $days_old, array $protected_ids = [] ): int {
         global $wpdb;
 
         $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
@@ -389,10 +389,47 @@ class FileRecordRepository {
             $params = array_merge( $params, $protected_ids );
         }
 
-        $sql = "DELETE fr FROM {$wpdb->prefix}" . self::TABLE_NAME . " fr
+        $sql = "SELECT COUNT(*) FROM {$wpdb->prefix}" . self::TABLE_NAME . " fr
                 JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
                 WHERE sr.scan_date < %s
                 {$exclusion_clause}";
+
+        $count = $wpdb->get_var( $wpdb->prepare( $sql, $params ) );
+
+        return (int) $count;
+    }
+
+    /**
+     * Delete file records for scans older than specified days, preserving protected scans
+     * This is more aggressive than just removing diff_content
+     *
+     * @param int   $days_old      Delete file records for scans older than this many days
+     * @param array $protected_ids Scan IDs to protect from deletion (baseline, critical)
+     * @return int Number of file records deleted
+     */
+    public function deleteFileRecordsForOldScans( int $days_old, array $protected_ids = [] ): int {
+        global $wpdb;
+
+        $file_records_table = $wpdb->prefix . self::TABLE_NAME;
+        $scan_results_table = $wpdb->prefix . 'eightyfourem_integrity_scan_results';
+        $cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days_old} days" ) );
+
+        // Build WHERE clause and prepare parameters
+        $where_conditions = [ 'sr.scan_date < %s' ];
+        $params = [ $cutoff_date ];
+
+        if ( ! empty( $protected_ids ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $protected_ids ), '%d' ) );
+            $where_conditions[] = "sr.id NOT IN ({$placeholders})";
+            $params = array_merge( $params, $protected_ids );
+        }
+
+        $where_clause = implode( ' AND ', $where_conditions );
+
+        // Build and execute DELETE query with JOIN
+        $sql = "DELETE fr FROM {$file_records_table} fr
+                INNER JOIN {$scan_results_table} sr ON fr.scan_result_id = sr.id
+                WHERE {$where_clause}";
 
         $result = $wpdb->query( $wpdb->prepare( $sql, $params ) );
 
@@ -441,16 +478,6 @@ class FileRecordRepository {
             'index_size_mb' => $size_stats ? (float) $size_stats->index_size_mb : 0,
             'avg_row_size_bytes' => $avg_row_size,
         ];
-
-        if ( ! $stats ) {
-            return [
-                'total_rows' => 0,
-                'total_size_mb' => 0,
-                'data_size_mb' => 0,
-                'index_size_mb' => 0,
-                'avg_row_size_bytes' => 0,
-            ];
-        }
 
         return [
             'total_rows' => (int) $stats->total_rows,
