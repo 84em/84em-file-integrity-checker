@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.3] - 2025-11-19
+### Added
+- Refresh button to Database Health widget for clearing cached statistics on demand
+- Timestamp display showing when database health data was last cached
+- General nonce property for AJAX requests
+
+### Fixed
+- Dashboard bloat detection now uses retention-based logic matching analyze-bloat command
+- Fixed inconsistency where dashboard showed "HIGH" bloat but analyze-bloat reported no bloat
+- Fixed 403/-1 error when clicking Refresh button due to nonce verification failure
+
+### Changed
+- Database Health widget now shows "Last Updated: X ago" for cache transparency
+- Bloat detection considers record age vs retention policy instead of arbitrary row thresholds
+- Cache statistics include cached_at timestamp for better user awareness
+
 ## [2.4.2] - 2025-11-19
 ### Added
 - CleanupActionMigration to automatically unschedule legacy Action Scheduler cleanup actions
