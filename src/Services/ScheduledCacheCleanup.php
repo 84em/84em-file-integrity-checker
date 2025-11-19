@@ -119,10 +119,20 @@ class ScheduledCacheCleanup {
             return;
         }
 
+        // Static guard to prevent multiple hook registrations
+        static $initialized = false;
+        if ( $initialized ) {
+            return;
+        }
+        $initialized = true;
+
         // Wait for Action Scheduler to be fully initialized
         add_action( 'action_scheduler_init', function() {
             // Defensive cleanup: Unschedule legacy actions if they exist
             $this->cleanupLegacyActions();
+
+            // Clean up any duplicate actions
+            $this->cleanupDuplicateActions();
 
             // Check if cleanup is already scheduled
             if ( ! as_has_scheduled_action( self::CLEANUP_ACTION ) ) {
@@ -162,6 +172,49 @@ class ScheduledCacheCleanup {
                 'Cleaned up legacy scheduled actions',
                 'cache_cleanup',
                 [ 'legacy_hook' => self::LEGACY_CLEANUP_ACTION ]
+            );
+        }
+    }
+
+    /**
+     * Clean up duplicate scheduled actions
+     *
+     * Ensures only one recurring cleanup action is scheduled
+     */
+    private function cleanupDuplicateActions(): void {
+        if ( ! function_exists( 'as_get_scheduled_actions' ) ) {
+            return;
+        }
+
+        // Get all pending cleanup actions
+        $actions = as_get_scheduled_actions(
+            args: [
+                'hook' => self::CLEANUP_ACTION,
+                'status' => 'pending',
+            ],
+            return_format: 'ids'
+        );
+
+        // If we have more than one, keep the earliest and cancel the rest
+        if ( is_array( $actions ) && count( $actions ) > 1 ) {
+            $duplicate_count = count( $actions ) - 1;
+
+            // Sort by ID (earliest first) and keep the first one
+            sort( $actions );
+            $keep_action = array_shift( $actions );
+
+            // Unschedule the duplicates
+            foreach ( $actions as $action_id ) {
+                as_unschedule_action( $action_id );
+            }
+
+            $this->logger->warning(
+                sprintf( 'Cleaned up %d duplicate cleanup action(s)', $duplicate_count ),
+                'cache_cleanup',
+                [
+                    'kept_action_id' => $keep_action,
+                    'removed_count' => $duplicate_count,
+                ]
             );
         }
     }
