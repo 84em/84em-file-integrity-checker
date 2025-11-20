@@ -438,6 +438,31 @@ class IntegrityService {
         // Get files from latest scan
         $previous_files = $this->fileRecordRepository->getByScanId( $latest_scan->id );
 
+        // If latest scan has no stored records (0 changes scenario), we need to find
+        // the most recent scan that does have records to get updated checksums
+        if ( empty( $previous_files ) && $latest_scan->changed_files == 0 ) {
+            $scan_with_records = $this->findLatestScanWithRecords( $latest_scan->id );
+            if ( $scan_with_records ) {
+                $previous_files = $this->fileRecordRepository->getByScanId( $scan_with_records->id );
+                $this->logger->debug(
+                    message: sprintf( 'Using scan #%d (had %d stored records) instead of empty scan #%d',
+                        $scan_with_records->id,
+                        count( $previous_files ),
+                        $latest_scan->id
+                    ),
+                    context: LoggerService::CONTEXT_SCANNER
+                );
+            }
+        }
+
+        // Track deleted files to exclude from baseline merge
+        $deleted_paths = [];
+        foreach ( $previous_files as $file ) {
+            if ( isset( $file->status ) && $file->status === 'deleted' ) {
+                $deleted_paths[ $file->file_path ] = true;
+            }
+        }
+
         // If latest scan is not baseline, merge with baseline for complete picture
         $baseline_id = $this->scanResultsRepository->getBaselineScanId();
 
@@ -450,10 +475,11 @@ class IntegrityService {
                 $latest_lookup[ $file->file_path ] = true;
             }
 
-            // Add baseline files that aren't in latest scan
+            // Add baseline files that aren't in latest scan AND weren't deleted
             $baseline_count = 0;
             foreach ( $baseline_files as $baseline_file ) {
-                if ( ! isset( $latest_lookup[ $baseline_file->file_path ] ) ) {
+                if ( ! isset( $latest_lookup[ $baseline_file->file_path ] )
+                     && ! isset( $deleted_paths[ $baseline_file->file_path ] ) ) {
                     $previous_files[] = $baseline_file;
                     $baseline_count++;
                 }
@@ -468,6 +494,34 @@ class IntegrityService {
         }
 
         return $previous_files;
+    }
+
+    /**
+     * Find the latest scan that has stored file records
+     *
+     * @param int $exclude_scan_id Scan ID to exclude from search
+     * @return object|null Scan result object or null if not found
+     */
+    private function findLatestScanWithRecords( int $exclude_scan_id ): ?object {
+        global $wpdb;
+
+        // Find the most recent completed scan (before the excluded one) that has file records
+        $result = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT sr.* FROM {$wpdb->prefix}eightyfourem_integrity_scan_results sr
+                 WHERE sr.status = 'completed'
+                   AND sr.id < %d
+                   AND EXISTS (
+                       SELECT 1 FROM {$wpdb->prefix}eightyfourem_integrity_file_records fr
+                       WHERE fr.scan_result_id = sr.id
+                   )
+                 ORDER BY sr.scan_date DESC
+                 LIMIT 1",
+                $exclude_scan_id
+            )
+        );
+
+        return $result ?: null;
     }
 
     /**
