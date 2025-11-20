@@ -411,6 +411,26 @@ class SettingsService {
     }
 
     /**
+     * Check if zero-change scans should be skipped (not saved)
+     *
+     * @return bool True if zero-change scans should be skipped
+     */
+    public function shouldSkipZeroChangeScans(): bool {
+        return (bool) get_option( self::OPTION_PREFIX . 'skip_zero_change_scans', false );
+    }
+
+    /**
+     * Set whether to skip saving zero-change scans
+     *
+     * @param bool $skip Whether to skip zero-change scans
+     * @return bool True on success
+     */
+    public function setSkipZeroChangeScans( bool $skip ): bool {
+        update_option( self::OPTION_PREFIX . 'skip_zero_change_scans', $skip );
+        return true;
+    }
+
+    /**
      * Get enabled log levels
      *
      * @return array Array of enabled log levels
@@ -615,6 +635,7 @@ class SettingsService {
             'auto_log_cleanup' => $this->isAutoLogCleanupEnabled(),
             'debug_mode' => $this->isDebugModeEnabled(),
             'delete_data_on_uninstall' => $this->shouldDeleteDataOnUninstall(),
+            'skip_zero_change_scans' => $this->shouldSkipZeroChangeScans(),
         ];
     }
 
@@ -695,6 +716,9 @@ class SettingsService {
                 case 'delete_data_on_uninstall':
                     $results[ $key ] = $this->setDeleteDataOnUninstall( (bool) $value );
                     break;
+                case 'skip_zero_change_scans':
+                    $results[ $key ] = $this->setSkipZeroChangeScans( (bool) $value );
+                    break;
                 default:
                     $results[ $key ] = false;
             }
@@ -732,6 +756,7 @@ class SettingsService {
             'auto_log_cleanup',
             'debug_mode',
             'delete_data_on_uninstall',
+            'skip_zero_change_scans',
         ];
 
         foreach ( $options as $option ) {

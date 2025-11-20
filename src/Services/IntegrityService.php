@@ -194,12 +194,57 @@ class IntegrityService {
             // After scan completion, ensure baseline exists
             $this->ensureBaselineExists( $scan_id );
 
+            // Check if we should skip saving zero-change scans
+            $total_changes = $stats['changed_files'] + $stats['new_files'] + $stats['deleted_files'];
+            $is_baseline = $this->scanResultsRepository->isBaseline( $scan_id );
+
+            if ( $total_changes === 0
+                 && ! $is_baseline
+                 && $this->settingsService->shouldSkipZeroChangeScans() ) {
+
+                // Delete the scan record since no changes detected
+                $this->scanResultsRepository->delete( $scan_id );
+
+                // Log that we skipped saving
+                $this->logger->info(
+                    sprintf(
+                        'Skipped saving scan - no changes detected (Total files: %d)',
+                        $stats['total_files']
+                    ),
+                    LoggerService::CONTEXT_SCANNER,
+                    [
+                        'total_files' => $stats['total_files'],
+                        'skipped_scan_id' => $scan_id,
+                        'scan_type' => $scan_type,
+                        'duration' => $scan_duration,
+                    ]
+                );
+
+                if ( $progress_callback ) {
+                    call_user_func( $progress_callback, "No changes detected - scan not saved", '' );
+                }
+
+                return [
+                    'scan_id' => null,
+                    'status' => 'skipped',
+                    'duration' => $scan_duration,
+                    'memory_usage' => $memory_usage,
+                    'total_files' => $stats['total_files'],
+                    'changed_files' => 0,
+                    'new_files' => 0,
+                    'deleted_files' => 0,
+                    'unchanged_files' => $stats['unchanged_files'],
+                    'skipped' => true,
+                    'message' => 'No changes detected - scan not saved',
+                ];
+            }
+
             if ( $progress_callback ) {
                 call_user_func( $progress_callback, "Scan completed successfully!", '' );
             }
 
             // Send notifications if changes were detected
-            if ( ( $stats['changed_files'] > 0 || $stats['new_files'] > 0 || $stats['deleted_files'] > 0 ) ) {
+            if ( $total_changes > 0 ) {
                 $this->notificationService->sendScanNotification( $scan_id );
             }
             

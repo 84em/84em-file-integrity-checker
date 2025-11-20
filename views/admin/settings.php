@@ -362,6 +362,24 @@ if ( ! defined( 'ABSPATH' ) ) {
                         </td>
                     </tr>
                     <tr>
+                        <th scope="row">
+                            <label for="skip_zero_change_scans">Skip Zero-Change Scans</label>
+                        </th>
+                        <td>
+                            <input type="checkbox"
+                                   name="skip_zero_change_scans"
+                                   id="skip_zero_change_scans"
+                                   value="1"
+                                   <?php checked( $settings['skip_zero_change_scans'] ?? false ); ?> />
+                            <label for="skip_zero_change_scans">Do not save scan results when no changes are detected</label>
+                            <p class="description">
+                                When enabled, scans that detect zero file changes will not be saved to the database.
+                                This reduces database size for sites with infrequent file changes.
+                                The first scan (baseline) will always be saved regardless of this setting.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
                         <td colspan="2">
                             <div class="file-integrity-alert alert-info">
                                 <span class="dashicons dashicons-info"></span>

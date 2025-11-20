@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.5.0] - 2025-11-20
+### Added
+- Skip Zero-Change Scans setting in Data Management to reduce database size
+- When enabled, scans with 0 changes are not saved to the database
+- Baseline scans are always saved regardless of this setting
+- WP-CLI shows "Skipped" status when scans are not saved
+
 ## [2.4.6] - 2025-11-20
 ### Fixed
 - Changes re-detected after scans with 0 changes due to falling back to baseline
