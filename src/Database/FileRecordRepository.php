@@ -127,6 +127,49 @@ class FileRecordRepository {
     }
 
     /**
+     * Get all file paths that have been marked as deleted in any scan
+     *
+     * @return array Array of file paths
+     */
+    public function getAllDeletedPaths(): array {
+        global $wpdb;
+
+        $results = $wpdb->get_col(
+            "SELECT DISTINCT file_path FROM {$wpdb->prefix}" . self::TABLE_NAME .
+            " WHERE status = 'deleted'"
+        );
+
+        return $results ?: [];
+    }
+
+    /**
+     * Get the most recent checksum for each file across all scans
+     * This provides an accurate comparison baseline by using the latest known state
+     *
+     * @return array Array of file record objects with latest checksums
+     */
+    public function getLatestChecksumForAllFiles(): array {
+        global $wpdb;
+
+        // For each file, get the record from the most recent scan
+        // This query gets the latest scan_result_id for each file_path,
+        // then joins back to get the full record
+        $results = $wpdb->get_results(
+            "SELECT fr.*
+             FROM {$wpdb->prefix}" . self::TABLE_NAME . " fr
+             INNER JOIN (
+                 SELECT file_path, MAX(scan_result_id) as max_scan_id
+                 FROM {$wpdb->prefix}" . self::TABLE_NAME . "
+                 GROUP BY file_path
+             ) latest ON fr.file_path = latest.file_path AND fr.scan_result_id = latest.max_scan_id
+             WHERE fr.status != 'deleted'
+             ORDER BY fr.file_path"
+        );
+
+        return $results ?: [];
+    }
+
+    /**
      * Get changed files for a specific scan
      *
      * @param int $scan_result_id Scan result ID
