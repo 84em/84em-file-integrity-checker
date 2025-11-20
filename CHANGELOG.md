@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.6] - 2025-11-20
+### Fixed
+- Changes re-detected after scans with 0 changes due to falling back to baseline
+- Now finds most recent scan with stored file records instead of empty scans
+
 ## [2.4.5] - 2025-11-20
 ### Fixed
 - Deleted files incorrectly re-reported in subsequent scans after initial detection
