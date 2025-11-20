@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.4.5] - 2025-11-20
+### Fixed
+- Deleted files incorrectly re-reported in subsequent scans after initial detection
+- Baseline merge now excludes files already marked as deleted in previous scans
+
 ## [2.4.4] - 2025-11-19
 ### Fixed
 - Invalid security token error when clicking Mark as Baseline button

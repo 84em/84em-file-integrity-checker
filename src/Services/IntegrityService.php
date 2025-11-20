@@ -438,6 +438,14 @@ class IntegrityService {
         // Get files from latest scan
         $previous_files = $this->fileRecordRepository->getByScanId( $latest_scan->id );
 
+        // Track deleted files to exclude from baseline merge
+        $deleted_paths = [];
+        foreach ( $previous_files as $file ) {
+            if ( isset( $file->status ) && $file->status === 'deleted' ) {
+                $deleted_paths[ $file->file_path ] = true;
+            }
+        }
+
         // If latest scan is not baseline, merge with baseline for complete picture
         $baseline_id = $this->scanResultsRepository->getBaselineScanId();
 
@@ -450,10 +458,11 @@ class IntegrityService {
                 $latest_lookup[ $file->file_path ] = true;
             }
 
-            // Add baseline files that aren't in latest scan
+            // Add baseline files that aren't in latest scan AND weren't deleted
             $baseline_count = 0;
             foreach ( $baseline_files as $baseline_file ) {
-                if ( ! isset( $latest_lookup[ $baseline_file->file_path ] ) ) {
+                if ( ! isset( $latest_lookup[ $baseline_file->file_path ] )
+                     && ! isset( $deleted_paths[ $baseline_file->file_path ] ) ) {
                     $previous_files[] = $baseline_file;
                     $baseline_count++;
                 }
