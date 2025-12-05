@@ -1243,6 +1243,203 @@ class IntegrityCommand {
     }
 
     /**
+     * Check for and optionally fix duplicate scheduled scan actions
+     *
+     * ## OPTIONS
+     *
+     * [--fix]
+     * : Remove duplicate actions, keeping only the earliest scheduled one
+     *
+     * [--format=<format>]
+     * : Output format
+     * ---
+     * default: table
+     * options:
+     *   - table
+     *   - csv
+     *   - json
+     * ---
+     *
+     * ## EXAMPLES
+     *
+     *     wp 84em integrity check-duplicates
+     *     wp 84em integrity check-duplicates --fix
+     *     wp 84em integrity check-duplicates --format=json
+     *
+     * @subcommand check-duplicates
+     *
+     * @param array $args       Command arguments
+     * @param array $assoc_args Associative arguments
+     */
+    public function check_duplicates( array $args, array $assoc_args ): void {
+        if ( ! function_exists( 'as_get_scheduled_actions' ) ) {
+            \WP_CLI::error( 'Action Scheduler is not available.' );
+            return;
+        }
+
+        $fix = isset( $assoc_args['fix'] );
+        $format = $assoc_args['format'] ?? 'table';
+
+        \WP_CLI::line( 'Checking for duplicate scheduled scan actions...' );
+        \WP_CLI::line( '' );
+
+        // Get all pending scan actions
+        $actions = as_get_scheduled_actions( [
+            'hook' => 'eightyfourem_file_integrity_scan',
+            'group' => 'file-integrity-checker',
+            'status' => \ActionScheduler_Store::STATUS_PENDING,
+            'per_page' => -1,
+        ] );
+
+        if ( empty( $actions ) ) {
+            \WP_CLI::success( 'No pending scan actions found.' );
+            return;
+        }
+
+        \WP_CLI::line( sprintf( 'Found %d pending scan action(s)', count( $actions ) ) );
+        \WP_CLI::line( '' );
+
+        // Group actions by schedule_id
+        $actions_by_schedule = [];
+        foreach ( $actions as $action_id => $action ) {
+            $action_args = $action->get_args();
+            $schedule_id = isset( $action_args[0]['schedule_id'] ) ? (int) $action_args[0]['schedule_id'] : 0;
+            $schedule_name = isset( $action_args[0]['schedule_name'] ) ? $action_args[0]['schedule_name'] : 'Manual';
+            $scheduled_date = $action->get_schedule()->get_date();
+
+            if ( ! isset( $actions_by_schedule[ $schedule_id ] ) ) {
+                $actions_by_schedule[ $schedule_id ] = [
+                    'schedule_id' => $schedule_id,
+                    'schedule_name' => $schedule_name,
+                    'actions' => [],
+                ];
+            }
+
+            $actions_by_schedule[ $schedule_id ]['actions'][] = [
+                'action_id' => $action_id,
+                'scheduled_date' => $scheduled_date ? $scheduled_date->format( 'Y-m-d H:i:s' ) : 'Unknown',
+                'timestamp' => $scheduled_date ? $scheduled_date->getTimestamp() : 0,
+            ];
+        }
+
+        // Identify duplicates
+        $duplicates_found = false;
+        $total_duplicates = 0;
+        $actions_to_remove = [];
+
+        $output_data = [];
+
+        foreach ( $actions_by_schedule as $schedule_id => $schedule_data ) {
+            $action_count = count( $schedule_data['actions'] );
+
+            if ( $action_count > 1 ) {
+                $duplicates_found = true;
+                $total_duplicates += $action_count - 1;
+
+                // Sort by timestamp to keep the earliest
+                usort( $schedule_data['actions'], function ( $a, $b ) {
+                    return $a['timestamp'] <=> $b['timestamp'];
+                } );
+
+                // The first one is kept, the rest are duplicates
+                $kept_action = $schedule_data['actions'][0];
+
+                for ( $i = 1; $i < $action_count; $i++ ) {
+                    $duplicate = $schedule_data['actions'][ $i ];
+                    $actions_to_remove[] = [
+                        'action_id' => $duplicate['action_id'],
+                        'schedule_id' => $schedule_id,
+                    ];
+
+                    $output_data[] = [
+                        'Schedule ID' => $schedule_id ?: 'Manual',
+                        'Schedule Name' => $schedule_data['schedule_name'],
+                        'Action ID' => $duplicate['action_id'],
+                        'Scheduled Date' => $duplicate['scheduled_date'],
+                        'Status' => 'DUPLICATE',
+                    ];
+                }
+
+                $output_data[] = [
+                    'Schedule ID' => $schedule_id ?: 'Manual',
+                    'Schedule Name' => $schedule_data['schedule_name'],
+                    'Action ID' => $kept_action['action_id'],
+                    'Scheduled Date' => $kept_action['scheduled_date'],
+                    'Status' => 'KEPT',
+                ];
+            } else {
+                $action = $schedule_data['actions'][0];
+                $output_data[] = [
+                    'Schedule ID' => $schedule_id ?: 'Manual',
+                    'Schedule Name' => $schedule_data['schedule_name'],
+                    'Action ID' => $action['action_id'],
+                    'Scheduled Date' => $action['scheduled_date'],
+                    'Status' => 'OK',
+                ];
+            }
+        }
+
+        // Sort output by schedule ID and status
+        usort( $output_data, function ( $a, $b ) {
+            $schedule_cmp = strcmp( (string) $a['Schedule ID'], (string) $b['Schedule ID'] );
+            if ( $schedule_cmp !== 0 ) {
+                return $schedule_cmp;
+            }
+            // Put DUPLICATE before KEPT
+            return strcmp( $a['Status'], $b['Status'] );
+        } );
+
+        \WP_CLI\Utils\format_items(
+            format: $format,
+            items: $output_data,
+            fields: [ 'Schedule ID', 'Schedule Name', 'Action ID', 'Scheduled Date', 'Status' ]
+        );
+
+        \WP_CLI::line( '' );
+
+        if ( ! $duplicates_found ) {
+            \WP_CLI::success( 'No duplicate actions found. All schedules have exactly one pending action.' );
+            return;
+        }
+
+        \WP_CLI::warning( sprintf( 'Found %d duplicate action(s) that should be removed.', $total_duplicates ) );
+
+        if ( ! $fix ) {
+            \WP_CLI::line( '' );
+            \WP_CLI::line( 'Run with --fix to remove duplicate actions.' );
+            return;
+        }
+
+        // Remove duplicates
+        \WP_CLI::line( '' );
+        \WP_CLI::line( 'Removing duplicate actions...' );
+
+        $removed = 0;
+        foreach ( $actions_to_remove as $action_info ) {
+            try {
+                // Get the action to cancel it properly
+                $store = \ActionScheduler::store();
+                $action = $store->fetch_action( $action_info['action_id'] );
+
+                if ( $action ) {
+                    as_unschedule_action(
+                        hook: 'eightyfourem_file_integrity_scan',
+                        args: $action->get_args(),
+                        group: 'file-integrity-checker'
+                    );
+                    $removed++;
+                    \WP_CLI::line( sprintf( '  Removed action #%d for schedule #%s', $action_info['action_id'], $action_info['schedule_id'] ?: 'Manual' ) );
+                }
+            } catch ( \Exception $e ) {
+                \WP_CLI::warning( sprintf( '  Failed to remove action #%d: %s', $action_info['action_id'], $e->getMessage() ) );
+            }
+        }
+
+        \WP_CLI::line( '' );
+        \WP_CLI::success( sprintf( 'Removed %d duplicate action(s).', $removed ) );
+    }
+
+    /**
      * Clean up old file_records to reduce database bloat
      *
      * ## OPTIONS

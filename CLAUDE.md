@@ -69,6 +69,11 @@ wp 84em integrity analyze-bloat --format=json       # Output bloat analysis as J
 wp 84em integrity cleanup --dry-run                 # Preview cleanup without deleting
 wp 84em integrity cleanup --days=30                 # Delete file_records older than 30 days
 wp 84em integrity cleanup --days=60 --force         # Force cleanup without confirmation
+
+# Action Scheduler duplicate detection and cleanup
+wp 84em integrity check-duplicates                  # Check for duplicate scheduled scan actions
+wp 84em integrity check-duplicates --fix            # Remove duplicate actions (keeps earliest)
+wp 84em integrity check-duplicates --format=json    # Output duplicate analysis as JSON
 ```
 
 ## Architecture Overview

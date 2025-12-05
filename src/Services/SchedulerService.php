@@ -123,8 +123,19 @@ class SchedulerService {
     public function checkAndScheduleDueScans(): void {
         $due_schedules = $this->schedulesRepository->getDueSchedules();
 
+        if ( empty( $due_schedules ) ) {
+            return;
+        }
+
+        $this->logger->info(
+            sprintf( 'Checking %d due schedule(s) for pending actions', count( $due_schedules ) ),
+            LoggerService::CONTEXT_SCHEDULER,
+            [ 'due_count' => count( $due_schedules ) ]
+        );
+
         foreach ( $due_schedules as $schedule ) {
-            // Schedule the scan - don't update last_run yet, that happens after execution
+            // Schedule the scan - scheduleFromConfig will skip if action already exists
+            // Don't update last_run yet, that happens after execution
             $this->scheduleFromConfig( $schedule );
         }
     }
@@ -306,6 +317,17 @@ class SchedulerService {
             return false;
         }
 
+        // Check if there's already a pending action for this schedule
+        // This prevents duplicate scheduling from race conditions
+        if ( $this->hasPendingActionForSchedule( (int) $schedule->id ) ) {
+            $this->logger->info(
+                sprintf( 'Skipping duplicate scheduling for schedule #%d - pending action already exists', $schedule->id ),
+                LoggerService::CONTEXT_SCHEDULER,
+                [ 'schedule_id' => $schedule->id ]
+            );
+            return true; // Return true since an action already exists
+        }
+
         // Schedule with Action Scheduler
         // Wrap args in array so executeScan receives them as a single array parameter
         $action_id = as_schedule_single_action(
@@ -329,6 +351,48 @@ class SchedulerService {
                 [ 'action_scheduler_id' => $action_id ]
             );
             return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a pending action already exists for a specific schedule
+     *
+     * @param int $schedule_id Schedule ID to check
+     * @return bool True if a pending action exists, false otherwise
+     */
+    private function hasPendingActionForSchedule( int $schedule_id ): bool {
+        if ( ! function_exists( 'as_get_scheduled_actions' ) ) {
+            return false;
+        }
+
+        try {
+            $actions = as_get_scheduled_actions( [
+                'hook' => self::SCAN_ACTION_HOOK,
+                'group' => self::ACTION_GROUP,
+                'status' => \ActionScheduler_Store::STATUS_PENDING,
+                'per_page' => 100, // Reasonable limit
+            ] );
+
+            foreach ( $actions as $action ) {
+                $args = $action->get_args();
+                // Args are wrapped in an array, so we need to check the first element
+                if ( is_array( $args ) && ! empty( $args ) && isset( $args[0]['schedule_id'] ) ) {
+                    if ( (int) $args[0]['schedule_id'] === $schedule_id ) {
+                        return true;
+                    }
+                }
+            }
+        } catch ( \Exception $e ) {
+            $this->logger->error(
+                'Error checking for pending actions: ' . $e->getMessage(),
+                LoggerService::CONTEXT_SCHEDULER,
+                [
+                    'schedule_id' => $schedule_id,
+                    'exception' => $e->getMessage(),
+                ]
+            );
         }
 
         return false;
