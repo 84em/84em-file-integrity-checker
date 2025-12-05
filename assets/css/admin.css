@@ -11,8 +11,8 @@
 }
 
 .file-integrity-card {
-    background: var(--wp-admin-theme-color-background, #fff);
-    border: 1px solid var(--wp-admin-theme-color-darker-20, #c3c4c7);
+    background: #fff;
+    border: 1px solid #c3c4c7;
     border-radius: 4px;
     padding: 20px;
     box-shadow: 0 1px 1px rgba(0,0,0,.04);
@@ -20,7 +20,7 @@
 
 .file-integrity-card h3 {
     margin: 0 0 15px 0;
-    color: inherit;
+    color: #1d2327;
     font-size: 16px;
 }
 
@@ -29,7 +29,7 @@
 }
 
 .file-integrity-card .card-actions {
-    border-top: 1px solid var(--wp-admin-theme-color-darker-10, #dcdcde);
+    border-top: 1px solid #dcdcde;
     padding-top: 15px;
     margin-top: 15px;
 }
@@ -45,7 +45,7 @@
 .stat-item {
     text-align: center;
     padding: 15px;
-    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    background: #f6f7f7;
     border-radius: 4px;
 }
 
@@ -139,7 +139,7 @@
 .file-integrity-progress {
     width: 100%;
     height: 20px;
-    background-color: var(--wp-admin-theme-color-darker-10, #f0f0f0);
+    background-color: #f0f0f0;
     border-radius: 10px;
     overflow: hidden;
     margin: 10px 0;
@@ -147,7 +147,7 @@
 
 .file-integrity-progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--wp-admin-theme-color, #2271b1), var(--wp-admin-theme-color-darker-10, #72aee6));
+    background: linear-gradient(90deg, #2271b1, #72aee6);
     border-radius: 10px;
     transition: width 0.3s ease;
     position: relative;
@@ -174,17 +174,17 @@
 .scan-results-table td {
     padding: 12px;
     text-align: left;
-    border-bottom: 1px solid var(--wp-admin-theme-color-darker-10, #dcdcde);
+    border-bottom: 1px solid #dcdcde;
 }
 
 .scan-results-table th {
-    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    background: #f6f7f7;
     font-weight: 600;
-    color: inherit;
+    color: #1d2327;
 }
 
 .scan-results-table tbody tr:hover {
-    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    background: #f6f7f7;
 }
 
 .scan-results-table .column-date {
@@ -217,8 +217,8 @@
 
 /* File details */
 .file-details {
-    background: var(--wp-admin-theme-color-darker-10, #f9f9f9);
-    border: 1px solid var(--wp-admin-theme-color-darker-20, #ddd);
+    background: #f9f9f9;
+    border: 1px solid #ddd;
     border-radius: 4px;
     padding: 15px;
     margin: 10px 0;
@@ -274,7 +274,7 @@
     align-items: center;
     gap: 5px;
     padding: 5px 10px;
-    background: var(--wp-admin-theme-color-darker-10, #f6f7f7);
+    background: #f6f7f7;
     border-radius: 3px;
 }
 
@@ -308,27 +308,27 @@ a .dashicons {
 }
 
 .file-integrity-alert.alert-info {
-    background: color-mix(in srgb, var(--wp-admin-theme-color, #2271b1) 10%, white);
-    border-left: 4px solid var(--wp-admin-theme-color, #2271b1);
-    color: inherit;
+    background: #e7f3ff;
+    border-left: 4px solid #2271b1;
+    color: #1d2327;
 }
 
 .file-integrity-alert.alert-warning {
-    background: color-mix(in srgb, var(--wp-admin-theme-color-warning, #dba617) 10%, white);
-    border-left: 4px solid var(--wp-admin-theme-color-warning, #dba617);
-    color: inherit;
+    background: #fcf3d9;
+    border-left: 4px solid #dba617;
+    color: #1d2327;
 }
 
 .file-integrity-alert.alert-error {
-    background: color-mix(in srgb, var(--wp-admin-theme-color-error, #d63638) 10%, white);
-    border-left: 4px solid var(--wp-admin-theme-color-error, #d63638);
-    color: inherit;
+    background: #fcebeb;
+    border-left: 4px solid #d63638;
+    color: #1d2327;
 }
 
 .file-integrity-alert.alert-success {
-    background: color-mix(in srgb, var(--wp-admin-theme-color-success, #00a32a) 10%, white);
-    border-left: 4px solid var(--wp-admin-theme-color-success, #00a32a);
-    color: inherit;
+    background: #e6f6ea;
+    border-left: 4px solid #00a32a;
+    color: #1d2327;
 }
 
 .file-integrity-alert .dashicons {
@@ -341,8 +341,8 @@ a .dashicons {
     align-items: center;
     gap: 15px;
     padding: 20px;
-    background: var(--wp-admin-theme-color-background, #fff);
-    border: 1px solid var(--wp-admin-theme-color-darker-20, #c3c4c7);
+    background: #fff;
+    border: 1px solid #c3c4c7;
     border-radius: 4px;
     margin: 20px 0;
 }
@@ -483,7 +483,7 @@ a .dashicons {
     justify-content: space-between;
     margin: 20px 0;
     padding: 15px 0;
-    border-top: 1px solid var(--wp-admin-theme-color-darker-10, #dcdcde);
+    border-top: 1px solid #dcdcde;
 }
 
 .pagination-info {
@@ -501,10 +501,6 @@ a .dashicons {
     height: 32px;
     padding: 0 10px;
 }
-
-/* Dark mode support - WordPress admin handles this automatically with CSS variables */
-/* The CSS variables will adapt to the user's admin color scheme */
-/* No explicit dark mode overrides needed when using WP admin CSS variables */
 
 /* Modal System Styles */
 .fic-modal-overlay {
