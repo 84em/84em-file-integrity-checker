@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.5.2] - 2025-12-05
+### Changed
+- Removed "Run New Scan" button from admin notices (WordPress update and plugin change notices)
+- Replaced CSS variables with static color values for improved browser compatibility
+- Added `--release` flag to build.sh for automated GitHub release publishing
+
 ## [2.5.1] - 2025-12-05
 ### Added
 - WP-CLI `check-duplicates` command to detect and fix duplicate scheduled scan actions

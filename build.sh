@@ -5,7 +5,12 @@
 #
 # Usage:
 #   ./build.sh                    # Standard build with locked dependencies
-#   UPDATE_DEPS=true ./build.sh  # Build with updated dependencies
+#   ./build.sh --release          # Build and publish to GitHub as latest release
+#   UPDATE_DEPS=true ./build.sh   # Build with updated dependencies
+#
+# Arguments:
+#   --release  - After building, publish to GitHub as the "latest" release
+#                Deletes existing latest release and creates a new one
 #
 # Environment Variables:
 #   UPDATE_DEPS=true  - Updates all production dependencies to latest versions
@@ -13,6 +18,17 @@
 #
 
 set -e  # Exit on error
+
+# Parse arguments
+PUBLISH_RELEASE=false
+for arg in "$@"; do
+    case $arg in
+        --release)
+            PUBLISH_RELEASE=true
+            shift
+            ;;
+    esac
+done
 
 # Color output
 RED='\033[0;31m'
@@ -312,9 +328,64 @@ else
     exit 1
 fi
 
-echo -e "\n${YELLOW}Next steps:${NC}"
-echo "1. Test the plugin by uploading ${ZIP_NAME} to a fresh WordPress installation"
-echo "2. Verify that scheduling features work (Action Scheduler loads correctly)"
-echo "3. Run a test scan to ensure all functionality works"
-echo "4. Tag the release: git tag v${VERSION}"
-echo "5. Create GitHub release and attach the ZIP file"
+# Step 12: Publish to GitHub (if --release flag provided)
+if [ "${PUBLISH_RELEASE}" = "true" ]; then
+    echo -e "\n${YELLOW}→ Publishing release to GitHub...${NC}"
+
+    # Check if gh CLI is available
+    if ! command -v gh &> /dev/null; then
+        echo -e "${RED}Error: GitHub CLI (gh) is not installed${NC}"
+        echo -e "${YELLOW}Install it from: https://cli.github.com/${NC}"
+        exit 1
+    fi
+
+    # Check if authenticated
+    if ! gh auth status &> /dev/null; then
+        echo -e "${RED}Error: Not authenticated with GitHub CLI${NC}"
+        echo -e "${YELLOW}Run: gh auth login${NC}"
+        exit 1
+    fi
+
+    RELEASE_TAG="latest"
+    RELEASE_TITLE="Latest Release (v${VERSION})"
+    ZIP_PATH="${DIST_DIR}/${ZIP_NAME}"
+    ASSET_NAME="${PLUGIN_SLUG}.zip"
+
+    # Delete existing release and tag if they exist
+    echo -e "${YELLOW}  Removing existing 'latest' release...${NC}"
+    gh release delete "${RELEASE_TAG}" --yes --cleanup-tag 2>/dev/null || true
+
+    # Small delay to ensure GitHub processes the deletion
+    sleep 2
+
+    # Create new release with the ZIP file
+    echo -e "${YELLOW}  Creating new release...${NC}"
+    gh release create "${RELEASE_TAG}" \
+        "${ZIP_PATH}#${ASSET_NAME}" \
+        --title "${RELEASE_TITLE}" \
+        --notes "$(cat <<EOF
+## 84EM File Integrity Checker - Latest Release
+
+**Version:** ${VERSION}
+**Built:** $(date +"%Y-%m-%d %H:%M:%S")
+
+### Download
+
+Download the ZIP file below and upload to WordPress via Plugins > Add New > Upload Plugin.
+
+### Changelog
+
+See [CHANGELOG.md](https://github.com/84emllc/84em-file-integrity-checker/blob/main/CHANGELOG.md) for full version history.
+EOF
+)"
+
+    echo -e "${GREEN}  Release published successfully!${NC}"
+    echo -e "  URL: https://github.com/84emllc/84em-file-integrity-checker/releases/tag/${RELEASE_TAG}"
+    echo -e "  Direct download: https://github.com/84emllc/84em-file-integrity-checker/releases/latest/download/${ASSET_NAME}"
+else
+    echo -e "\n${YELLOW}Next steps:${NC}"
+    echo "1. Test the plugin by uploading ${ZIP_NAME} to a fresh WordPress installation"
+    echo "2. Verify that scheduling features work (Action Scheduler loads correctly)"
+    echo "3. Run a test scan to ensure all functionality works"
+    echo "4. Run ./build.sh --release to publish to GitHub"
+fi

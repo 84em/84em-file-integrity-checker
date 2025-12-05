@@ -1327,9 +1327,6 @@ class AdminPages {
             </p>
             <p>
                 Consider creating a new baseline scan after verifying all changes are legitimate.
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button button-secondary">
-                    Run New Scan
-                </a>
                 <button type="button" class="button" id="dismiss-baseline-suggestion">Dismiss</button>
             </p>
         </div>
@@ -1388,9 +1385,6 @@ class AdminPages {
                 activated or deactivated recently. Consider creating a new baseline scan.
             </p>
             <p>
-                <a href="<?php echo esc_url( admin_url( 'admin.php?page=file-integrity-checker' ) ); ?>" class="button button-secondary">
-                    Run New Scan
-                </a>
                 <button type="button" class="button" id="dismiss-plugin-changes">Dismiss</button>
             </p>
         </div>
