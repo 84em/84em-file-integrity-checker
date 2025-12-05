@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.h
 
 ## [Unreleased]
 
+## [2.5.1] - 2025-12-05
+### Added
+- WP-CLI `check-duplicates` command to detect and fix duplicate scheduled scan actions
+- Duplicate action prevention in SchedulerService to avoid race conditions
+
+### Fixed
+- Race condition where multiple scan actions could be scheduled for the same schedule
+
 ## [2.5.0] - 2025-11-20
 ### Added
 - Skip Zero-Change Scans setting in Data Management to reduce database size
